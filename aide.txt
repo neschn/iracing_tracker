@@ -1,0 +1,5 @@
+cd C:\iracing_tracker
+.venv310\Scripts\activate
+python main.py
+
+Fais toujours attention de ne modifier que ce que je te demande, tu ne dois pas modifier d'autre comportements de l'application quand je te demande des modifications, uniquement ce que je te demande. 
