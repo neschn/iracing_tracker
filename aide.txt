@@ -1,5 +1,16 @@
+*** Fichier contenant les commandes utiles et des prompts ChatGPT ***
+-----------
 cd C:\iracing_tracker
-.venv310\Scripts\activate
-python main.py
+.venv310\Scripts\python.exe -m iracing_tracker.main
+-----------
+Fais toujours attention de ne modifier que ce que je te demande, tu ne dois pas modifier d'autre comportements de l'application quand je te demande des modifications, uniquement ce que je te demande.
+-----------
+Je suis en train de développer un logiciel me permettant d'enregistrer et afficher en temps réel les temps et records que je fais sur iRacing avec mes amis. iRacing ne permet pas nativement d'enregistrer les temps faits en local, du coup je développe ça en utilisant le sdk de iracing "irsdk".
+Je stock le nom de tous les joueurs et tous les temps de chaque circuit avec chaque voiture dans 2 fichiers .json (players.json et best_laps.json). Le logiciel sera lancé en même temps qu'iRacing sur un écran secondaire, avec une détection automatique du circuit actuel et de la voiture utilisée. La météo n'est pas prise en considération dans le logiciel.
 
-Fais toujours attention de ne modifier que ce que je te demande, tu ne dois pas modifier d'autre comportements de l'application quand je te demande des modifications, uniquement ce que je te demande. 
+Le but final est d'avoir toutes les fonctionnalités suivantes au moins :
+- Enregistrement automatique des temps personnels de chaque personne sur chaque circuit avec chaque voiture (par exemple, si le joueur "Nico" fait un temps sur un circuit avec une F3, le temps fait sur le même circuit avec une F1 ne doit pas écraser le temps de la F3)
+- Ne permettre que d'enregistrer des temps valides et à 0x, à savoir sans sortie de piste, sans contact, que des tours propres, le premier tour étant bien évidemment pas pris en considération vu qu'il faut passer par la ligne de départ
+- Ajouter et supprimer des joueurs
+- Afficher le temps du tour actuel en temps réel
+- 

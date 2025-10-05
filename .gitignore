@@ -1,4 +1,5 @@
 # Virtual env
+.venv310/
 .venv*/
 venv/
 
