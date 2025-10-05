@@ -13,4 +13,5 @@ Le but final est d'avoir toutes les fonctionnalités suivantes au moins :
 - Ne permettre que d'enregistrer des temps valides et à 0x, à savoir sans sortie de piste, sans contact, que des tours propres, le premier tour étant bien évidemment pas pris en considération vu qu'il faut passer par la ligne de départ
 - Ajouter et supprimer des joueurs
 - Afficher le temps du tour actuel en temps réel
-- 
+- Afficher des couleurs (animation /clignotement lors d'un record battu (personnel ou absolu))
+- D'autre petites fonctionnalités.

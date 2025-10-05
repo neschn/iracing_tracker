@@ -49,7 +49,15 @@ class TrackerUI(tk.Tk):
         tk.Label(player_frame, text="Joueur :", **style).pack(side="left")
         self.current_player = tk.StringVar(value=players[0] if players else "")
         self.current_player.trace_add("write", self._on_player_change)
-        self.player_menu = tk.OptionMenu(player_frame, self.current_player, *players)
+        
+        # Valeur initiale (affichée au lancement)
+        initial_value = players[0] if players else "---"
+        self.current_player.set(initial_value)
+
+        # Évite le doublon : ne repasse pas le premier nom deux fois
+        extra_values = players[1:] if len(players) > 1 else []
+        self.player_menu = tk.OptionMenu(player_frame, self.current_player, initial_value, *extra_values)
+
         self.player_menu.config(bg="white", fg="black", font=("Consolas", 11))
         self.player_menu.pack(side="left")
 
@@ -131,3 +139,56 @@ class TrackerUI(tk.Tk):
         Retourne le joueur actuellement sélectionné dans l'OptionMenu.
         """
         return self.current_player.get()
+
+
+
+
+
+
+    def set_on_player_change(self, cb):
+        """Permet de modifier le callback après création de l'UI."""
+        self.on_player_change = cb
+
+    def bind_event_queue(self, q):
+        """
+        Enregistre la queue d'événements UI venant du worker
+        et lance la pompe qui la consomme périodiquement.
+        """
+        self._event_queue = q
+        self.after(16, self._pump_event_queue)  # ~60 FPS
+
+    def _pump_event_queue(self):
+        """
+        Vide la queue sans bloquer et applique chaque événement.
+        Chaque événement est un tuple (name, payload_dict).
+        """
+        if not hasattr(self, "_event_queue") or self._event_queue is None:
+            self.after(16, self._pump_event_queue)
+            return
+
+        try:
+            import queue as _q
+            while True:
+                name, payload = self._event_queue.get_nowait()
+                # Dispatch très simple par nom
+                if name == "debug":
+                    self.update_debug(payload)
+                elif name == "context":
+                    self.update_context(payload.get("track","---"), payload.get("car","---"))
+                elif name == "player_menu_state":
+                    self.set_player_menu_state(payload.get("enabled", False))
+                elif name == "log":
+                    self.add_log(payload.get("message",""))
+                elif name == "player_best":
+                    self.update_player_personnal_record(payload.get("text","---"))
+                elif name == "current_lap":
+                    self.update_current_lap_time(payload.get("text","---"))
+                # Tu pourras ajouter ici d'autres événements (blink record, etc.)
+        except Exception as e:
+            # get_nowait a levé queue.Empty -> normal : plus rien à consommer
+            pass
+
+        # Re-planifie la prochaine vidange
+        self.after(16, self._pump_event_queue)
+
+
