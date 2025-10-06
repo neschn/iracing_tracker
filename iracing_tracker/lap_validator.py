@@ -39,10 +39,15 @@ class LapValidator:
         lap_time  = state.get("LapLastLapTime", 0.0)
         inc_count = state.get("PlayerCarMyIncidentCount", 0)
 
-        # Si on n'est pas en piste -> on se met en attente et on ne décide rien
-        if surf != 3:
+        # Reset uniquement si la session repart (compteur recule) ou si on est au box (1)
+        if comp < self.last_completed_lap:
             self.reset()
             return "none", 0.0
+
+        if surf == 1:  # garage/pit box uniquement
+            self.reset()
+            return "none", 0.0
+
 
         # Première arrivée en piste : on se calibre pour ne PAS valider un tour fantôme
         if not self.initialized:
