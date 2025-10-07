@@ -227,8 +227,8 @@ class TrackerUI(tk.Tk):
 
     def update_debug(self, data: dict):
         first_visible_idx = self.debug_text.index("@0,0")
-        _, last = self.debug_text.yview()
-        at_bottom = last >= 0.999
+        first_fraction, last = self.debug_text.yview()
+        at_bottom = first_fraction > 0.0 and last >= 0.999
 
         self.debug_text.delete("1.0", "end")
         for k, v in data.items():
