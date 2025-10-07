@@ -42,8 +42,10 @@ class TrackerUI(tk.Tk):
         self.grid_rowconfigure(0, weight=0)   # bannière
         self.grid_rowconfigure(1, weight=1)   # zone centrale extensible
         self.grid_rowconfigure(2, weight=0)   # logs
-        self.grid_columnconfigure(0, weight=3)
-        self.grid_columnconfigure(1, weight=2)
+        self.grid_columnconfigure(0, weight=2)
+        self.grid_columnconfigure(1, weight=1)
+        self.bind("<Configure>", self._on_root_resize)
+        self.after(0, self._update_column_sizes)
 
         # -----------------------
         # Bannière (messages importants)
@@ -119,8 +121,13 @@ class TrackerUI(tk.Tk):
         self.debug_frame.grid_rowconfigure(0, weight=1)
         self.debug_frame.grid_columnconfigure(0, weight=1)
 
-        self.debug_text = tk.Text(self.debug_frame, wrap="none",
-                                  font=("Consolas", 10), bg="#f8f8f8")
+        self.debug_text = tk.Text(
+            self.debug_frame,
+            wrap="none",
+            font=("Consolas", 10),
+            bg="#f8f8f8",
+            width=40
+        )
         self.debug_text.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
 
         # -----------------------
@@ -252,6 +259,25 @@ class TrackerUI(tk.Tk):
 
         self.after(16, self._pump_event_queue)
 
+    def _on_root_resize(self, event):
+        if event.widget is self:
+            self._update_column_sizes()
+
+    def _update_column_sizes(self):
+        width = self.winfo_width()
+        if width <= 1:
+            return
+        usable_width = max(width - 2 * PADDING, 0)
+        if self.debug_visible.get():
+            debug_width = usable_width // 3
+            main_width = usable_width - debug_width
+        else:
+            debug_width = 0
+            main_width = usable_width
+
+        self.grid_columnconfigure(0, minsize=main_width)
+        self.grid_columnconfigure(1, minsize=debug_width)
+
     def _toggle_debug(self):
         """
         Affiche/masque la frame de debug (self.debug_frame) et ajuste la grille.
@@ -261,14 +287,16 @@ class TrackerUI(tk.Tk):
             self.debug_frame.grid(row=1, column=1, sticky="nsew",
                                 padx=(0, PADDING), pady=PADDING)
             # Rétablit la répartition des colonnes
-            self.grid_columnconfigure(0, weight=3)
-            self.grid_columnconfigure(1, weight=2)
+            self.grid_columnconfigure(0, weight=2)
+            self.grid_columnconfigure(1, weight=1)
         else:
             # Cache proprement la frame Debug
             self.debug_frame.grid_remove()
             # Donne tout l'espace à la colonne 0
             self.grid_columnconfigure(0, weight=1)
             self.grid_columnconfigure(1, weight=0)
+
+        self._update_column_sizes()
 
     # API simple pour mettre à jour la bannière
     def set_banner(self, text: str = ""):
