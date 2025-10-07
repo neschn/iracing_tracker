@@ -30,7 +30,8 @@ class TrackerUI(tk.Tk):
         self.configure(bg="#f0f0f0")
 
         self.on_player_change = on_player_change
-
+        self.debug_visible = tk.BooleanVar(value=True)
+        
         # --- Menu principal (squelette) ---
         self._build_menubar()
 
@@ -148,15 +149,20 @@ class TrackerUI(tk.Tk):
         edit_menu.add_command(label="(à venir)", state="disabled")
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="(à venir)", state="disabled")
-        # NOTE : plus tard on pourra brancher “Afficher/Cacher la zone debug” ici
+        # ⬇️ La case à cocher pour afficher/masquer le panneau Debug
+        view_menu.add_checkbutton(
+            label="Debug",
+            variable=self.debug_visible,
+            command=self._toggle_debug
+        )
 
         menubar.add_cascade(label="Fichier",   menu=file_menu)
         menubar.add_cascade(label="Édition",   menu=edit_menu)
-        menubar.add_cascade(label="Affichage", menu=view_menu)
+        menubar.add_cascade(label="Affichage", menu=view_menu)   # <-- change "Affichage" en "Fenêtre" si tu préfères
 
         self.config(menu=menubar)
         self._menubar = menubar  # si tu veux y accéder plus tard
+
 
     # -----------------------
     # API publique utilisée par main.py
@@ -245,6 +251,24 @@ class TrackerUI(tk.Tk):
             pass
 
         self.after(16, self._pump_event_queue)
+
+    def _toggle_debug(self):
+        """
+        Affiche/masque la frame de debug (self.debug_frame) et ajuste la grille.
+        """
+        if self.debug_visible.get():
+            # Ré-affiche le panneau Debug avec les mêmes options grid
+            self.debug_frame.grid(row=1, column=1, sticky="nsew",
+                                padx=(0, PADDING), pady=PADDING)
+            # Rétablit la répartition des colonnes
+            self.grid_columnconfigure(0, weight=3)
+            self.grid_columnconfigure(1, weight=2)
+        else:
+            # Cache proprement la frame Debug
+            self.debug_frame.grid_remove()
+            # Donne tout l'espace à la colonne 0
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure(1, weight=0)
 
     # API simple pour mettre à jour la bannière
     def set_banner(self, text: str = ""):
