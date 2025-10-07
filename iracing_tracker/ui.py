@@ -157,7 +157,7 @@ class TrackerUI(tk.Tk):
 
         self.debug_text = tk.Text(
             self.debug_frame,
-            wrap="none",
+            wrap="word",
             font=(FONT_FAMILY, FONT_SIZE_DEBUG),
             bg=COLOR_DEBUG_TEXT_BG,
             width=DEBUG_TEXT_WIDTH
