@@ -223,9 +223,20 @@ class TrackerUI(tk.Tk):
         self.current_lap_label.config(text=f"Tour en cours : {text}")
 
     def update_debug(self, data: dict):
+        first_visible_idx = self.debug_text.index("@0,0")
+        _, last = self.debug_text.yview()
+        at_bottom = last >= 0.999
+
         self.debug_text.delete("1.0", "end")
         for k, v in data.items():
             self.debug_text.insert("end", f"{k}: {v}\n")
+        if at_bottom:
+            self.debug_text.see("end")
+        else:
+            try:
+                self.debug_text.yview(first_visible_idx)
+            except tk.TclError:
+                self.debug_text.see(first_visible_idx)
 
     def add_log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
