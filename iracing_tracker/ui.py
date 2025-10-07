@@ -24,7 +24,7 @@ COLOR_DEBUG_TEXT_BG  = "#f8f8f8"  # Fond de la zone de texte Debug
 COLOR_LOG_TEXT_BG    = "#eef"     # Fond de la zone de texte des logs
 
 # --- Polices ---
-FONT_FAMILY       = "Consolas"  # Police utilisée globalement
+FONT_FAMILY       = "Arial"  # Police utilisée globalement
 FONT_SIZE_BASE    = 12          # Taille de base pour les labels de contenu
 FONT_SIZE_GROUP   = 11          # Taille pour les titres de groupes (LabelFrame)
 FONT_SIZE_BANNER  = 14          # Taille du texte de la bannière
@@ -40,6 +40,7 @@ DEBUG_TEXT_WIDTH       = 40        # Largeur (caractères) de la zone de texte D
 LOG_TEXT_HEIGHT        = 8         # Hauteur (lignes) de la zone de texte Logs
 BANNER_BORDER_WIDTH    = 1         # Épaisseur de bordure de la bannière
 BANNER_RELIEF          = "solid"   # Style de la bordure de la bannière
+BANNER_MIN_HEIGHT      = 70        # Hauteur minimale (px) de la bannière
 INNER_PAD_X            = 8         # Padding horizontal interne standard
 INNER_PAD_Y            = 2         # Padding vertical interne standard
 TEXTBOX_PAD            = 6         # Padding autour des zones de texte (Debug/Logs)
@@ -74,6 +75,7 @@ class TrackerUI(tk.Tk):
         self.grid_rowconfigure(0, weight=0)   # bannière
         self.grid_rowconfigure(1, weight=1)   # zone centrale extensible
         self.grid_rowconfigure(2, weight=0)   # logs
+        self.grid_rowconfigure(0, minsize=BANNER_MIN_HEIGHT)  # hauteur min bannière
         self.grid_columnconfigure(0, weight=GRID_MAIN_WEIGHT)
         self.grid_columnconfigure(1, weight=GRID_DEBUG_WEIGHT)
         self.bind("<Configure>", self._on_root_resize)
