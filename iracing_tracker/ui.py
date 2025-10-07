@@ -163,6 +163,9 @@ class TrackerUI(tk.Tk):
             width=DEBUG_TEXT_WIDTH
         )
         self.debug_text.grid(row=0, column=0, sticky="nsew", padx=TEXTBOX_PAD, pady=TEXTBOX_PAD)
+        self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
+        self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
+        self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
 
         # -----------------------
         # Logs (plein largeur)
@@ -237,6 +240,20 @@ class TrackerUI(tk.Tk):
                 self.debug_text.yview(first_visible_idx)
             except tk.TclError:
                 self.debug_text.see(first_visible_idx)
+
+    def _on_debug_mousewheel(self, event):
+        if event.delta == 0:
+            return "break"
+        direction = -1 if event.delta > 0 else 1
+        self.debug_text.yview_scroll(direction, "units")
+        return "break"
+
+    def _on_debug_mousewheel_linux(self, event):
+        if event.num == 4:
+            self.debug_text.yview_scroll(-1, "units")
+        elif event.num == 5:
+            self.debug_text.yview_scroll(1, "units")
+        return "break"
 
     def add_log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
