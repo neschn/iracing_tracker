@@ -103,6 +103,12 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
                 context_ready = False
                 ui_q.put(("context", {"track": "---", "car": "---"}))
                 ui_q.put(("player_best", {"text": "---"}))
+                
+                # Forcer un reset du buffer IRSDK (purge de l'ancien contexte)
+                try:
+                    ir_client.ir.shutdown()
+                except Exception:
+                    pass
 
             ui_q.put(("player_menu_state", {"enabled": False}))
             time.sleep(0.1)
