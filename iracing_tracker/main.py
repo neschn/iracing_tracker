@@ -124,7 +124,15 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
                 ctx = ir_client.freeze_and_read(context_vars_heavy) or {}
                 weekend = ctx.get("WeekendInfo") or {}
                 track_id = weekend.get("TrackID")
-                track_name = weekend.get("TrackDisplayName", "---")
+                # Construit le nom du circuit avec le tracé si pertinent
+                base_track_name = weekend.get("TrackDisplayName", "---")
+                track_cfg = (weekend.get("TrackConfigName") or "").strip()
+                # Affiche le tracé entre parenthèses uniquement si fourni par iRacing
+                # (pour les circuits sans variantes connues, iRacing laisse souvent vide)
+                if track_cfg:
+                    track_name = f"{base_track_name} ({track_cfg})"
+                else:
+                    track_name = base_track_name
 
                 drivers = ctx.get("DriverInfo", {}).get("Drivers", [])
                 idx = ctx.get("PlayerCarIdx") or 0
