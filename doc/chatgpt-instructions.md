@@ -105,6 +105,7 @@ Quand tu m’aides dans le développement :
 - Les commentaires doivent **expliquer la logique métier** et non juste paraphraser le code.
 - Renseigne toi sur IRSDK et son comportement si tu n'est pas certains de ce que tu proposes, tu es autorisé à consulter sur le web et Github si nécessaire
 - Tu as le droit de remettre en question ce qui a été fait, tout peut toujours être améioré.
+- Tu peux t'aider sur le GitHub de pyirsdk si besoin : https://github.com/kutu/pyirsdk.git
 
 ---
 
