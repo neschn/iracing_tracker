@@ -6,6 +6,7 @@ Mise à jour régulière pendant le développement.
 ---
 
 ## 🚧 À faire / idées
+- Convention de nommage des fichier, à normaliser dans le projet ?
 - Rajouter le nom du tracé du circuit entre parenthèses  
 - Établir le README principal  
 - Créer un fichier de description des fonctionnalités et spécificités pour ChatGPT 
