@@ -34,11 +34,11 @@ Créer un **tableau de suivi des performances locales** sur iRacing, capable de 
 - Ne valider que des tours **propres (0x)** : sans sortie de piste, contact, ni incident.  
   Le **premier tour** n’est jamais pris en compte (il sert de tour de lancement).
 - Gérer dynamiquement les **joueurs** (ajout, suppression, sélection).
-- Afficher une zone de logs avec tout ce qui se passe d'important et des message pour les utilisateurs
 - Afficher une **bannière de messages importants** (record battu, session terminée, attente, etc.).
 - Mettre en évidence les événements par **animations et couleurs** (record battu personnel ou absolu).
 - Fournir une **zone de debug** affichant les variables IRSDK utiles en temps réel.
 - Rester léger, fluide et utilisable en course, sans bloquer l’interface.
+- Toutes les fonctionnalités doivent impérativement fonctionner à la fois en local (Test Drive) et en ligne (Practice, Qualifs, Course, etc...)
 
 ---
 
@@ -64,3 +64,55 @@ Créer un **tableau de suivi des performances locales** sur iRacing, capable de 
 - Lors d’un **changement de session**, il est **impératif** d’appeler :
   ```python
   ir_client.ir.shutdown()
+  ```
+  Cela réinitialise le buffer iRSDK et permet de récupérer correctement le **nouveau contexte (track/car)**.  
+  Sans ce reset, les premières lectures après un changement de session renvoient encore les données de la session précédente.
+
+- Les tours **invalides** (1x, off-track, etc.) doivent **absolument être exclus** de l’enregistrement.  
+  Seuls les tours **0x et complets** sont sauvegardés dans `best_laps.json`.
+
+- L’UI utilise(ra) une **grille (`grid`)** flexible avec :
+  - une **bannière** en haut (messages importants),
+  - une **zone principale** à gauche (infos, joueur, records),
+  - une **zone debug** à droite (activable/désactivable via le menu “Affichage”),
+  - une **zone logs** en bas.
+
+- Le fichier `main.py` gère :
+  - la **boucle principale** (`loop()`),
+  - la **lecture IRSDK** (10 Hz pour les données légères, 2 s pour le YAML lourd, à voir si on adapte ça),
+  - la **validation des tours** via la classe `LapValidator`.
+
+- Le validateur de tours (`lap_validator.py`) :
+  - surveille les incidents (`PlayerCarMyIncidentCount`),
+  - détecte les passages de ligne (`LapCompleted`),
+  - exclut le premier tour et les tours invalides,
+  - garde la **baseline d’incidents** du début de tour pour détecter correctement les 1x.
+
+---
+
+## 🧠 Directives importantes pour ChatGPT
+
+Quand tu m’aides dans le développement :
+
+- **Ne modifie jamais** le comportement global ou d’autres parties du code que celles que je te demande explicitement.  
+- Si tu penses qu’une logique semble inutile ou pourrait être simplifiée, **réfléchis d’abord à sa raison d’être** : certains comportements sont spécifiques à iRacing et ne sont pas toujours logiques à première vue.  
+- À contrario, certaines fois avec les modifications de code qui s'enchainent, le code a tendance a se compléxifier et peut au bout d'un moment être refactoriser. Je suis toujours partisans de refactoriser et d'avoir quelque chose de propre, donc même si il faut faire attention à pourquoi les choses sont codées comme ça, il faut toujours se remettre en question pour voir s'il n'y a pas de manière plus simple ou plus optimisée de faire.
+- Le refactor seront demandé par l'utilisateur à certaine étapes de développement. Tu peux en proposer également quand tu juge ça nécessaire, mais il faut toujours me prévenir avant de le faire pour pas que je ne sois surpris.
+- Préfère toujours le code **clair, concis et commenté** (en français).  
+- **Si un correctif ne fonctionne pas**, cherche le problème ailleurs ou aborde-le **sous un autre angle** avant de tout remettre en cause.  
+- **“Less is more”** : évite la complexité inutile, favorise la lisibilité et la robustesse.  
+- Garde la structure actuelle (encapsulation, séparation logique, queue UI) si tu penses que c'est bien et utile
+- Les commentaires doivent **expliquer la logique métier** et non juste paraphraser le code.
+- Renseigne toi sur IRSDK et son comportement si tu n'est pas certains de ce que tu proposes, tu es autorisé à consulter sur le web et Github si nécessaire
+- Tu as le droit de remettre en question ce qui a été fait, tout peut toujours être améioré.
+
+---
+
+## 📄 Résumé rapide
+- **Langage :** Python  
+- **SDK utilisé :** iRSDK officiel  
+- **Interface :** Tkinter (thread principal uniquement)  
+- **Stockage :** JSON (atomique, stable, lisible)  
+- **Objectif final :** un tracker iRacing local, stable, simple, fluide et fiable.
+
+---
