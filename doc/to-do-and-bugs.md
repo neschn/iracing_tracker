@@ -6,7 +6,9 @@ Mise à jour régulière pendant le développement.
 ---
 
 ## 🚧 À faire / idées
+- CHANGER FREEZ AND READ ??
 - Séparer la partie debug et ne stocker et récupérer que si réellement affiché
+- Lister les variables de debug dans un fichier .txt ou autre
 - IL faudra sauver les données dans un dossier utilisateur genre AppData pour éviter un problème de droits d'accès.
 - Convention de nommage des fichier, à normaliser dans le projet ?
 - Rajouter le nom du tracé du circuit entre parenthèses  

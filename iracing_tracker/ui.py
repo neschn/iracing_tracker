@@ -54,7 +54,7 @@ class TrackerUI(tk.Tk):
       - row1: col0 = zone principale ; col1 = zone debug
       - row2: logs (plein largeur)
     """
-    def __init__(self, players: list, on_player_change):
+    def __init__(self, players: list, on_player_change, on_debug_toggle=None):
         super().__init__()
 
         # Fenêtre
@@ -65,6 +65,7 @@ class TrackerUI(tk.Tk):
 
         self.on_player_change = on_player_change
         self.debug_visible = tk.BooleanVar(value=DEBUG_INITIAL_VISIBLE)
+        self.on_debug_toggle = on_debug_toggle
         
         # --- Menu principal (squelette) ---
         self._build_menubar()
@@ -333,16 +334,31 @@ class TrackerUI(tk.Tk):
 
     def _toggle_debug(self):
         """Affiche/masque la frame de debug et ajuste la grille."""
-        if self.debug_visible.get():
+        visible = bool(self.debug_visible.get())
+
+        if visible:
             self.debug_frame.grid(row=1, column=1, sticky="nsew",
-                                  padx=(0, PADDING), pady=PADDING)
+                                padx=(0, PADDING), pady=PADDING)
             self.grid_columnconfigure(0, weight=GRID_MAIN_WEIGHT)
             self.grid_columnconfigure(1, weight=GRID_DEBUG_WEIGHT)
         else:
             self.debug_frame.grid_remove()
             self.grid_columnconfigure(0, weight=1)
             self.grid_columnconfigure(1, weight=0)
+
         self._update_column_sizes()
+
+        if self.on_debug_toggle is not None:
+            try:
+                self.on_debug_toggle(visible)
+            except Exception:
+                self.add_log("UI error: on_debug_toggle callback")
+
+
 
     def set_banner(self, text: str = ""):
         self.banner_label.config(text=text)
+
+    def set_on_debug_toggle(self, cb):
+        """Permet de modifier le callback de notification Debug visible/masqué."""
+        self.on_debug_toggle = cb

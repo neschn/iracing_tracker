@@ -39,14 +39,14 @@ def fmt_lap(t: float) -> str:
     return f"{int(m)}:{s:06.3f}"
 
 
-def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
+def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, runtime_flags, flags_lock):
     # ---- Flags d'état généraux ----
     flag_waiting_for_session = False
     waiting_for_pit = True
     flag_waiting_for_pit = False
     context_ready = False
 
-    # ---- Contexte courant mis en cache ----
+    # ---- Contexte courant ----
     track_id = None
     track_name = "---"
     car_id = None
@@ -60,42 +60,46 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
     # Coalescing UI
     last_best_text = None
 
-    # Détection des changements de session
+    # Détection de changements de session
     last_session_uid = None
 
-    # Debug LÉGER (tick ~10 Hz) — pas de gros arrays CarIdx*
-    debug_vars_light = [
-        "SessionTime", "SessionNum", "SessionUniqueID", "SessionTimeRemain",
-        "LapCompleted", "LapLastLapTime",
-        "PlayerCarMyIncidentCount", "PlayerTrackSurface",
+    # --- Télémetrie: listes de variables ---
+    CORE_VARS = [
+        # nécessaires au fonctionnement toujours
+        "SessionUniqueID",
+        "LapCompleted",
+        "LapLastLapTime",
+        "PlayerTrackSurface",
+        "PlayerCarMyIncidentCount",
     ]
 
-    # Clés LOURDES (YAML) — lues moins souvent
+    DEBUG_VARS_VERBOSE = [
+        # variables “bonus” pour debug (coûteuses / arrays)
+        "SessionTime", "SessionNum", "SessionTimeRemain",
+        "CarIdxLapCompleted", "CarIdxLastLapTime",
+        "CarIdxLapDistPct", "CarIdxTrackSurface",
+        "CarIdxOnPitRoad", "CarIdxPosition", "CarIdxSpeed", "CarIdxRPM",
+    ]
+
+    # YAML lourd ponctuel
     context_vars_heavy = ["WeekendInfo", "DriverInfo", "PlayerCarIdx"]
 
-    # Throttle des lectures
-    CTX_READ_PERIOD   = 2.0   # lecture YAML toutes les 2 s
-    DEBUG_PUSH_PERIOD = 0.3   # push debug vers UI max ~3 Hz
+    # Throttles
+    CTX_READ_PERIOD   = 2.0
+    DEBUG_PUSH_PERIOD = 0.3
 
     last_ctx_read_ts   = 0.0
     last_debug_push_ts = 0.0
 
-    # ---- Fonctions internes (lisibilité) ----
+    # ---- Helpers internes ----
 
-    def _push_debug(now_ts, state_debug):
-        nonlocal last_debug_push_ts
-        if now_ts - last_debug_push_ts < DEBUG_PUSH_PERIOD:
-            return
-        ui_q.put(("debug", {
-            **(state_debug or {}),
-            "flag_waiting_for_session": flag_waiting_for_session,
-            "flag_waiting_for_pit": flag_waiting_for_pit,
-            "waiting_for_pit": waiting_for_pit,
-        }))
-        last_debug_push_ts = now_ts
+    def _fmt_lap(t: float) -> str:
+        if not t or t <= 0:
+            return "---"
+        m, s = divmod(float(t), 60.0)
+        return f"{int(m)}:{s:06.3f}"
 
     def _reset_context_and_ui():
-        """Vide le contexte UI + reset affichage best lap."""
         nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name
         nonlocal context_ready, last_best_text
         cached_track_id, cached_track_name = None, "---"
@@ -106,23 +110,21 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
         ui_q.put(("player_best", {"text": "---"}))
 
     def _handle_session_not_active():
-        """État 'en attente de session' : reset flags et buffer iRSDK."""
         nonlocal flag_waiting_for_session, waiting_for_pit, flag_waiting_for_pit, last_session_uid
         if not flag_waiting_for_session:
             ui_q.put(("log", {"message": "En attente du démarrage d’une session…"}))
             flag_waiting_for_session = True
             waiting_for_pit = True
-            flag_waiting_for_pit = False  # réarmement
+            flag_waiting_for_pit = False
             _reset_context_and_ui()
             try:
-                ir_client.ir.shutdown()  # purge de l'ancien contexte iRSDK
+                ir_client.ir.shutdown()
             except Exception:
                 pass
         last_session_uid = None
         ui_q.put(("player_menu_state", {"enabled": False}))
 
     def _maybe_update_context(now_ts):
-        """Lit ponctuellement le YAML et met à jour le contexte piste/voiture."""
         nonlocal last_ctx_read_ts, track_id, track_name, car_id, car_name
         nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name, context_ready, last_best_text
 
@@ -153,11 +155,9 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
             cached_car_id,   cached_car_name   = car_id, car_name
             context_ready = (track_id is not None) and (car_id is not None)
             ui_q.put(("context", {"track": track_name, "car": car_name}))
-            # invalide la coalescence du best lap pour forcer 1 affichage correct
-            last_best_text = None
+            last_best_text = None  # force une MAJ du label
 
     def _update_best_label_if_changed():
-        """Met à jour l'étiquette 'Record personnel' si nécessaire (coalescing)."""
         nonlocal last_best_text
         with sel_lock:
             player_curr = selected_player_ref["name"]
@@ -166,24 +166,23 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
         else:
             key = f"{track_id}|{car_id}"
             entry = best_laps.get(key, {}).get(player_curr)
-            best_text = fmt_lap(entry["time"]) if entry else "---"
-
+            best_text = _fmt_lap(entry["time"]) if entry else "---"
         if best_text != last_best_text:
             ui_q.put(("player_best", {"text": best_text}))
             last_best_text = best_text
 
-    # ---- Boucle de travail ----
+    # ---- Boucle principale ----
     while True:
         now = time.time()
 
-        # Lecture DEBUG légère (pas de YAML)
+        # lecture “core” à 10 Hz env
         try:
-            state_debug = ir_client.freeze_and_read(debug_vars_light) or {}
+            state_core = ir_client.freeze_and_read(CORE_VARS) or {}
         except Exception:
-            state_debug = {}
+            state_core = {}
 
-        # Détection de changement de session (à chaud)
-        curr_uid = state_debug.get("SessionUniqueID")
+        # changement de session
+        curr_uid = state_core.get("SessionUniqueID")
         if curr_uid and last_session_uid and curr_uid != last_session_uid:
             ui_q.put(("log", {"message": "Changement de session détecté, reset iRSDK…"}))
             try:
@@ -194,32 +193,43 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
             waiting_for_pit = True
             flag_waiting_for_pit = False
             _reset_context_and_ui()
-
         if curr_uid:
             last_session_uid = curr_uid
 
-        # Push debug throttle
-        _push_debug(now, state_debug)
-
-        # Si pas de session active -> état attente
+        # session inactive -> attente
         if not ir_client.is_session_active():
             _handle_session_not_active()
             time.sleep(0.1)
             continue
 
-        # Session active : on enlève le flag d'attente
-        flag_waiting_for_session = False
-
-        # Lecture du CONTEXTE (YAML) ponctuelle
+        # contexte YAML ponctuel
         try:
             _maybe_update_context(now)
         except Exception as e:
             ui_q.put(("log", {"message": f"Erreur lecture contexte : {e}"}))
 
-        # Gestion du pit/garage via la lecture légère
-        surface = state_debug.get("PlayerTrackSurface")
+        # lecture / push DEBUG uniquement si visible
+        with flags_lock:
+            debug_enabled = bool(runtime_flags.get("debug_enabled", False))
+
+        if debug_enabled and (now - last_debug_push_ts) >= DEBUG_PUSH_PERIOD:
+            try:
+                dbg = ir_client.freeze_and_read(DEBUG_VARS_VERBOSE) or {}
+            except Exception:
+                dbg = {}
+            payload = {
+                **state_core,
+                **dbg,
+                "flag_waiting_for_session": flag_waiting_for_session,
+                "flag_waiting_for_pit": flag_waiting_for_pit,
+                "waiting_for_pit": waiting_for_pit,
+            }
+            ui_q.put(("debug", payload))
+            last_debug_push_ts = now
+
+        # gestion pit/garage (surface: 1=pitstall/garage)
+        surface = int(state_core.get("PlayerTrackSurface") or 0)
         if surface == 1:
-            # autorise la sélection du joueur et signale que c'est prêt à rouler
             ui_q.put(("player_menu_state", {"enabled": True}))
             if waiting_for_pit:
                 ui_q.put(("log", {"message": "C’est parti, vous pouvez démarrer !"}))
@@ -234,48 +244,43 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock):
                 time.sleep(0.1)
                 continue
 
-        # Mise à jour coalescée du libellé 'Record personnel'
+        # coalescing du label “record personnel”
         _update_best_label_if_changed()
 
-        # Prépare l'état pour le validateur depuis la lecture légère
-        lap_state = _normalize_lap_state({
-            "LapCompleted": state_debug.get("LapCompleted"),
-            "PlayerTrackSurface": state_debug.get("PlayerTrackSurface"),
-            "LapLastLapTime": state_debug.get("LapLastLapTime"),
-            "PlayerCarMyIncidentCount": state_debug.get("PlayerCarMyIncidentCount"),
-        })
-
-        # Joueur courant
+        # joueur courant
         with sel_lock:
             player = selected_player_ref["name"]
         if not player or player == "---":
             time.sleep(0.1)
             continue
 
-        # Résolution du tour
+        # validator
+        lap_state = {
+            "LapCompleted": state_core.get("LapCompleted"),
+            "PlayerTrackSurface": state_core.get("PlayerTrackSurface"),
+            "LapLastLapTime": state_core.get("LapLastLapTime"),
+            "PlayerCarMyIncidentCount": state_core.get("PlayerCarMyIncidentCount"),
+        }
+
         status, lap_time = validator.update(lap_state)
 
         if status == "valid" and context_ready:
-            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {fmt_lap(lap_time)}"}))
-
-            # Recharger les bests (garantit qu'on a la version la plus fraîche)
+            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {_fmt_lap(lap_time)}"}))
             best_laps = DataStore.load_best_laps()
-
             key = f"{track_id}|{car_id}"
             times = best_laps.setdefault(key, {})
-
             prev = times.get(player)
             if prev is None or lap_time < prev["time"]:
                 times[player] = {"time": lap_time, "date": datetime.now().isoformat()}
                 DataStore.save_best_laps(best_laps)
-                ui_q.put(("log", {"message": f"Record personnel battu {player} : {fmt_lap(lap_time)}"}))
-                # Forcer la MAJ du label (coalescing se recalculera)
+                ui_q.put(("log", {"message": f"Record personnel battu {player} : {_fmt_lap(lap_time)}"}))
                 _update_best_label_if_changed()
 
         elif status == "invalid":
             ui_q.put(("log", {"message": f"Nouveau tour pour {player} : Temps invalide"}))
 
         time.sleep(0.1)
+
 
 
 def main():
@@ -286,6 +291,15 @@ def main():
 
     # 1) Crée l'UI sans callback (temporaire)
     ui = TrackerUI(players, lambda p: None)
+
+    runtime_flags = {"debug_enabled": ui.debug_visible.get()}
+    flags_lock = threading.Lock()
+
+    def on_debug_toggle(visible: bool):
+        with flags_lock:
+            runtime_flags["debug_enabled"] = bool(visible)
+
+    ui.set_on_debug_toggle(on_debug_toggle)
 
     # ---- ÉTAT JOUEUR SÉLECTIONNÉ (thread-safe) ----
     selected_player = {"name": players[0] if players else "---"}
@@ -305,9 +319,10 @@ def main():
     # 4) Lance le worker
     t = threading.Thread(
         target=loop,
-        args=(ir_client, ui_event_queue, validator, best_laps, selected_player, sel_lock),
+        args=(ir_client, ui_event_queue, validator, best_laps, selected_player, sel_lock, runtime_flags, flags_lock),
         daemon=True
     )
+
     t.start()
 
     # 5) Boucle Tk
