@@ -16,13 +16,18 @@ class LapValidator:
         self.initialized = False           # calibrage fait au premier passage "en piste"
         self.inc_at_lap_start = 0          # incidents au début du tour courant
 
+        # Ignore le premier tour complété (tour de lancement)
+        self._ignore_next_completed = False
+
     def reset(self):
         """Reset au pit/garage ou nouvelle session."""
         self.last_completed_lap = 0
         self._pending = False
         self._pending_info = {}
         self._pending_since = 0.0
-        self.initialized = False  
+        self.initialized = False
+        self._ignore_next_completed = False
+        self.inc_at_lap_start = 0
 
     def update(self, state):
         """
@@ -39,7 +44,7 @@ class LapValidator:
         lap_time  = state.get("LapLastLapTime", 0.0)
         inc_count = state.get("PlayerCarMyIncidentCount", 0)
 
-        # Reset uniquement si la session repart (compteur recule) ou si on est au box (1)
+        # Reset si la session repart (compteur recule) ou si on est au box (1)
         if comp < self.last_completed_lap:
             self.reset()
             return "none", 0.0
@@ -48,18 +53,24 @@ class LapValidator:
             self.reset()
             return "none", 0.0
 
-
-        # Première arrivée en piste : on se calibre pour ne PAS valider un tour fantôme
+        # Première arrivée en piste : se calibrer
         if not self.initialized:
             self.last_completed_lap = comp
             self.inc_at_lap_start   = inc_count
             self.initialized        = True
-            # pas d'évènement au tick d'init
+            self._ignore_next_completed = True  # <-- on ignorera le premier tour complété
             return "none", 0.0
 
         # 1) Détection du passage de ligne : un tour vient d’être terminé
         if comp > self.last_completed_lap and not self._pending:
-            # On évalue si le tour terminé est 0x en comparant incidents du tour
+            # Premier tour complété après l'init : on l'ignore systématiquement
+            if self._ignore_next_completed:
+                self._ignore_next_completed = False
+                self.last_completed_lap = comp
+                self.inc_at_lap_start   = inc_count
+                return "none", 0.0
+
+            # On évalue si le tour terminé est 0x via le delta d'incidents
             lap_inc_diff = inc_count - self.inc_at_lap_start
             expected_valid = (lap_inc_diff == 0)
 
@@ -75,7 +86,6 @@ class LapValidator:
             self.last_completed_lap = comp
             self.inc_at_lap_start   = inc_count
 
-            # On attend la MAJ du temps : pour l’instant, rien à logguer
             return "none", 0.0
 
         # 2) Un tour attend d'être résolu : on guette la MAJ de LapLastLapTime
@@ -87,7 +97,6 @@ class LapValidator:
             # a) Pas encore de MAJ -> on attend, sauf si délai dépassé (tour invalide)
             if lap_time == prev_last_time:
                 if (now - self._pending_since) >= self.PENDING_MAX_WAIT:
-                    # délai dépassé : iRacing n'a pas posé de nouveau temps -> on conclut invalide
                     self._pending = False
                     self._pending_info = {}
                     self._pending_since = 0.0

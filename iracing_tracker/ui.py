@@ -2,48 +2,49 @@
 import tkinter as tk
 from tkinter import scrolledtext
 from datetime import datetime
+import queue as _q  # <-- pour attraper queue.Empty proprement
 
 # -----------------------
 # Paramètres faciles à éditer
 # -----------------------
-WINDOW_TITLE    = "iRacing Tracker"  # Titre de la fenêtre principale
-WINDOW_GEOMETRY = "1200x700"         # Taille initiale de la fenêtre (LxH)
-MIN_WIDTH       = 900                 # Largeur minimale de la fenêtre
-MIN_HEIGHT      = 550                 # Hauteur minimale de la fenêtre
-PADDING         = 8                   # Marges externes autour des blocs principaux
+WINDOW_TITLE    = "iRacing Tracker"
+WINDOW_GEOMETRY = "1200x700"
+MIN_WIDTH       = 900
+MIN_HEIGHT      = 550
+PADDING         = 8
 
 # --- Thème / Apparence ---
-COLOR_BG_MAIN        = "#f0f0f0"  # Couleur de fond principale de l'application
-COLOR_TEXT           = "black"    # Couleur du texte par défaut
-COLOR_CONTROL_BG     = "white"    # Fond des contrôles (menus déroulants, etc.)
-COLOR_CONTROL_FG     = "black"    # Couleur du texte des contrôles
-COLOR_BANNER_BG      = "#f8fbff"  # Fond de la bannière supérieure
-COLOR_BANNER_TEXT    = "#0d47a1"  # Couleur du texte de la bannière
-COLOR_DEBUG_BG       = "#ffffff"  # Fond du cadre Debug
-COLOR_DEBUG_TEXT_BG  = "#f8f8f8"  # Fond de la zone de texte Debug
-COLOR_LOG_TEXT_BG    = "#eef"     # Fond de la zone de texte des logs
+COLOR_BG_MAIN        = "#f0f0f0"
+COLOR_TEXT           = "black"
+COLOR_CONTROL_BG     = "white"
+COLOR_CONTROL_FG     = "black"
+COLOR_BANNER_BG      = "#f8fbff"
+COLOR_BANNER_TEXT    = "#0d47a1"
+COLOR_DEBUG_BG       = "#ffffff"
+COLOR_DEBUG_TEXT_BG  = "#f8f8f8"
+COLOR_LOG_TEXT_BG    = "#eef"
 
 # --- Polices ---
-FONT_FAMILY       = "Arial"  # Police utilisée globalement
-FONT_SIZE_BASE    = 12          # Taille de base pour les labels de contenu
-FONT_SIZE_GROUP   = 11          # Taille pour les titres de groupes (LabelFrame)
-FONT_SIZE_BANNER  = 14          # Taille du texte de la bannière
-FONT_SIZE_DEBUG   = 10          # Taille de police de la zone Debug
-FONT_SIZE_LOG     = 15          # Taille de police de la zone Logs
+FONT_FAMILY       = "Arial"
+FONT_SIZE_BASE    = 12
+FONT_SIZE_GROUP   = 11
+FONT_SIZE_BANNER  = 14
+FONT_SIZE_DEBUG   = 10
+FONT_SIZE_LOG     = 15
 
 # --- Layout ---
-GRID_MAIN_WEIGHT      = 2         # Poids de la colonne principale (2/3 si debug=1)
-GRID_DEBUG_WEIGHT     = 1         # Poids de la colonne Debug (1/3 si main=2)
-DEBUG_COLUMN_FRACTION = 1/3       # Fraction de la largeur allouée au Debug lors du resize
-DEBUG_INITIAL_VISIBLE  = True      # Visibilité par défaut du panneau Debug
-DEBUG_TEXT_WIDTH       = 40        # Largeur (caractères) de la zone de texte Debug
-LOG_TEXT_HEIGHT        = 8         # Hauteur (lignes) de la zone de texte Logs
-BANNER_BORDER_WIDTH    = 1         # Épaisseur de bordure de la bannière
-BANNER_RELIEF          = "solid"   # Style de la bordure de la bannière
-BANNER_MIN_HEIGHT      = 70        # Hauteur minimale (px) de la bannière
-INNER_PAD_X            = 8         # Padding horizontal interne standard
-INNER_PAD_Y            = 2         # Padding vertical interne standard
-TEXTBOX_PAD            = 6         # Padding autour des zones de texte (Debug/Logs)
+GRID_MAIN_WEIGHT      = 2
+GRID_DEBUG_WEIGHT     = 1
+DEBUG_COLUMN_FRACTION = 1/3
+DEBUG_INITIAL_VISIBLE  = True
+DEBUG_TEXT_WIDTH       = 40
+LOG_TEXT_HEIGHT        = 8
+BANNER_BORDER_WIDTH    = 1
+BANNER_RELIEF          = "solid"
+BANNER_MIN_HEIGHT      = 70
+INNER_PAD_X            = 8
+INNER_PAD_Y            = 2
+TEXTBOX_PAD            = 6
 
 class TrackerUI(tk.Tk):
     """
@@ -69,27 +70,24 @@ class TrackerUI(tk.Tk):
         self._build_menubar()
 
         # --- Grille maître: 3 lignes / 2 colonnes ---
-        # row0 = bannière
-        # row1 = contenu (col0) + debug (col1)
-        # row2 = logs
-        self.grid_rowconfigure(0, weight=0)   # bannière
-        self.grid_rowconfigure(1, weight=1)   # zone centrale extensible
-        self.grid_rowconfigure(2, weight=0)   # logs
-        self.grid_rowconfigure(0, minsize=BANNER_MIN_HEIGHT)  # hauteur min bannière
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+        self.grid_rowconfigure(0, minsize=BANNER_MIN_HEIGHT)
         self.grid_columnconfigure(0, weight=GRID_MAIN_WEIGHT)
         self.grid_columnconfigure(1, weight=GRID_DEBUG_WEIGHT)
         self.bind("<Configure>", self._on_root_resize)
         self.after(0, self._update_column_sizes)
 
         # -----------------------
-        # Bannière (messages importants)
+        # Bannière
         # -----------------------
         self.banner_frame = tk.Frame(self, bg=COLOR_BANNER_BG, bd=BANNER_BORDER_WIDTH, relief=BANNER_RELIEF)
         self.banner_frame.grid(row=0, column=0, columnspan=2, sticky="nsew",
                                padx=PADDING, pady=(PADDING, 0))
         self.banner_label = tk.Label(
             self.banner_frame,
-            text="",  # vide par défaut
+            text="",
             font=(FONT_FAMILY, FONT_SIZE_BANNER, "bold"),
             bg=COLOR_BANNER_BG, fg=COLOR_BANNER_TEXT, anchor="center"
         )
@@ -103,7 +101,7 @@ class TrackerUI(tk.Tk):
                                 padx=PADDING, pady=PADDING)
         self.content_frame.grid_rowconfigure(0, weight=0)
         self.content_frame.grid_rowconfigure(1, weight=0)
-        self.content_frame.grid_rowconfigure(2, weight=1)  # espace extensible
+        self.content_frame.grid_rowconfigure(2, weight=1)
         self.content_frame.grid_columnconfigure(0, weight=1)
 
         style = {"bg": COLOR_BG_MAIN, "fg": COLOR_TEXT, "font": (FONT_FAMILY, FONT_SIZE_BASE)}
@@ -140,10 +138,7 @@ class TrackerUI(tk.Tk):
         self.player_menu.config(bg=COLOR_CONTROL_BG, fg=COLOR_CONTROL_FG, font=(FONT_FAMILY, FONT_SIZE_GROUP))
         self.player_menu.pack(anchor="w", padx=INNER_PAD_X, pady=INNER_PAD_X)
 
-        # (zone extensible réservée dans content_frame si tu veux ajouter autre chose)
-        tk.Frame(self.content_frame, bg=COLOR_BG_MAIN).grid(
-            row=2, column=0, sticky="nsew"
-        )
+        tk.Frame(self.content_frame, bg=COLOR_BG_MAIN).grid(row=2, column=0, sticky="nsew")
 
         # -----------------------
         # Zone debug (col1)
@@ -193,20 +188,14 @@ class TrackerUI(tk.Tk):
         edit_menu.add_command(label="(à venir)", state="disabled")
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        # ⬇️ La case à cocher pour afficher/masquer le panneau Debug
-        view_menu.add_checkbutton(
-            label="Debug",
-            variable=self.debug_visible,
-            command=self._toggle_debug
-        )
+        view_menu.add_checkbutton(label="Debug", variable=self.debug_visible, command=self._toggle_debug)
 
         menubar.add_cascade(label="Fichier",   menu=file_menu)
         menubar.add_cascade(label="Édition",   menu=edit_menu)
-        menubar.add_cascade(label="Affichage", menu=view_menu)   # <-- change "Affichage" en "Fenêtre" si tu préfères
+        menubar.add_cascade(label="Affichage", menu=view_menu)
 
         self.config(menu=menubar)
-        self._menubar = menubar  # si tu veux y accéder plus tard
-
+        self._menubar = menubar
 
     # -----------------------
     # API publique utilisée par main.py
@@ -218,11 +207,10 @@ class TrackerUI(tk.Tk):
         self.track_label.config(text=f"Circuit : {track}")
         self.car_label.config(text=f"Voiture : {car}")
 
-    def update_player_personnal_record(self, best_time_str: str):
+    def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.config(text=f"Record personnel : {best_time_str}")
 
     def update_current_lap_time(self, text: str):
-        # appelé par le dispatcher si tu envoies l’event "current_lap"
         self.current_lap_label.config(text=f"Tour en cours : {text}")
 
     def update_debug(self, data: dict):
@@ -265,7 +253,6 @@ class TrackerUI(tk.Tk):
         menu.delete(0, 'end')
         for name in players:
             menu.add_command(label=name, command=lambda n=name: self.current_player.set(n))
-        # valeur sélectionnée
         if current and current in players:
             self.current_player.set(current)
         elif players:
@@ -298,7 +285,6 @@ class TrackerUI(tk.Tk):
             return
 
         try:
-            import queue as _q
             while True:
                 name, payload = self._event_queue.get_nowait()
                 if name == "debug":
@@ -310,14 +296,19 @@ class TrackerUI(tk.Tk):
                 elif name == "log":
                     self.add_log(payload.get("message",""))
                 elif name == "player_best":
-                    self.update_player_personnal_record(payload.get("text","---"))
+                    self.update_player_personal_record(payload.get("text","---"))
                 elif name == "current_lap":
                     self.update_current_lap_time(payload.get("text","---"))
                 elif name == "banner":
                     self.set_banner(payload.get("text", ""))
-        except Exception:
-            # queue.Empty, etc. -> on ignore
+        except _q.Empty:
             pass
+        except Exception as e:
+            # On ne casse pas l'UI, mais on trace l'erreur
+            try:
+                self.add_log(f"UI error: {e}")
+            except Exception:
+                pass
 
         self.after(16, self._pump_event_queue)
 
@@ -341,25 +332,17 @@ class TrackerUI(tk.Tk):
         self.grid_columnconfigure(1, minsize=debug_width)
 
     def _toggle_debug(self):
-        """
-        Affiche/masque la frame de debug (self.debug_frame) et ajuste la grille.
-        """
+        """Affiche/masque la frame de debug et ajuste la grille."""
         if self.debug_visible.get():
-            # Ré-affiche le panneau Debug avec les mêmes options grid
             self.debug_frame.grid(row=1, column=1, sticky="nsew",
-                                padx=(0, PADDING), pady=PADDING)
-            # Rétablit la répartition des colonnes
+                                  padx=(0, PADDING), pady=PADDING)
             self.grid_columnconfigure(0, weight=GRID_MAIN_WEIGHT)
             self.grid_columnconfigure(1, weight=GRID_DEBUG_WEIGHT)
         else:
-            # Cache proprement la frame Debug
             self.debug_frame.grid_remove()
-            # Donne tout l'espace à la colonne 0
             self.grid_columnconfigure(0, weight=1)
             self.grid_columnconfigure(1, weight=0)
-
         self._update_column_sizes()
 
-    # API simple pour mettre à jour la bannière
     def set_banner(self, text: str = ""):
         self.banner_label.config(text=text)
