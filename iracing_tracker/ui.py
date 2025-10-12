@@ -577,6 +577,7 @@ class TrackerUI(tk.Tk):
             try:
                 icon = tk.PhotoImage(file=ICON_PATH)
                 self._icon_image = icon  # garder une référence pour éviter le GC
+                self.iconphoto(False, icon)
                 self.iconphoto(True, icon)
             except Exception:
                 self._icon_image = None
