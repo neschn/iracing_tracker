@@ -23,6 +23,7 @@ MIN_HEIGHT = 550                            # Hauteur minimale de la fenêtre
 ICON_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "icon.png"))
 # --- Thème / Apparence ---
 COLOR_BG_MAIN = "#f0f0f0"                 # Couleur de fond générale (gris clair)
+COLOR_BG_SECONDARY = "#e5e5e5"            # Couleur de fond secondaire (hover boutons)
 COLOR_TEXT = "black"                        # Couleur de texte par défaut
 COLOR_CONTROL_FG = "black"                  # Couleur du texte des contrôles
 COLOR_BANNER_BG = "#f0f0f0"               # Fond de la bannière supérieure
@@ -176,17 +177,23 @@ class TrackerUI(tk.Tk):
         header_player = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
         header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
         tk.Label(header_player, text="JOUEUR", **section_style).pack(side="left")
-        tk.Button(
-            header_player,
+        edit_btn_wrapper = tk.Frame(header_player, bg=COLOR_SEPARATOR, bd=0, highlightthickness=0)
+        edit_btn_wrapper.pack(side="right")
+        self.edit_players_btn = tk.Button(
+            edit_btn_wrapper,
             text="Éditer la liste",
             relief="flat",
             bd=0,
             highlightthickness=0,
             bg=COLOR_BG_MAIN,
-            activebackground=COLOR_BG_MAIN,
+            fg=COLOR_CONTROL_FG,
+            activebackground=COLOR_BG_SECONDARY,
+            activeforeground=COLOR_CONTROL_FG,
             cursor="hand2",
             command=lambda: None,
-        ).pack(side="right")
+        )
+        self.edit_players_btn.pack(padx=1, pady=1)
+        self._style_secondary_button(self.edit_players_btn)
         # Sélecteur joueur (ttk.Combobox, plein-largeur, flèche ▼, fond gris, police grande)
         self.current_player = tk.StringVar(value=players[0] if players else "---")
         self.current_player.trace_add("write", self._on_player_change)
@@ -346,19 +353,23 @@ class TrackerUI(tk.Tk):
         header.grid_columnconfigure(0, weight=1)
         lbl = tk.Label(header, text="DEBUG", **section_style)
         lbl.grid(row=0, column=0, sticky="w")
-        btn = tk.Button(
-            header,
+        debug_btn_wrapper = tk.Frame(header, bg=COLOR_SEPARATOR, bd=0, highlightthickness=0)
+        debug_btn_wrapper.grid(row=0, column=1, sticky="e")
+        self.debug_toggle_btn = tk.Button(
+            debug_btn_wrapper,
             text="Masquer",
             relief="flat",
             bd=0,
             highlightthickness=0,
             bg=COLOR_BG_MAIN,
-            activebackground=COLOR_BG_MAIN,
             fg=COLOR_CONTROL_FG,
+            activebackground=COLOR_BG_SECONDARY,
+            activeforeground=COLOR_CONTROL_FG,
             cursor="hand2",
             command=lambda: self._set_debug_visible(False),
         )
-        btn.grid(row=0, column=1, sticky="e")
+        self.debug_toggle_btn.pack(padx=1, pady=1)
+        self._style_secondary_button(self.debug_toggle_btn)
         self.debug_text = tk.Text(
             self.debug_col,
             wrap="word",
@@ -566,7 +577,7 @@ class TrackerUI(tk.Tk):
             try:
                 icon = tk.PhotoImage(file=ICON_PATH)
                 self._icon_image = icon  # garder une référence pour éviter le GC
-                self.iconphoto(False, icon)
+                self.iconphoto(True, icon)
             except Exception:
                 self._icon_image = None
         if os.name == "nt" and WINDOWS_ICON_PATH and os.path.isfile(WINDOWS_ICON_PATH):
@@ -574,6 +585,28 @@ class TrackerUI(tk.Tk):
                 self.iconbitmap(default=WINDOWS_ICON_PATH)
             except Exception:
                 pass
+
+    def _style_secondary_button(self, button, normal_bg=COLOR_BG_MAIN):
+        """Applique un style plat avec bordure grise et effet hover."""
+        normal_bg = normal_bg or button.cget("bg")
+        button.configure(
+            bg=normal_bg,
+            activebackground=COLOR_BG_SECONDARY,
+            activeforeground=COLOR_CONTROL_FG,
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+        )
+
+        def _on_enter(_event):
+            if str(button.cget("state")) != "disabled":
+                button.configure(bg=COLOR_BG_SECONDARY)
+
+        def _on_leave(_event):
+            button.configure(bg=normal_bg)
+
+        button.bind("<Enter>", _on_enter, add="+")
+        button.bind("<Leave>", _on_leave, add="+")
 
     def _ensure_windows_app_id(self):
         """Définit un AppUserModelID pour que Windows applique l'icône à la barre des tâches."""
