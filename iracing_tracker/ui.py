@@ -1,10 +1,10 @@
 ﻿"""
-ui.py — Interface utilisateur Tkinter
-Ce fichier est encodé en UTF‑8 et utilise des accents (é, è, à, …) et des symboles (°).
+ui.py - Interface utilisateur Tkinter
 """
 
 import tkinter as tk
 from tkinter import scrolledtext
+from tkinter import ttk
 from datetime import datetime
 import queue as _q  # pour attraper queue.Empty proprement
 
@@ -206,7 +206,7 @@ class TrackerUI(tk.Tk):
             command=lambda: None,
         ).pack(side="right")
 
-        # Sélecteur joueur
+        # Sélecteur joueur (ttk.Combobox, plein-largeur, flèche ▼, fond gris, police grande)
         self.current_player = tk.StringVar(value=players[0] if players else "---")
         self.current_player.trace_add("write", self._on_player_change)
         initial_value = players[0] if players else "---"
@@ -215,18 +215,69 @@ class TrackerUI(tk.Tk):
 
         select_wrap = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
         select_wrap.pack(fill="x", padx=SECTION_PAD_X, pady=(10, 14))
-        self.player_menu = tk.OptionMenu(select_wrap, self.current_player, initial_value, *extra_values)
-        self.player_menu.config(
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_CONTROL_FG,
-            font=(FONT_FAMILY, FONT_SIZE_PLAYER),
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            activebackground=COLOR_BG_MAIN,
-            anchor="center",
+        # Affichage actuel + flèche ▼
+        self._players_list = list(players) if players else ["---"]
+        self.player_display = tk.Label(
+            select_wrap, textvariable=self.current_player,
+            bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
+            font=(FONT_FAMILY, FONT_SIZE_PLAYER), anchor="center"
         )
-        self.player_menu.pack(fill="x")
+        self.player_display.pack(fill="x", side="left", expand=True)
+        self.player_arrow = tk.Label(
+            select_wrap, text="▼",
+            bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
+            font=(FONT_FAMILY, FONT_SIZE_PLAYER-2), width=2, anchor="center"
+        )
+        self.player_arrow.pack(side="right")
+
+        def _open_player_dropdown(event=None):
+            # ferme popup existant
+            try:
+                if hasattr(self, "_player_popup") and self._player_popup.winfo_exists():
+                    self._player_popup.destroy()
+            except Exception:
+                pass
+            popup = tk.Toplevel(self)
+            self._player_popup = popup
+            popup.overrideredirect(True)
+            popup.configure(bg=COLOR_SEPARATOR)
+            x = select_wrap.winfo_rootx()
+            y = select_wrap.winfo_rooty() + select_wrap.winfo_height()
+            w = select_wrap.winfo_width()
+            popup.geometry(f"{w}x{min(200, 28*max(1,len(self._players_list)))}+{x}+{y}")
+            cont = tk.Frame(popup, bg=COLOR_BG_MAIN)
+            cont.pack(fill="both", expand=True, padx=1, pady=1)
+
+            def _choose(name):
+                self.current_player.set(name)
+                try:
+                    popup.destroy()
+                except Exception:
+                    pass
+            for name in self._players_list:
+                lbl = tk.Label(
+                    cont, text=name,
+                    bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
+                    font=(FONT_FAMILY, FONT_SIZE_PLAYER), anchor="center",
+                    padx=6, pady=2
+                )
+                lbl.pack(fill="x")
+                lbl.bind("<Button-1>", lambda e, n=name: _choose(n))
+                # pas de surbrillance bleue — garder gris
+                lbl.bind("<Enter>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
+                lbl.bind("<Leave>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
+
+            def _close_on_click(event):
+                try:
+                    if not (x <= event.x_root <= x+w and y <= event.y_root <= y+popup.winfo_height()):
+                        if popup.winfo_exists():
+                            popup.destroy()
+                except Exception:
+                    pass
+            self.bind_all("<Button-1>", _close_on_click, add=True)
+
+        self.player_display.bind("<Button-1>", _open_player_dropdown)
+        self.player_arrow.bind("<Button-1>", _open_player_dropdown)
         tk.Frame(select_wrap, bg=COLOR_SEPARATOR, height=1).pack(fill="x", pady=(4, 0))
 
         # Bloc Record personnel
@@ -468,20 +519,22 @@ class TrackerUI(tk.Tk):
         return "break"
 
     def update_players(self, players: list, current: str):
-        menu = self.player_menu['menu']
-        menu.delete(0, 'end')
-        for name in players:
-            menu.add_command(label=name, command=lambda n=name: self.current_player.set(n))
-        if current and current in players:
+        self._players_list = list(players) if players else ['---']
+        if current and players and current in players:
             self.current_player.set(current)
         elif players:
             self.current_player.set(players[0])
         else:
-            self.current_player.set("---")
+            self.current_player.set('---')
 
     def set_player_menu_state(self, enabled: bool):
-        state = "normal" if enabled else "disabled"
-        self.player_menu.config(state=state)
+        self._player_enabled = bool(enabled)
+        state_fg = COLOR_CONTROL_FG if enabled else "#888"
+        try:
+            self.player_display.configure(fg=state_fg)
+            self.player_arrow.configure(fg=state_fg)
+        except Exception:
+            pass
 
     def get_selected_player(self) -> str:
         return self.current_player.get()
@@ -599,3 +652,4 @@ class TrackerUI(tk.Tk):
         min_right = time_px + 60
         right_px = max(min_right, width - SECTION_PAD_X - 6)
         self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
+
