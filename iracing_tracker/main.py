@@ -90,7 +90,8 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
                 ir_client.ir.shutdown()
             except Exception:
                 pass
-        ui_q.put(("player_menu_state", {"enabled": False}))
+        # Hors session: autoriser le changement de joueur
+        ui_q.put(("player_menu_state", {"enabled": True}))
 
 
     def _maybe_update_context(now_ts):
@@ -191,9 +192,9 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
             ui_q.put(("debug", payload))
             last_debug_push_ts = now
 
-        # gestion pit/garage (surface: 1=pitstall/garage)
+        # gestion pit/garage (surface: -1=au démarrage, avant d'aller au garage 0=hors des track limit, 1=pitstall/garage, 2= dans la pitlane, 3=sur la piste)
         surface = int(state_core.get("PlayerTrackSurface") or 0)
-        ui_q.put(("player_menu_state", {"enabled": surface == 1}))
+        ui_q.put(("player_menu_state", {"enabled": surface in (1, -1)}))
 
 
         # coalescing du label “record personnel”

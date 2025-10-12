@@ -14,6 +14,8 @@ Mise à jour régulière pendant le développement.
 - Ajouter une bannière de messages importants (record battu, session en attente, etc.)  
 - Afficher plus de stats dans le contexte (numéro du circuit, température, heure, temps de session, etc)
 - Ajouter des statistiques globales (nombre de tours valides, moyenne, etc.)  
+- Verrouiller / encrypter le fichier de données pour empecher la modification des temps
+- Gérer tour invalide si drapeaux noir ou demande de ralentir ?
 ---
 
 ## 🐞 Bugs
