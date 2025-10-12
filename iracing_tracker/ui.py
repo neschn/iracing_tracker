@@ -12,20 +12,18 @@ import queue as _q  # pour attraper queue.Empty proprement
 # Paramètres faciles à éditer
 # -----------------------
 WINDOW_TITLE = "iRacing Tracker"
-WINDOW_GEOMETRY = "1200x700"
+WINDOW_GEOMETRY = "1600x1000"
 MIN_WIDTH = 900
 MIN_HEIGHT = 550
-PADDING = 8
 
 # --- Thème / Apparence ---
-COLOR_BG_MAIN = "#f0f0f0"  # gris clair partout
+COLOR_BG_MAIN = "#f0f0f0"  
 COLOR_TEXT = "black"
-COLOR_CONTROL_BG = "white"
 COLOR_CONTROL_FG = "black"
-COLOR_BANNER_BG = "#f0f0f0"  # même gris que le reste
+COLOR_BANNER_BG = "#f0f0f0" 
 COLOR_BANNER_TEXT = "#0d47a1"
-COLOR_DEBUG_TEXT_BG = "#f0f0f0"  # même gris
-COLOR_LOG_TEXT_BG = "#f0f0f0"  # même gris
+COLOR_DEBUG_TEXT_BG = "#f0f0f0"  
+COLOR_LOG_TEXT_BG = "#f0f0f0"  
 COLOR_SEPARATOR = "#cccccc"
 COLOR_CARD_RED = "#e57373"
 COLOR_CARD_GREEN = "#9ccc65"
@@ -42,15 +40,9 @@ FONT_SIZE_LOG = 15
 
 # --- Layout ---
 DEBUG_INITIAL_VISIBLE = True
-DEBUG_TEXT_WIDTH = 40
 LOG_TEXT_HEIGHT = 8
-BANNER_BORDER_WIDTH = 1
-BANNER_RELIEF = "solid"
 BANNER_MIN_HEIGHT = 100
-INNER_PAD_X = 8
-INNER_PAD_Y = 2
-TEXTBOX_PAD = 6
-SECTION_PAD_X = 16
+SECTION_PAD_X = 5
 SECTION_PAD_Y = 12
 HSEP_INSET = SECTION_PAD_X
 TIME_COL_PX = 120
@@ -597,4 +589,3 @@ class TrackerUI(tk.Tk):
         min_right = time_px + 60
         right_px = max(min_right, width - SECTION_PAD_X - 6)
         self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
-
