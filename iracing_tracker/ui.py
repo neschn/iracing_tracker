@@ -1,7 +1,9 @@
 ﻿"""
+import os
 ui.py - Interface utilisateur Tkinter
 """
 
+import os
 import tkinter as tk
 from tkinter import scrolledtext 
 from tkinter import font as tkfont
@@ -16,6 +18,7 @@ WINDOW_TITLE = "iRacing Tracker"            # Titre de la fenêtre principale
 WINDOW_GEOMETRY = "1600x1000"               # Taille initiale (largeur x hauteur)
 MIN_WIDTH = 900                             # Largeur minimale de la fenêtre
 MIN_HEIGHT = 550                            # Hauteur minimale de la fenêtre
+ICON_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "icon.png"))
 
 # --- Thème / Apparence ---
 COLOR_BG_MAIN = "#f0f0f0"                 # Couleur de fond générale (gris clair)
@@ -66,6 +69,7 @@ class TrackerUI(tk.Tk):
         self.geometry(WINDOW_GEOMETRY)
         self.minsize(MIN_WIDTH, MIN_HEIGHT)
         self.configure(bg=COLOR_BG_MAIN)
+        self._init_window_icon()
 
         self.on_player_change = on_player_change
         self.debug_visible = tk.BooleanVar(value=DEBUG_INITIAL_VISIBLE)
@@ -614,6 +618,17 @@ class TrackerUI(tk.Tk):
     def _on_root_resize(self, event):
         # plus de réglage manuel des colonnes; les weights suffisent
         pass
+
+    def _init_window_icon(self):
+        """Charge et applique l'icône personnalisée si disponible."""
+        if not ICON_PATH or not os.path.isfile(ICON_PATH):
+            return
+        try:
+            icon = tk.PhotoImage(file=ICON_PATH)
+            self._icon_image = icon  # garder une référence pour éviter le GC
+            self.iconphoto(True, icon)
+        except Exception:
+            pass
 
     def _toggle_debug(self):
         """Affiche/masque la colonne Debug et le séparateur associé."""
