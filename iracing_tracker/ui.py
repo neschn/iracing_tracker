@@ -42,19 +42,18 @@ DEBUG_TEXT_WIDTH       = 40
 LOG_TEXT_HEIGHT        = 8
 BANNER_BORDER_WIDTH    = 1
 BANNER_RELIEF          = "solid"
-BANNER_MIN_HEIGHT      = 70
+BANNER_MIN_HEIGHT      = 100
 INNER_PAD_X            = 8
 INNER_PAD_Y            = 2
 TEXTBOX_PAD            = 6
+SECTION_PAD_X          = 16
+SECTION_PAD_Y          = 12
+HSEP_INSET             = 12
 
 
 class TrackerUI(tk.Tk):
     """
     Interface principale, refonte UI selon maquette.
-    Layout:
-      - row0: bannière (messages importants)
-      - row1: colonnes: Session | Joueur | Derniers tours | Debug (optionnel)
-      - row2: messages/logs
     """
 
     def __init__(self, players: list, on_player_change, on_debug_toggle=None):
@@ -90,7 +89,7 @@ class TrackerUI(tk.Tk):
             font=(FONT_FAMILY, FONT_SIZE_BANNER, "bold"),
             bg=COLOR_BANNER_BG, fg=COLOR_BANNER_TEXT, anchor="center"
         )
-        self.banner_label.pack(fill="x", padx=PADDING, pady=(PADDING, PADDING))
+        self.banner_label.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y, SECTION_PAD_Y))
         # fine bordure basse uniquement (dans la bannière)
         tk.Frame(self.banner_frame, bg=COLOR_SEPARATOR, height=1).pack(fill="x", side="bottom")
 
@@ -113,15 +112,15 @@ class TrackerUI(tk.Tk):
 
         # Session (col 0)
         self.session_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.session_col.grid(row=0, column=0, sticky="nsew")
+        self.session_col.grid(row=0, column=0, sticky="nsew", padx=SECTION_PAD_X)
 
         # Joueur (col 2)
         self.player_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.player_col.grid(row=0, column=2, sticky="nsew")
+        self.player_col.grid(row=0, column=2, sticky="nsew", padx=SECTION_PAD_X)
 
         # Derniers tours (col 4)
         self.laps_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.laps_col.grid(row=0, column=4, sticky="nsew")
+        self.laps_col.grid(row=0, column=4, sticky="nsew", padx=SECTION_PAD_X)
 
         # séparateurs verticaux
         self.sep_0 = _vsep(1)
@@ -134,16 +133,16 @@ class TrackerUI(tk.Tk):
 
         def hsep(parent):
             f = tk.Frame(parent, bg=COLOR_SEPARATOR, height=1)
-            f.pack(fill="x", pady=8)
+            f.pack(fill="x", padx=HSEP_INSET, pady=8)
             return f
 
-        tk.Label(self.session_col, text="SESSION", **section_style, anchor="w").pack(fill="x", pady=(0, 6))
+        tk.Label(self.session_col, text="SESSION", **section_style, anchor="w").pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 6))
         self.session_time_label = tk.Label(self.session_col, text="Temps de session : 1:23:45", **base_style, anchor="w")
-        self.session_time_label.pack(fill="x", pady=(0, 2))
+        self.session_time_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
         self.track_label = tk.Label(self.session_col, text="Circuit : ---", **base_style, anchor="w")
-        self.track_label.pack(fill="x", pady=(0, 2))
+        self.track_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
         self.car_label = tk.Label(self.session_col, text="Voiture : ---", **base_style, anchor="w")
-        self.car_label.pack(fill="x", pady=(0, 10))
+        self.car_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 10))
 
         hsep(self.session_col)
         self.absolute_record_info = tk.Label(self.session_col, text="Record absolu (détenu par ---) :", **base_style, anchor="w")
@@ -174,7 +173,7 @@ class TrackerUI(tk.Tk):
 
         # --- Contenu colonne Joueur ---
         header_player = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
-        header_player.pack(fill="x", padx=INNER_PAD_X)
+        header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
         tk.Label(header_player, text="JOUEUR", **section_style).pack(side="left")
         tk.Button(header_player, text="Éditer la liste", relief="flat", bd=0, highlightthickness=0,
                   bg=COLOR_BG_MAIN, activebackground=COLOR_BG_MAIN,
@@ -188,7 +187,7 @@ class TrackerUI(tk.Tk):
         extra_values = players[1:] if len(players) > 1 else []
         # Conteneur pour dropdown + ligne basse
         select_wrap = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
-        select_wrap.pack(fill="x", padx=INNER_PAD_X, pady=(10, 14))
+        select_wrap.pack(fill="x", padx=SECTION_PAD_X, pady=(10, 14))
         self.player_menu = tk.OptionMenu(select_wrap, self.current_player, initial_value, *extra_values)
         self.player_menu.config(
             bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG, font=(FONT_FAMILY, FONT_SIZE_PLAYER),
@@ -211,28 +210,31 @@ class TrackerUI(tk.Tk):
         self.current_lap_label.pack(fill="x")
 
         # --- Contenu colonne Derniers tours ---
-        tk.Label(self.laps_col, text="DERNIERS TOURS", **section_style, anchor="w").pack(fill="x")
+        tk.Label(self.laps_col, text="DERNIERS TOURS", **section_style, anchor="w").pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
         laps_box = tk.Frame(self.laps_col, bg=COLOR_BG_MAIN)
-        laps_box.pack(expand=True, fill="both", pady=(6, 0))
+        laps_box.pack(expand=True, fill="both", padx=SECTION_PAD_X, pady=(6, 0))
         self.laps_text = tk.Text(
             laps_box, wrap="none", font=(FONT_FAMILY, FONT_SIZE_BASE), bg=COLOR_BG_MAIN,
             state="disabled", height=10, takefocus=0, cursor="arrow",
             relief="flat", bd=0, highlightthickness=0
         )
         self.laps_text.pack(expand=True, fill="both")
+        # aligner le nom à droite via tab stop dynamique
+        self.laps_text.bind("<Configure>", self._update_laps_tabs)
         # pas de scrollbar visible, mais on autorise la molette
         self.laps_text.bind("<MouseWheel>", self._on_laps_mousewheel)
         self.laps_text.bind("<Button-4>", self._on_laps_mousewheel_linux)
         self.laps_text.bind("<Button-5>", self._on_laps_mousewheel_linux)
+        self.after(0, self._update_laps_tabs)
         # Exemple de contenu (placeholder)
         self._populate_laps_placeholder()
 
         # --- Colonne Debug (col 6) ---
         self.debug_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.debug_col.grid(row=0, column=6, sticky="nsew")
+        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=SECTION_PAD_X)
         self.debug_col.grid_rowconfigure(1, weight=1)
         header = tk.Frame(self.debug_col, bg=COLOR_BG_MAIN)
-        header.grid(row=0, column=0, sticky="ew")
+        header.grid(row=0, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
         tk.Label(header, text="DEBUG", **section_style).pack(side="left")
         tk.Button(header, text="Masquer", relief="flat", bd=0, highlightthickness=0, bg=COLOR_BG_MAIN,
                   activebackground=COLOR_BG_MAIN,
@@ -248,13 +250,15 @@ class TrackerUI(tk.Tk):
             cursor="arrow",
             relief="flat", bd=0, highlightthickness=0
         )
-        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=INNER_PAD_X, pady=(6, 6))
+        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, 6))
         self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
         self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
         self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
 
         # appliquer l'état initial du debug
         self._apply_debug_visibility()
+        # initialiser l'alignement des tabs après rendu
+        self.after(0, self._update_laps_tabs)
 
         # -----------------------
         # Logs (plein largeur)
@@ -263,9 +267,9 @@ class TrackerUI(tk.Tk):
         self.log_container.grid(row=2, column=0, sticky="nsew", padx=0, pady=(0, 0))
         self.log_container.grid_columnconfigure(0, weight=1)
         # fine bordure haute séparant les colonnes et la zone de logs
-        tk.Frame(self.log_container, bg=COLOR_SEPARATOR, height=1).grid(row=0, column=0, sticky="ew")
+        tk.Frame(self.log_container, bg=COLOR_SEPARATOR, height=1).grid(row=0, column=0, sticky="ew", padx=HSEP_INSET)
         tk.Label(self.log_container, text="MESSAGES / LOGS", bg=COLOR_BG_MAIN, fg=COLOR_TEXT,
-                 font=(FONT_FAMILY, FONT_SIZE_SECTION, "bold"), anchor="w").grid(row=1, column=0, sticky="ew")
+                 font=(FONT_FAMILY, FONT_SIZE_SECTION, "bold"), anchor="w").grid(row=1, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
         self.log_text = scrolledtext.ScrolledText(
             self.log_container,
             wrap="word",
@@ -275,7 +279,7 @@ class TrackerUI(tk.Tk):
             state="disabled",
             relief="flat", bd=0, highlightthickness=0
         )
-        self.log_text.grid(row=2, column=0, sticky="nsew", padx=PADDING, pady=(6, PADDING))
+        self.log_text.grid(row=2, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, SECTION_PAD_Y))
         self.log_text.configure(takefocus=0, cursor="arrow", borderwidth=0)
         self.log_text.bind("<MouseWheel>", self._on_log_mousewheel)
         self.log_text.bind("<Button-4>", self._on_log_mousewheel_linux)
@@ -391,6 +395,15 @@ class TrackerUI(tk.Tk):
             self.laps_text.yview_scroll(1, "units")
         return "break"
 
+    def _update_laps_tabs(self, event=None):
+        try:
+            width = self.laps_text.winfo_width()
+        except Exception:
+            return
+        # place le tab stop près du bord droit et aligne à droite le nom
+        tab_px = max(40, width - SECTION_PAD_X)
+        self.laps_text.configure(tabs=(f"{tab_px}p", "right"))
+
     def update_players(self, players: list, current: str):
         menu = self.player_menu['menu']
         menu.delete(0, 'end')
@@ -478,11 +491,18 @@ class TrackerUI(tk.Tk):
     def _apply_debug_visibility(self):
         visible = bool(self.debug_visible.get())
         if visible:
+            # 4 colonnes actives: répartir l'espace équitablement
+            for c in (0, 2, 4, 6):
+                self.columns.grid_columnconfigure(c, weight=1, uniform="cols", minsize=0)
             self.debug_col.grid(row=0, column=6, sticky="nsew")
             self.sep_2.grid(row=0, column=5, sticky="ns")
         else:
+            # 3 colonnes: libérer la colonne 6
             self.debug_col.grid_remove()
             self.sep_2.grid_remove()
+            self.columns.grid_columnconfigure(6, weight=0, minsize=0, uniform="cols")
+            for c in (0, 2, 4):
+                self.columns.grid_columnconfigure(c, weight=1, uniform="cols", minsize=0)
 
     def _populate_laps_placeholder(self):
         # contenu factice pour illustrer la maquette
