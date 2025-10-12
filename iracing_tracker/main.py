@@ -8,28 +8,6 @@ from iracing_tracker.lap_validator import LapValidator
 from iracing_tracker.data_store import DataStore
 from iracing_tracker.ui import TrackerUI
 
-# --- Helpers ---
-
-def _normalize_lap_state(raw):
-    """Return a dict with numeric, non-None values for the validator."""
-    if not isinstance(raw, dict):
-        raw = {}
-    def _to_int(v):
-        try:
-            return int(v)
-        except (TypeError, ValueError):
-            return 0
-    def _to_float(v):
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return 0.0
-    return {
-        "LapCompleted": _to_int(raw.get("LapCompleted")),
-        "PlayerTrackSurface": _to_int(raw.get("PlayerTrackSurface")),
-        "LapLastLapTime": _to_float(raw.get("LapLastLapTime")),
-        "PlayerCarMyIncidentCount": _to_int(raw.get("PlayerCarMyIncidentCount")),
-    }
 
 def fmt_lap(t: float) -> str:
     """Format commun: M:SS.mmm ; '---' si invalide."""
@@ -41,10 +19,10 @@ def fmt_lap(t: float) -> str:
 
 def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, runtime_flags, flags_lock):
     # ---- Flags d'état généraux ----
-    flag_waiting_for_session = False
-    waiting_for_pit = True
-    flag_waiting_for_pit = False
+    is_waiting_session_msg_sent = False    
+    session_start_msg_sent = False
     context_ready = False
+
 
     # ---- Contexte courant ----
     track_id = None
@@ -60,13 +38,9 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
     # Coalescing UI
     last_best_text = None
 
-    # Détection de changements de session
-    last_session_uid = None
-
     # --- Télémetrie: listes de variables ---
     CORE_VARS = [
         # nécessaires au fonctionnement toujours
-        "SessionUniqueID",
         "LapCompleted",
         "LapLastLapTime",
         "PlayerTrackSurface",
@@ -104,25 +78,25 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         ui_q.put(("player_best", {"text": "---"}))
 
     def _handle_session_not_active():
-        nonlocal flag_waiting_for_session, waiting_for_pit, flag_waiting_for_pit, last_session_uid
-        if not flag_waiting_for_session:
+        nonlocal is_waiting_session_msg_sent, session_start_msg_sent
+        if not is_waiting_session_msg_sent:
             ui_q.put(("log", {"message": "En attente du démarrage d’une session…"}))
-            flag_waiting_for_session = True
-            waiting_for_pit = True
-            flag_waiting_for_pit = False
-            ui_q.put(("debug", {}))   # ⬅️ AJOUT : vider la zone Debug
-            validator.reset()         # ⬅️ AJOUT : repartir proprement côté tours
+            is_waiting_session_msg_sent = True
+            session_start_msg_sent = False
+            ui_q.put(("debug", {}))     # vider la zone Debug
+            validator.reset()           # repartir proprement côté tours
             _reset_context_and_ui()
             try:
                 ir_client.ir.shutdown()
             except Exception:
                 pass
-        last_session_uid = None
         ui_q.put(("player_menu_state", {"enabled": False}))
+
 
     def _maybe_update_context(now_ts):
         nonlocal last_ctx_read_ts, track_id, track_name, car_id, car_name
         nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name, context_ready, last_best_text
+        nonlocal session_start_msg_sent
 
         if now_ts - last_ctx_read_ts < CTX_READ_PERIOD:
             return
@@ -135,7 +109,7 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         track_name = f"{base_track_name} ({track_cfg})" if track_cfg else base_track_name
 
         drivers = ctx.get("DriverInfo", {}).get("Drivers", [])
-        idx = ctx.get("PlayerCarIdx") or 0
+        idx = int(ctx.get("PlayerCarIdx") or 0)
         if 0 <= idx < len(drivers):
             car_info = drivers[idx]
             car_id = car_info.get("CarID")
@@ -146,12 +120,18 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         last_ctx_read_ts = now_ts
 
         if (track_id != cached_track_id) or (car_id != cached_car_id) \
-           or (track_name != cached_track_name) or (car_name != cached_car_name):
+        or (track_name != cached_track_name) or (car_name != cached_car_name):
             cached_track_id, cached_track_name = track_id, track_name
             cached_car_id,   cached_car_name   = car_id, car_name
             context_ready = (track_id is not None) and (car_id is not None)
             ui_q.put(("context", {"track": track_name, "car": car_name}))
             last_best_text = None  # force une MAJ du label
+
+            # Message unique de démarrage de session
+            if context_ready and not session_start_msg_sent:
+                ui_q.put(("log", {"message": f"Nouvelle session démarrée : {track_name} - {car_name}"}))
+                session_start_msg_sent = True
+
 
     def _update_best_label_if_changed():
         nonlocal last_best_text
@@ -184,8 +164,8 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
             continue
 
         # Reset du flag informant qu'on attend le démarrage d'une session
-        if flag_waiting_for_session:
-            flag_waiting_for_session = False
+        if is_waiting_session_msg_sent:
+            is_waiting_session_msg_sent = False
 
         # contexte YAML ponctuel
         try:
@@ -205,29 +185,16 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
             payload = {
                 **state_core,
                 **dbg,
-                "flag_waiting_for_session": flag_waiting_for_session,
-                "flag_waiting_for_pit": flag_waiting_for_pit,
-                "waiting_for_pit": waiting_for_pit,
+                "is_waiting_session_msg_sent": is_waiting_session_msg_sent,
+                "session_start_msg_sent": session_start_msg_sent,
             }
             ui_q.put(("debug", payload))
             last_debug_push_ts = now
 
         # gestion pit/garage (surface: 1=pitstall/garage)
         surface = int(state_core.get("PlayerTrackSurface") or 0)
-        if surface == 1:
-            ui_q.put(("player_menu_state", {"enabled": True}))
-            if waiting_for_pit:
-                ui_q.put(("log", {"message": "C’est parti, vous pouvez démarrer !"}))
-                waiting_for_pit = False
-                flag_waiting_for_pit = False
-        else:
-            ui_q.put(("player_menu_state", {"enabled": False}))
-            if waiting_for_pit and not flag_waiting_for_pit:
-                ui_q.put(("log", {"message": "Veuillez rentrer au stand pour commencer."}))
-                flag_waiting_for_pit = True
-            if waiting_for_pit:
-                time.sleep(0.1)
-                continue
+        ui_q.put(("player_menu_state", {"enabled": surface == 1}))
+
 
         # coalescing du label “record personnel”
         _update_best_label_if_changed()
