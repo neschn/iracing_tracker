@@ -22,7 +22,7 @@ COLOR_TEXT = "black"                        # Couleur de texte par défaut
 COLOR_CONTROL_FG = "black"                  # Couleur du texte des contrôles
 COLOR_BANNER_BG = "#f0f0f0"               # Fond de la bannière supérieure
 COLOR_BANNER_TEXT = "#0d47a1"             # Couleur du texte de la bannière
-COLOR_DEBUG_TEXT_BG = "#f0f0f0"           # Fond de la zone Debug
+COLOR_DEBUG_TEXT_BG = "#272727"           # Fond de la zone Debug
 COLOR_LOG_TEXT_BG = "#f0f0f0"             # Fond de la zone Logs
 COLOR_SEPARATOR = "#cccccc"               # Couleur des lignes de séparation
 COLOR_CARD_RED = "#e57373"                # Couleur des cartes rouges (pneus)
@@ -283,12 +283,17 @@ class TrackerUI(tk.Tk):
 
         # --- Colonne Debug (col 6) ---
         self.debug_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=SECTION_PAD_X)
+        # Pas de marge à droite pour permettre au contenu d'aller jusqu'au bord
+        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=(SECTION_PAD_X, 0))
         self.debug_col.grid_rowconfigure(1, weight=1)
+        self.debug_col.grid_columnconfigure(0, weight=1)
+
         header = tk.Frame(self.debug_col, bg=COLOR_BG_MAIN)
         header.grid(row=0, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
-        tk.Label(header, text="DEBUG", **section_style).pack(side="left")
-        tk.Button(
+        header.grid_columnconfigure(0, weight=1)
+        lbl = tk.Label(header, text="DEBUG", **section_style)
+        lbl.grid(row=0, column=0, sticky="w")
+        btn = tk.Button(
             header,
             text="Masquer",
             relief="flat",
@@ -299,7 +304,8 @@ class TrackerUI(tk.Tk):
             fg=COLOR_CONTROL_FG,
             cursor="hand2",
             command=lambda: self._set_debug_visible(False),
-        ).pack(side="right")
+        )
+        btn.grid(row=0, column=1, sticky="e")
 
         self.debug_text = tk.Text(
             self.debug_col,
@@ -313,7 +319,8 @@ class TrackerUI(tk.Tk):
             bd=0,
             highlightthickness=0,
         )
-        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, 6))
+        # Padding à gauche seulement pour coller au bord droit de la section
+        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=(SECTION_PAD_X, 0), pady=(6, 6))
         self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
         self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
         self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
