@@ -6,6 +6,7 @@ Mise à jour régulière pendant le développement.
 ---
 
 ## 🚧 À faire / idées
+- Ecrire pourquoi le tour est invalide (nombre de x, tour de sortie des stands, etc)
 - Tester largement les tour et tours invalides (voir si ça fonctionne bien)
 - Certaines fois ça fait genre qu'on quitte la session pendant un bref instant quand on va dans les parametres
 - CHANGER FREEZ AND READ ??
