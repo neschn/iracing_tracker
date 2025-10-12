@@ -156,7 +156,10 @@ class TrackerUI(tk.Tk):
             wrap="word",
             font=(FONT_FAMILY, FONT_SIZE_DEBUG),
             bg=COLOR_DEBUG_TEXT_BG,
-            width=DEBUG_TEXT_WIDTH
+            width=DEBUG_TEXT_WIDTH,
+            state="disabled",
+            takefocus=0,
+            cursor="arrow"
         )
         self.debug_text.grid(row=0, column=0, sticky="nsew", padx=TEXTBOX_PAD, pady=TEXTBOX_PAD)
         self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
@@ -172,9 +175,18 @@ class TrackerUI(tk.Tk):
                             padx=PADDING, pady=(0, PADDING))
         self.log_frame.grid_columnconfigure(0, weight=1)
         self.log_text = scrolledtext.ScrolledText(
-            self.log_frame, wrap="word", font=(FONT_FAMILY, FONT_SIZE_LOG), height=LOG_TEXT_HEIGHT, bg=COLOR_LOG_TEXT_BG
+            self.log_frame,
+            wrap="word",
+            font=(FONT_FAMILY, FONT_SIZE_LOG),
+            height=LOG_TEXT_HEIGHT,
+            bg=COLOR_LOG_TEXT_BG,
+            state="disabled"
         )
         self.log_text.grid(row=0, column=0, sticky="nsew", padx=TEXTBOX_PAD, pady=TEXTBOX_PAD)
+        self.log_text.configure(takefocus=0, cursor="arrow")
+        self.log_text.bind("<MouseWheel>", self._on_log_mousewheel)
+        self.log_text.bind("<Button-4>", self._on_log_mousewheel_linux)
+        self.log_text.bind("<Button-5>", self._on_log_mousewheel_linux)
 
     # -----------------------
     # Menu bar (squelettes)
@@ -219,16 +231,20 @@ class TrackerUI(tk.Tk):
         first_fraction, last = self.debug_text.yview()
         at_bottom = first_fraction > 0.0 and last >= 0.999
 
-        self.debug_text.delete("1.0", "end")
-        for k, v in data.items():
-            self.debug_text.insert("end", f"{k}: {v}\n")
-        if at_bottom:
-            self.debug_text.see("end")
-        else:
-            try:
-                self.debug_text.yview(first_visible_idx)
-            except tk.TclError:
-                self.debug_text.see(first_visible_idx)
+        self.debug_text.config(state="normal")
+        try:
+            self.debug_text.delete("1.0", "end")
+            for k, v in data.items():
+                self.debug_text.insert("end", f"{k}: {v}\n")
+            if at_bottom:
+                self.debug_text.see("end")
+            else:
+                try:
+                    self.debug_text.yview(first_visible_idx)
+                except tk.TclError:
+                    self.debug_text.see(first_visible_idx)
+        finally:
+            self.debug_text.config(state="disabled")
 
     def _on_debug_mousewheel(self, event):
         if event.delta == 0:
@@ -246,8 +262,26 @@ class TrackerUI(tk.Tk):
 
     def add_log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert("end", f"[{timestamp}] {message}\n")
-        self.log_text.see("end")
+        self.log_text.config(state="normal")
+        try:
+            self.log_text.insert("end", f"[{timestamp}] {message}\n")
+            self.log_text.see("end")
+        finally:
+            self.log_text.config(state="disabled")
+
+    def _on_log_mousewheel(self, event):
+        if event.delta == 0:
+            return "break"
+        direction = -1 if event.delta > 0 else 1
+        self.log_text.yview_scroll(direction, "units")
+        return "break"
+
+    def _on_log_mousewheel_linux(self, event):
+        if event.num == 4:
+            self.log_text.yview_scroll(-1, "units")
+        elif event.num == 5:
+            self.log_text.yview_scroll(1, "units")
+        return "break"
 
     def update_players(self, players: list, current: str):
         menu = self.player_menu['menu']
