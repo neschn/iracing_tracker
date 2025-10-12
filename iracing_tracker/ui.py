@@ -3,7 +3,8 @@ ui.py - Interface utilisateur Tkinter
 """
 
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext 
+from tkinter import font as tkfont
 from tkinter import ttk
 from datetime import datetime
 import queue as _q  # pour attraper queue.Empty proprement
@@ -244,10 +245,20 @@ class TrackerUI(tk.Tk):
             x = select_wrap.winfo_rootx()
             y = select_wrap.winfo_rooty() + select_wrap.winfo_height()
             w = select_wrap.winfo_width()
-            popup.geometry(f"{w}x{min(200, 28*max(1,len(self._players_list)))}+{x}+{y}")
+            # Calcule une hauteur adaptée à la police pour éviter le texte tronqué
+            try:
+                fnt = tkfont.Font(family=FONT_FAMILY, size=FONT_SIZE_PLAYER)
+                line_h = max(1, int(fnt.metrics("linespace")))
+            except Exception:
+                line_h = 20
+            item_h = line_h + 10
+            max_visible = min(8, max(1, len(self._players_list)))
+            total_h = int(item_h * max_visible + 2)
+            popup.geometry(f"{w}x{total_h}+{x}+{y}")
+
             cont = tk.Frame(popup, bg=COLOR_BG_MAIN)
             cont.pack(fill="both", expand=True, padx=1, pady=1)
-
+            
             def _choose(name):
                 self.current_player.set(name)
                 try:
@@ -259,9 +270,9 @@ class TrackerUI(tk.Tk):
                     cont, text=name,
                     bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
                     font=(FONT_FAMILY, FONT_SIZE_PLAYER), anchor="center",
-                    padx=6, pady=2
+                    padx=6
                 )
-                lbl.pack(fill="x")
+                lbl.pack(fill="x", ipady=6)
                 lbl.bind("<Button-1>", lambda e, n=name: _choose(n))
                 # pas de surbrillance bleue — garder gris
                 lbl.bind("<Enter>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
@@ -652,4 +663,9 @@ class TrackerUI(tk.Tk):
         min_right = time_px + 60
         right_px = max(min_right, width - SECTION_PAD_X - 6)
         self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
+
+
+
+
+
 
