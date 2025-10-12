@@ -116,6 +116,8 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
             flag_waiting_for_session = True
             waiting_for_pit = True
             flag_waiting_for_pit = False
+            ui_q.put(("debug", {}))   # ⬅️ AJOUT : vider la zone Debug
+            validator.reset()         # ⬅️ AJOUT : repartir proprement côté tours
             _reset_context_and_ui()
             try:
                 ir_client.ir.shutdown()
@@ -181,26 +183,15 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         except Exception:
             state_core = {}
 
-        # changement de session
-        curr_uid = state_core.get("SessionUniqueID")
-        if curr_uid and last_session_uid and curr_uid != last_session_uid:
-            ui_q.put(("log", {"message": "Changement de session détecté, reset iRSDK…"}))
-            try:
-                ir_client.ir.shutdown()
-            except Exception:
-                pass
-            validator.reset()
-            waiting_for_pit = True
-            flag_waiting_for_pit = False
-            _reset_context_and_ui()
-        if curr_uid:
-            last_session_uid = curr_uid
-
         # session inactive -> attente
         if not ir_client.is_session_active():
             _handle_session_not_active()
             time.sleep(0.1)
             continue
+
+        # Reset du flag informant qu'on attend le démarrage d'une session
+        if flag_waiting_for_session:
+            flag_waiting_for_session = False
 
         # contexte YAML ponctuel
         try:
