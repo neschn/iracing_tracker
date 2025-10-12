@@ -93,12 +93,6 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
 
     # ---- Helpers internes ----
 
-    def _fmt_lap(t: float) -> str:
-        if not t or t <= 0:
-            return "---"
-        m, s = divmod(float(t), 60.0)
-        return f"{int(m)}:{s:06.3f}"
-
     def _reset_context_and_ui():
         nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name
         nonlocal context_ready, last_best_text
@@ -168,7 +162,7 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         else:
             key = f"{track_id}|{car_id}"
             entry = best_laps.get(key, {}).get(player_curr)
-            best_text = _fmt_lap(entry["time"]) if entry else "---"
+            best_text = fmt_lap(entry["time"]) if entry else "---"
         if best_text != last_best_text:
             ui_q.put(("player_best", {"text": best_text}))
             last_best_text = best_text
@@ -256,7 +250,7 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         status, lap_time = validator.update(lap_state)
 
         if status == "valid" and context_ready:
-            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {_fmt_lap(lap_time)}"}))
+            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {fmt_lap(lap_time)}"}))
             best_laps = DataStore.load_best_laps()
             key = f"{track_id}|{car_id}"
             times = best_laps.setdefault(key, {})
@@ -264,7 +258,7 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
             if prev is None or lap_time < prev["time"]:
                 times[player] = {"time": lap_time, "date": datetime.now().isoformat()}
                 DataStore.save_best_laps(best_laps)
-                ui_q.put(("log", {"message": f"Record personnel battu {player} : {_fmt_lap(lap_time)}"}))
+                ui_q.put(("log", {"message": f"Record personnel battu {player} : {fmt_lap(lap_time)}"}))
                 _update_best_label_if_changed()
 
         elif status == "invalid":
