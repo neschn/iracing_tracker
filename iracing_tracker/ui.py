@@ -256,8 +256,15 @@ class TrackerUI(tk.Tk):
             total_h = int(item_h * max_visible + 2)
             popup.geometry(f"{w}x{total_h}+{x}+{y}")
 
-            cont = tk.Frame(popup, bg=COLOR_BG_MAIN)
-            cont.pack(fill="both", expand=True, padx=1, pady=1)
+            container = tk.Frame(popup, bg=COLOR_SEPARATOR)
+            container.pack(fill="both", expand=True)
+            canvas = tk.Canvas(container, bg=COLOR_BG_MAIN, highlightthickness=0, bd=0)
+            vsb = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+            canvas.configure(yscrollcommand=vsb.set)
+            canvas.pack(side="left", fill="both", expand=True)
+            vsb.pack(side="right", fill="y")
+            cont = tk.Frame(canvas, bg=COLOR_BG_MAIN)
+            canvas.create_window((0, 0), window=cont, anchor="nw")
             
             def _choose(name):
                 self.current_player.set(name)
@@ -277,6 +284,18 @@ class TrackerUI(tk.Tk):
                 # pas de surbrillance bleue — garder gris
                 lbl.bind("<Enter>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
                 lbl.bind("<Leave>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
+            try:
+                cont.update_idletasks()
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+            def _wheel(ev):
+                delta = -1 if getattr(ev, "delta", 0) > 0 else 1
+                canvas.yview_scroll(delta, "units")
+                return "break"
+            canvas.bind("<MouseWheel>", _wheel)
+            canvas.bind("<Button-4>", lambda e: (canvas.yview_scroll(-1, "units"), "break"))
+            canvas.bind("<Button-5>", lambda e: (canvas.yview_scroll(1, "units"), "break"))
 
             def _close_on_click(event):
                 try:
