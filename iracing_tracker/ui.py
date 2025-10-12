@@ -11,41 +11,41 @@ import queue as _q  # pour attraper queue.Empty proprement
 # -----------------------
 # Paramètres faciles à éditer
 # -----------------------
-WINDOW_TITLE = "iRacing Tracker"
-WINDOW_GEOMETRY = "1600x1000"
-MIN_WIDTH = 900
-MIN_HEIGHT = 550
+WINDOW_TITLE = "iRacing Tracker"            # Titre de la fenêtre principale
+WINDOW_GEOMETRY = "1600x1000"               # Taille initiale (largeur x hauteur)
+MIN_WIDTH = 900                             # Largeur minimale de la fenêtre
+MIN_HEIGHT = 550                            # Hauteur minimale de la fenêtre
 
 # --- Thème / Apparence ---
-COLOR_BG_MAIN = "#f0f0f0"  
-COLOR_TEXT = "black"
-COLOR_CONTROL_FG = "black"
-COLOR_BANNER_BG = "#f0f0f0" 
-COLOR_BANNER_TEXT = "#0d47a1"
-COLOR_DEBUG_TEXT_BG = "#f0f0f0"  
-COLOR_LOG_TEXT_BG = "#f0f0f0"  
-COLOR_SEPARATOR = "#cccccc"
-COLOR_CARD_RED = "#e57373"
-COLOR_CARD_GREEN = "#9ccc65"
+COLOR_BG_MAIN = "#f0f0f0"                 # Couleur de fond générale (gris clair)
+COLOR_TEXT = "black"                        # Couleur de texte par défaut
+COLOR_CONTROL_FG = "black"                  # Couleur du texte des contrôles
+COLOR_BANNER_BG = "#f0f0f0"               # Fond de la bannière supérieure
+COLOR_BANNER_TEXT = "#0d47a1"             # Couleur du texte de la bannière
+COLOR_DEBUG_TEXT_BG = "#f0f0f0"           # Fond de la zone Debug
+COLOR_LOG_TEXT_BG = "#f0f0f0"             # Fond de la zone Logs
+COLOR_SEPARATOR = "#cccccc"               # Couleur des lignes de séparation
+COLOR_CARD_RED = "#e57373"                # Couleur des cartes rouges (pneus)
+COLOR_CARD_GREEN = "#9ccc65"              # Couleur des cartes vertes (pneus)
 
 # --- Polices ---
-FONT_FAMILY = "Arial"
-FONT_SIZE_BASE = 12
-FONT_SIZE_SECTION = 11
-FONT_SIZE_BANNER = 22
-FONT_SIZE_PLAYER = 20
-FONT_SIZE_VALUE_BIG = 18
-FONT_SIZE_DEBUG = 10
-FONT_SIZE_LOG = 15
+FONT_FAMILY = "Arial"                       # Police utilisée dans l’UI
+FONT_SIZE_BASE = 12                         # Taille de texte par défaut
+FONT_SIZE_SECTION = 11                      # Taille des titres de section
+FONT_SIZE_BANNER = 22                       # Taille du texte de bannière
+FONT_SIZE_PLAYER = 20                       # Taille du sélecteur de joueur
+FONT_SIZE_VALUE_BIG = 18                    # Taille des valeurs mises en avant
+FONT_SIZE_DEBUG = 10                        # Taille du texte de la zone Debug
+FONT_SIZE_LOG = 15                          # Taille du texte de la zone Logs
 
 # --- Layout ---
-DEBUG_INITIAL_VISIBLE = True
-LOG_TEXT_HEIGHT = 8
-BANNER_MIN_HEIGHT = 100
-SECTION_PAD_X = 5
-SECTION_PAD_Y = 12
-HSEP_INSET = SECTION_PAD_X
-TIME_COL_PX = 120
+DEBUG_INITIAL_VISIBLE = True                # État initial: panneau Debug visible
+LOG_TEXT_HEIGHT = 8                         # Hauteur (lignes) du bloc Logs
+BANNER_MIN_HEIGHT = 100                     # Hauteur minimale de la bannière
+SECTION_PAD_X = 5                           # Marge interne horizontale standard
+SECTION_PAD_Y = 12                          # Marge interne verticale standard
+HSEP_INSET = SECTION_PAD_X                  # Retrait horizontal des séparateurs
+TIME_COL_PX = 120                           # Largeur colonne "temps" (Derniers tours) en px
 
 
 class TrackerUI(tk.Tk):
