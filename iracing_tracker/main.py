@@ -218,16 +218,18 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         status, lap_time = validator.update(lap_state)
 
         if status == "valid" and context_ready:
-            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {fmt_lap(lap_time)}"}))
             best_laps = DataStore.load_best_laps()
             key = f"{track_id}|{car_id}"
             times = best_laps.setdefault(key, {})
             prev = times.get(player)
-            if prev is None or lap_time < prev["time"]:
+            record_beaten = (prev is None) or (lap_time < prev["time"])
+            if record_beaten:
                 times[player] = {"time": lap_time, "date": datetime.now().isoformat()}
                 DataStore.save_best_laps(best_laps)
-                ui_q.put(("log", {"message": f"Record personnel battu {player} : {fmt_lap(lap_time)}"}))
                 _update_best_label_if_changed()
+
+            suffix = " (record personnel battu)" if record_beaten else ""
+            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {fmt_lap(lap_time)}{suffix}"}))
 
         elif status == "invalid":
             ui_q.put(("log", {"message": f"Nouveau tour pour {player} : Temps invalide"}))
