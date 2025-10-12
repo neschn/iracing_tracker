@@ -1,66 +1,74 @@
-﻿# ui.py
+﻿"""
+ui.py — Interface utilisateur Tkinter
+Ce fichier est encodé en UTF‑8 et utilise des accents (é, è, à, …) et des symboles (°).
+"""
+
 import tkinter as tk
 from tkinter import scrolledtext
 from datetime import datetime
 import queue as _q  # pour attraper queue.Empty proprement
 
 # -----------------------
-# ParamÃ¯Â¿Â½tres faciles Ã¯Â¿Â½ Ã¯Â¿Â½diter
+# Paramètres faciles à éditer
 # -----------------------
-WINDOW_TITLE    = "iRacing Tracker"
+WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = "1200x700"
-MIN_WIDTH       = 900
-MIN_HEIGHT      = 550
-PADDING         = 8
+MIN_WIDTH = 900
+MIN_HEIGHT = 550
+PADDING = 8
 
-# --- ThÃ¯Â¿Â½me / Apparence ---
-COLOR_BG_MAIN        = "#f0f0f0"   # gris clair partout
-COLOR_TEXT           = "black"
-COLOR_CONTROL_BG     = "white"
-COLOR_CONTROL_FG     = "black"
-COLOR_BANNER_BG      = "#f0f0f0"  # mÃ¯Â¿Â½me gris que le reste
-COLOR_BANNER_TEXT    = "#0d47a1"
-COLOR_DEBUG_TEXT_BG  = "#f0f0f0"  # mÃ¯Â¿Â½me gris
-COLOR_LOG_TEXT_BG    = "#f0f0f0"  # mÃ¯Â¿Â½me gris
-COLOR_SEPARATOR      = "#cccccc"
-COLOR_CARD_RED       = "#e57373"
-COLOR_CARD_GREEN     = "#9ccc65"
+# --- Thème / Apparence ---
+COLOR_BG_MAIN = "#f0f0f0"  # gris clair partout
+COLOR_TEXT = "black"
+COLOR_CONTROL_BG = "white"
+COLOR_CONTROL_FG = "black"
+COLOR_BANNER_BG = "#f0f0f0"  # même gris que le reste
+COLOR_BANNER_TEXT = "#0d47a1"
+COLOR_DEBUG_TEXT_BG = "#f0f0f0"  # même gris
+COLOR_LOG_TEXT_BG = "#f0f0f0"  # même gris
+COLOR_SEPARATOR = "#cccccc"
+COLOR_CARD_RED = "#e57373"
+COLOR_CARD_GREEN = "#9ccc65"
 
 # --- Polices ---
-FONT_FAMILY         = "Arial"
-FONT_SIZE_BASE      = 12
-FONT_SIZE_SECTION   = 11
-FONT_SIZE_BANNER    = 22
-FONT_SIZE_PLAYER    = 20
+FONT_FAMILY = "Arial"
+FONT_SIZE_BASE = 12
+FONT_SIZE_SECTION = 11
+FONT_SIZE_BANNER = 22
+FONT_SIZE_PLAYER = 20
 FONT_SIZE_VALUE_BIG = 18
-FONT_SIZE_DEBUG     = 10
-FONT_SIZE_LOG       = 15
+FONT_SIZE_DEBUG = 10
+FONT_SIZE_LOG = 15
 
 # --- Layout ---
-DEBUG_INITIAL_VISIBLE  = True
-DEBUG_TEXT_WIDTH       = 40
-LOG_TEXT_HEIGHT        = 8
-BANNER_BORDER_WIDTH    = 1
-BANNER_RELIEF          = "solid"
-BANNER_MIN_HEIGHT      = 100
-INNER_PAD_X            = 8
-INNER_PAD_Y            = 2
-TEXTBOX_PAD            = 6
-SECTION_PAD_X          = 16
-SECTION_PAD_Y          = 12
-HSEP_INSET             = SECTION_PAD_X
-TIME_COL_PX            = 120
+DEBUG_INITIAL_VISIBLE = True
+DEBUG_TEXT_WIDTH = 40
+LOG_TEXT_HEIGHT = 8
+BANNER_BORDER_WIDTH = 1
+BANNER_RELIEF = "solid"
+BANNER_MIN_HEIGHT = 100
+INNER_PAD_X = 8
+INNER_PAD_Y = 2
+TEXTBOX_PAD = 6
+SECTION_PAD_X = 16
+SECTION_PAD_Y = 12
+HSEP_INSET = SECTION_PAD_X
+TIME_COL_PX = 120
 
 
 class TrackerUI(tk.Tk):
-    """
-    Interface principale, refonte UI selon maquette.
+    """Interface principale, refonte UI selon maquette.
+
+    Layout:
+      - row0: bannière (messages importants)
+      - row1: colonnes: Session | Joueur | Derniers tours | Debug (optionnel)
+      - row2: messages/logs
     """
 
     def __init__(self, players: list, on_player_change, on_debug_toggle=None):
         super().__init__()
 
-        # FenÃªtre
+        # Fenêtre
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_GEOMETRY)
         self.minsize(MIN_WIDTH, MIN_HEIGHT)
@@ -73,34 +81,35 @@ class TrackerUI(tk.Tk):
         # Menu principal
         self._build_menubar()
 
-        # --- Grille FenÃªtre: 3 lignes / 1 colonne ---
+        # --- Grille fenêtre: 3 lignes / 1 colonne ---
         self.grid_rowconfigure(0, weight=0, minsize=BANNER_MIN_HEIGHT)
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(2, weight=0)
         self.grid_columnconfigure(0, weight=1)
 
         # -----------------------
-        # BanniÃ¨re
+        # Bannière
         # -----------------------
         self.banner_frame = tk.Frame(self, bg=COLOR_BANNER_BG, bd=0, relief="flat", highlightthickness=0)
-        self.banner_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=(0, 0))
+        self.banner_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         self.banner_label = tk.Label(
             self.banner_frame,
             text="",
             font=(FONT_FAMILY, FONT_SIZE_BANNER, "bold"),
-            bg=COLOR_BANNER_BG, fg=COLOR_BANNER_TEXT, anchor="center"
+            bg=COLOR_BANNER_BG,
+            fg=COLOR_BANNER_TEXT,
+            anchor="center",
         )
-        self.banner_label.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y, SECTION_PAD_Y))
-        # fine bordure basse uniquement (dans la BanniÃ¨re)
+        self.banner_label.pack(fill="x", padx=SECTION_PAD_X, pady=SECTION_PAD_Y)
+        # fine bordure basse
         tk.Frame(self.banner_frame, bg=COLOR_SEPARATOR, height=1).pack(fill="x", side="bottom")
 
         # -----------------------
-        # Zone centrale: 3 colonnes (+1 debug optionnelle)
+        # Zone centrale: 3 colonnes (+1 Debug optionnelle)
         # -----------------------
         self.columns = tk.Frame(self, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.columns.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        self.columns.grid(row=1, column=0, sticky="nsew")
         self.columns.grid_rowconfigure(0, weight=1)
-        # Colonnes: C0, S0, C1, S1, C2, S2, C3
         for c in (0, 2, 4, 6):
             self.columns.grid_columnconfigure(c, weight=1)
         for s in (1, 3, 5):
@@ -123,7 +132,7 @@ class TrackerUI(tk.Tk):
         self.laps_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
         self.laps_col.grid(row=0, column=4, sticky="nsew", padx=SECTION_PAD_X)
 
-        # sÃ¯Â¿Â½parateurs verticaux
+        # Séparateurs verticaux
         self.sep_0 = _vsep(1)
         self.sep_1 = _vsep(3)
         self.sep_2 = _vsep(5)
@@ -137,8 +146,12 @@ class TrackerUI(tk.Tk):
             f.pack(fill="x", padx=HSEP_INSET, pady=8)
             return f
 
-        tk.Label(self.session_col, text="SESSION", **section_style, anchor="w").pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 6))
-        self.session_time_label = tk.Label(self.session_col, text="Temps de session : 1:23:45", **base_style, anchor="w")
+        tk.Label(self.session_col, text="SESSION", **section_style, anchor="w").pack(
+            fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 6)
+        )
+        self.session_time_label = tk.Label(
+            self.session_col, text="Temps de session : 1:23:45", **base_style, anchor="w"
+        )
         self.session_time_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
         self.track_label = tk.Label(self.session_col, text="Circuit : ---", **base_style, anchor="w")
         self.track_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
@@ -146,87 +159,134 @@ class TrackerUI(tk.Tk):
         self.car_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 10))
 
         hsep(self.session_col)
-        self.absolute_record_info = tk.Label(self.session_col, text="Record absolu (detenu par ---) :", **base_style, anchor="w")
+        self.absolute_record_info = tk.Label(
+            self.session_col, text="Record absolu (détenu par ---) :", **base_style, anchor="w"
+        )
         self.absolute_record_info.pack(fill="x", padx=SECTION_PAD_X)
-        self.absolute_record_value = tk.Label(self.session_col, text="---", bg=COLOR_BG_MAIN, fg=COLOR_TEXT,
-                                              font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"), anchor="center")
+        self.absolute_record_value = tk.Label(
+            self.session_col,
+            text="---",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT,
+            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
+            anchor="center",
+        )
         self.absolute_record_value.pack(fill="x", padx=SECTION_PAD_X, pady=(2, 10))
 
-        tk.Label(self.session_col, text="Temperature et usure des pneus :", **base_style, anchor="w").pack(fill="x", padx=SECTION_PAD_X, pady=(0, 6))
+        tk.Label(
+            self.session_col, text="Température et usure des pneus :", **base_style, anchor="w"
+        ).pack(fill="x", padx=SECTION_PAD_X, pady=(0, 6))
 
         def tire_square(parent, text, color):
             frm = tk.Frame(parent, bg=color, width=48, height=48)
             frm.pack_propagate(False)
-            tk.Label(frm, text=text, bg=color, fg="black", font=(FONT_FAMILY, 12, "bold")).pack(expand=True, fill="both")
+            tk.Label(frm, text=text, bg=color, fg="black", font=(FONT_FAMILY, 12, "bold")).pack(
+                expand=True, fill="both"
+            )
             return frm
 
         tires_grid = tk.Frame(self.session_col, bg=COLOR_BG_MAIN)
         tires_grid.pack(anchor="w", padx=SECTION_PAD_X)
-        # 2 lignes x 4 colonnes
         for _ in range(2):
             row = tk.Frame(tires_grid, bg=COLOR_BG_MAIN)
             row.pack(anchor="w")
-            tire_square(row, "65Ã¯Â¿Â½", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
-            tire_square(row, "65Ã¯Â¿Â½", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
+            tire_square(row, "65°", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
+            tire_square(row, "65°", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
             tire_square(row, "98%", COLOR_CARD_GREEN).pack(side="left", padx=24, pady=6)
             tire_square(row, "98%", COLOR_CARD_GREEN).pack(side="left", padx=8, pady=6)
 
         # --- Contenu colonne Joueur ---
         header_player = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
-        header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
+        header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
         tk.Label(header_player, text="JOUEUR", **section_style).pack(side="left")
-        tk.Button(header_player, text="Editer la liste", relief="flat", bd=0, highlightthickness=0,
-                  bg=COLOR_BG_MAIN, activebackground=COLOR_BG_MAIN,
-                  command=lambda: None).pack(side="right")
+        tk.Button(
+            header_player,
+            text="Éditer la liste",
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            bg=COLOR_BG_MAIN,
+            activebackground=COLOR_BG_MAIN,
+            cursor="hand2",
+            command=lambda: None,
+        ).pack(side="right")
 
-        # SÃ¯Â¿Â½lecteur joueur
+        # Sélecteur joueur
         self.current_player = tk.StringVar(value=players[0] if players else "---")
         self.current_player.trace_add("write", self._on_player_change)
         initial_value = players[0] if players else "---"
         self.current_player.set(initial_value)
         extra_values = players[1:] if len(players) > 1 else []
-        # Conteneur pour dropdown + ligne basse
+
         select_wrap = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
         select_wrap.pack(fill="x", padx=SECTION_PAD_X, pady=(10, 14))
         self.player_menu = tk.OptionMenu(select_wrap, self.current_player, initial_value, *extra_values)
         self.player_menu.config(
-            bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG, font=(FONT_FAMILY, FONT_SIZE_PLAYER),
-            relief="flat", bd=0, highlightthickness=0, activebackground=COLOR_BG_MAIN, anchor="center",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_CONTROL_FG,
+            font=(FONT_FAMILY, FONT_SIZE_PLAYER),
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            activebackground=COLOR_BG_MAIN,
+            anchor="center",
         )
         self.player_menu.pack(fill="x")
         tk.Frame(select_wrap, bg=COLOR_SEPARATOR, height=1).pack(fill="x", pady=(4, 0))
 
         # Bloc Record personnel
         hsep(self.player_col)
-        tk.Label(self.player_col, text="Record personnel :", **base_style, anchor="w").pack(fill="x", pady=(6, 2))
-        self.best_time_label = tk.Label(self.player_col, text="---", bg=COLOR_BG_MAIN, fg=COLOR_TEXT,
-                                        font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"), anchor="center")
-        self.best_time_label.pack(fill="x", pady=(0, 10))
+        tk.Label(self.player_col, text="Record personnel :", **base_style, anchor="w").pack(
+            fill="x", padx=SECTION_PAD_X, pady=(6, 2)
+        )
+        self.best_time_label = tk.Label(
+            self.player_col,
+            text="---",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT,
+            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
+            anchor="center",
+        )
+        self.best_time_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 10))
 
         hsep(self.player_col)
-        tk.Label(self.player_col, text="Dernier tour :", **base_style, anchor="w").pack(fill="x", pady=(6, 2))
-        self.current_lap_label = tk.Label(self.player_col, text="---", bg=COLOR_BG_MAIN, fg=COLOR_TEXT,
-                                          font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"), anchor="center")
-        self.current_lap_label.pack(fill="x")
+        tk.Label(self.player_col, text="Dernier tour :", **base_style, anchor="w").pack(
+            fill="x", padx=SECTION_PAD_X, pady=(6, 2)
+        )
+        self.current_lap_label = tk.Label(
+            self.player_col,
+            text="---",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT,
+            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
+            anchor="center",
+        )
+        self.current_lap_label.pack(fill="x", padx=SECTION_PAD_X)
 
         # --- Contenu colonne Derniers tours ---
-        tk.Label(self.laps_col, text="DERNIERS TOURS", **section_style, anchor="w").pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
+        tk.Label(self.laps_col, text="DERNIERS TOURS", **section_style, anchor="w").pack(
+            fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0)
+        )
         laps_box = tk.Frame(self.laps_col, bg=COLOR_BG_MAIN)
         laps_box.pack(expand=True, fill="both", padx=SECTION_PAD_X, pady=(6, 0))
         self.laps_text = tk.Text(
-            laps_box, wrap="none", font=(FONT_FAMILY, FONT_SIZE_BASE), bg=COLOR_BG_MAIN,
-            state="disabled", height=10, takefocus=0, cursor="arrow",
-            relief="flat", bd=0, highlightthickness=0
+            laps_box,
+            wrap="none",
+            font=(FONT_FAMILY, FONT_SIZE_BASE),
+            bg=COLOR_BG_MAIN,
+            state="disabled",
+            height=10,
+            takefocus=0,
+            cursor="arrow",
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
         )
         self.laps_text.pack(expand=True, fill="both")
-        # aligner le nom Ã¯Â¿Â½ droite via tab stop dynamique
-        self.laps_text.bind("<Configure>", self._update_laps_tabs)
-        # pas de scrollbar visible, mais on autorise la molette
         self.laps_text.bind("<MouseWheel>", self._on_laps_mousewheel)
         self.laps_text.bind("<Button-4>", self._on_laps_mousewheel_linux)
         self.laps_text.bind("<Button-5>", self._on_laps_mousewheel_linux)
-        self.after(0, self._update_laps_tabs)
-        # Exemple de contenu (placeholder)
+        self.laps_text.bind("<Configure>", self._update_laps_tabs)
         self._populate_laps_placeholder()
 
         # --- Colonne Debug (col 6) ---
@@ -234,11 +294,20 @@ class TrackerUI(tk.Tk):
         self.debug_col.grid(row=0, column=6, sticky="nsew", padx=SECTION_PAD_X)
         self.debug_col.grid_rowconfigure(1, weight=1)
         header = tk.Frame(self.debug_col, bg=COLOR_BG_MAIN)
-        header.grid(row=0, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
+        header.grid(row=0, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
         tk.Label(header, text="DEBUG", **section_style).pack(side="left")
-        tk.Button(header, text="Masquer", relief="flat", bd=0, highlightthickness=0, bg=COLOR_BG_MAIN,
-                  activebackground=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG, cursor="hand2",
-                  command=lambda: self._set_debug_visible(False)).pack(side="right")
+        tk.Button(
+            header,
+            text="Masquer",
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            bg=COLOR_BG_MAIN,
+            activebackground=COLOR_BG_MAIN,
+            fg=COLOR_CONTROL_FG,
+            cursor="hand2",
+            command=lambda: self._set_debug_visible(False),
+        ).pack(side="right")
 
         self.debug_text = tk.Text(
             self.debug_col,
@@ -248,28 +317,33 @@ class TrackerUI(tk.Tk):
             state="disabled",
             takefocus=0,
             cursor="arrow",
-            relief="flat", bd=0, highlightthickness=0
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
         )
         self.debug_text.grid(row=1, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, 6))
         self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
         self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
         self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
 
-        # appliquer l'Ã¯Â¿Â½tat initial du debug
         self._apply_debug_visibility()
-        # initialiser l'alignement des tabs aprÃ¯Â¿Â½s rendu
         self.after(0, self._update_laps_tabs)
 
         # -----------------------
         # Logs (plein largeur)
         # -----------------------
         self.log_container = tk.Frame(self, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.log_container.grid(row=2, column=0, sticky="nsew", padx=0, pady=(0, 0))
+        self.log_container.grid(row=2, column=0, sticky="nsew")
         self.log_container.grid_columnconfigure(0, weight=1)
-        # fine bordure haute sÃ¯Â¿Â½parant les colonnes et la zone de logs
         tk.Frame(self.log_container, bg=COLOR_SEPARATOR, height=1).grid(row=0, column=0, sticky="ew", padx=0)
-        tk.Label(self.log_container, text="MESSAGES / LOGS", bg=COLOR_BG_MAIN, fg=COLOR_TEXT,
-                 font=(FONT_FAMILY, FONT_SIZE_SECTION, "bold"), anchor="w").grid(row=1, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y//2, 0))
+        tk.Label(
+            self.log_container,
+            text="MESSAGES / LOGS",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT,
+            font=(FONT_FAMILY, FONT_SIZE_SECTION, "bold"),
+            anchor="w",
+        ).grid(row=1, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
         self.log_text = scrolledtext.ScrolledText(
             self.log_container,
             wrap="word",
@@ -277,7 +351,9 @@ class TrackerUI(tk.Tk):
             height=LOG_TEXT_HEIGHT,
             bg=COLOR_LOG_TEXT_BG,
             state="disabled",
-            relief="flat", bd=0, highlightthickness=0
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
         )
         self.log_text.grid(row=2, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, SECTION_PAD_Y))
         self.log_text.configure(takefocus=0, cursor="arrow", borderwidth=0)
@@ -286,29 +362,24 @@ class TrackerUI(tk.Tk):
         self.log_text.bind("<Button-5>", self._on_log_mousewheel_linux)
 
     # -----------------------
-    # Menu bar (squelettes)
+    # Menu bar
     # -----------------------
     def _build_menubar(self):
         menubar = tk.Menu(self)
-
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="(Ã¯Â¿Â½ venir)", state="disabled")
-
+        file_menu.add_command(label="(à venir)", state="disabled")
         edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="(Ã¯Â¿Â½ venir)", state="disabled")
-
+        edit_menu.add_command(label="(à venir)", state="disabled")
         view_menu = tk.Menu(menubar, tearoff=0)
         view_menu.add_checkbutton(label="Debug", variable=self.debug_visible, command=self._toggle_debug)
-
-        menubar.add_cascade(label="Fichier",   menu=file_menu)
-        menubar.add_cascade(label="Edition",   menu=edit_menu)
+        menubar.add_cascade(label="Fichier", menu=file_menu)
+        menubar.add_cascade(label="Édition", menu=edit_menu)
         menubar.add_cascade(label="Affichage", menu=view_menu)
-
         self.config(menu=menubar)
         self._menubar = menubar
 
     # -----------------------
-    # API publique utilisÃ¯Â¿Â½e par main.py
+    # API publique utilisée par main.py
     # -----------------------
     def _on_player_change(self, *args):
         self.on_player_change(self.current_player.get())
@@ -327,7 +398,6 @@ class TrackerUI(tk.Tk):
         first_visible_idx = self.debug_text.index("@0,0")
         first_fraction, last = self.debug_text.yview()
         at_bottom = first_fraction > 0.0 and last >= 0.999
-
         self.debug_text.config(state="normal")
         try:
             self.debug_text.delete("1.0", "end")
@@ -395,17 +465,6 @@ class TrackerUI(tk.Tk):
             self.laps_text.yview_scroll(1, "units")
         return "break"
 
-    def _update_laps_tabs(self, event=None):
-        try:
-            width = self.laps_text.winfo_width()
-        except Exception:
-            return
-        # Tab-stop 1 = temps (gauche), Tab-stop 2 = nom (alignÃ© Ã  droite)
-        time_px = TIME_COL_PX
-        min_right = time_px + 60
-        right_px = max(min_right, int(self.laps_text.winfo_width()) - SECTION_PAD_X - 6)
-        self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
-
     def update_players(self, players: list, current: str):
         menu = self.player_menu['menu']
         menu.delete(0, 'end')
@@ -426,14 +485,14 @@ class TrackerUI(tk.Tk):
         return self.current_player.get()
 
     # -----------------------
-    # IntÃ¯Â¿Â½gration avec la queue (thread-safe)
+    # Intégration avec la queue (thread-safe)
     # -----------------------
     def set_on_player_change(self, cb):
-        """Permet de modifier le callback aprÃ¯Â¿Â½s crÃ¯Â¿Â½ation de l'UI."""
+        """Permet de modifier le callback après création de l'UI."""
         self.on_player_change = cb
 
     def bind_event_queue(self, q):
-        """Enregistre la queue d'Ã¯Â¿Â½vÃ¯Â¿Â½nements UI et lance la pompe .after()."""
+        """Enregistre la queue d'événements UI et lance la pompe .after()."""
         self._event_queue = q
         self.after(16, self._pump_event_queue)  # ~60 FPS
 
@@ -441,7 +500,6 @@ class TrackerUI(tk.Tk):
         if not hasattr(self, "_event_queue") or self._event_queue is None:
             self.after(16, self._pump_event_queue)
             return
-
         try:
             while True:
                 name, payload = self._event_queue.get_nowait()
@@ -462,20 +520,18 @@ class TrackerUI(tk.Tk):
         except _q.Empty:
             pass
         except Exception as e:
-            # On ne casse pas l'UI, mais on trace l'erreur
             try:
                 self.add_log(f"UI error: {e}")
             except Exception:
                 pass
-
         self.after(16, self._pump_event_queue)
 
     def _on_root_resize(self, event):
-        # plus de rÃ¯Â¿Â½glage manuel des colonnes; grid weights suffisent
+        # plus de réglage manuel des colonnes; les weights suffisent
         pass
 
     def _toggle_debug(self):
-        """Affiche/masque la colonne debug et le sÃ¯Â¿Â½parateur associÃ¯Â¿Â½."""
+        """Affiche/masque la colonne Debug et le séparateur associé."""
         self._apply_debug_visibility()
         if self.on_debug_toggle is not None:
             try:
@@ -493,13 +549,11 @@ class TrackerUI(tk.Tk):
     def _apply_debug_visibility(self):
         visible = bool(self.debug_visible.get())
         if visible:
-            # 4 colonnes actives: rÃ¯Â¿Â½partir l'espace Ã¯Â¿Â½quitablement
             for c in (0, 2, 4, 6):
                 self.columns.grid_columnconfigure(c, weight=1, uniform="cols4", minsize=0)
             self.debug_col.grid(row=0, column=6, sticky="nsew")
             self.sep_2.grid(row=0, column=5, sticky="ns")
         else:
-            # 3 colonnes: libÃ¯Â¿Â½rer la colonne 6
             self.debug_col.grid_remove()
             self.sep_2.grid_remove()
             self.columns.grid_columnconfigure(6, weight=0, minsize=0, uniform="col6")
@@ -507,7 +561,6 @@ class TrackerUI(tk.Tk):
                 self.columns.grid_columnconfigure(c, weight=1, uniform="cols3", minsize=0)
 
     def _populate_laps_placeholder(self):
-        # contenu factice pour illustrer la maquette
         lines = [
             "0:34.678\tNico",
             "0:36.878\tNico",
@@ -531,7 +584,17 @@ class TrackerUI(tk.Tk):
         self.banner_label.config(text=text)
 
     def set_on_debug_toggle(self, cb):
-        """Permet de modifier le callback de notification Debug visible/masquÃ¯Â¿Â½."""
+        """Permet de modifier le callback de notification Debug visible/masqué."""
         self.on_debug_toggle = cb
 
+    def _update_laps_tabs(self, event=None):
+        try:
+            width = int(self.laps_text.winfo_width())
+        except Exception:
+            return
+        # Tab-stop 1 = temps (gauche), Tab-stop 2 = nom (aligné à droite)
+        time_px = TIME_COL_PX
+        min_right = time_px + 60
+        right_px = max(min_right, width - SECTION_PAD_X - 6)
+        self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
 
