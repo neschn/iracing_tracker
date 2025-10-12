@@ -22,7 +22,7 @@ COLOR_TEXT = "black"                        # Couleur de texte par défaut
 COLOR_CONTROL_FG = "black"                  # Couleur du texte des contrôles
 COLOR_BANNER_BG = "#f0f0f0"               # Fond de la bannière supérieure
 COLOR_BANNER_TEXT = "#0d47a1"             # Couleur du texte de la bannière
-COLOR_DEBUG_TEXT_BG = "#272727"           # Fond de la zone Debug
+COLOR_DEBUG_TEXT_BG = "#f0f0f0"           # Fond de la zone Debug
 COLOR_LOG_TEXT_BG = "#f0f0f0"             # Fond de la zone Logs
 COLOR_SEPARATOR = "#cccccc"               # Couleur des lignes de séparation
 COLOR_CARD_RED = "#e57373"                # Couleur des cartes rouges (pneus)
@@ -164,6 +164,9 @@ class TrackerUI(tk.Tk):
             anchor="center",
         )
         self.absolute_record_value.pack(fill="x", padx=SECTION_PAD_X, pady=(2, 10))
+
+        # Séparateur entre le bloc "Record absolu" et la section pneus
+        hsep(self.session_col)
 
         tk.Label(
             self.session_col, text="Température et usure des pneus :", **base_style, anchor="w"
