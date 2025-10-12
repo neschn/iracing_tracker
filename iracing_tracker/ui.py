@@ -283,8 +283,8 @@ class TrackerUI(tk.Tk):
 
         # --- Colonne Debug (col 6) ---
         self.debug_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        # Pas de marge à droite pour permettre au contenu d'aller jusqu'au bord
-        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=(SECTION_PAD_X, 0))
+        # Marge gauche/droite homogène pour éviter d'être collé aux bords
+        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=(SECTION_PAD_X, SECTION_PAD_X))
         self.debug_col.grid_rowconfigure(1, weight=1)
         self.debug_col.grid_columnconfigure(0, weight=1)
 
@@ -319,8 +319,8 @@ class TrackerUI(tk.Tk):
             bd=0,
             highlightthickness=0,
         )
-        # Padding à gauche seulement pour coller au bord droit de la section
-        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=(SECTION_PAD_X, 0), pady=(6, 6))
+        # Padding gauche/droite homogène pour éviter d'être collé aux bords
+        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=(SECTION_PAD_X, SECTION_PAD_X), pady=(6, 6))
         self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
         self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
         self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
