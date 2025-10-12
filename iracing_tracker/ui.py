@@ -20,7 +20,6 @@ WINDOW_TITLE = "iRacing Tracker"            # Titre de la fenêtre principale
 WINDOW_GEOMETRY = "1600x1000"               # Taille initiale (largeur x hauteur)
 MIN_WIDTH = 900                             # Largeur minimale de la fenêtre
 MIN_HEIGHT = 550                            # Hauteur minimale de la fenêtre
-ICON_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "icon.png"))
 # --- Thème / Apparence ---
 COLOR_BG_MAIN = "#f0f0f0"                 # Couleur de fond générale (gris clair)
 COLOR_BG_SECONDARY = "#e5e5e5"            # Couleur de fond secondaire (hover boutons)
@@ -42,6 +41,7 @@ FONT_SIZE_PLAYER = 20                       # Taille du sélecteur de joueur
 FONT_SIZE_VALUE_BIG = 18                    # Taille des valeurs mises en avant
 FONT_SIZE_DEBUG = 10                        # Taille du texte de la zone Debug
 FONT_SIZE_LOG = 15                          # Taille du texte de la zone Logs
+FONT_SIZE_BUTTON = 9                        # Taille du texte des boutons secondaires
 # --- Layout ---
 DEBUG_INITIAL_VISIBLE = True                # État initial: panneau Debug visible
 LOG_TEXT_HEIGHT = 8                         # Hauteur (lignes) du bloc Logs
@@ -177,10 +177,10 @@ class TrackerUI(tk.Tk):
         header_player = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
         header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
         tk.Label(header_player, text="JOUEUR", **section_style).pack(side="left")
-        edit_btn_wrapper = tk.Frame(header_player, bg=COLOR_SEPARATOR, bd=0, highlightthickness=0)
-        edit_btn_wrapper.pack(side="right")
+        edit_btn_container = tk.Frame(header_player, bg=COLOR_BG_MAIN, bd=0, highlightthickness=0)
+        edit_btn_container.pack(side="right", padx=(8, 0))
         self.edit_players_btn = tk.Button(
-            edit_btn_wrapper,
+            edit_btn_container,
             text="Éditer la liste",
             relief="flat",
             bd=0,
@@ -189,11 +189,14 @@ class TrackerUI(tk.Tk):
             fg=COLOR_CONTROL_FG,
             activebackground=COLOR_BG_SECONDARY,
             activeforeground=COLOR_CONTROL_FG,
+            font=(FONT_FAMILY, FONT_SIZE_BUTTON),
             cursor="hand2",
             command=lambda: None,
         )
-        self.edit_players_btn.pack(padx=1, pady=1)
-        self._style_secondary_button(self.edit_players_btn)
+        self.edit_players_btn.pack(side="top", fill="x", padx=0, pady=(0, 2))
+        edit_btn_underline = tk.Frame(edit_btn_container, bg=COLOR_SEPARATOR, height=1)
+        edit_btn_underline.pack(fill="x", side="bottom")
+        self._bind_secondary_button_hover(self.edit_players_btn, base_bg=COLOR_BG_MAIN)
         # Sélecteur joueur (ttk.Combobox, plein-largeur, flèche ▼, fond gris, police grande)
         self.current_player = tk.StringVar(value=players[0] if players else "---")
         self.current_player.trace_add("write", self._on_player_change)
@@ -353,10 +356,10 @@ class TrackerUI(tk.Tk):
         header.grid_columnconfigure(0, weight=1)
         lbl = tk.Label(header, text="DEBUG", **section_style)
         lbl.grid(row=0, column=0, sticky="w")
-        debug_btn_wrapper = tk.Frame(header, bg=COLOR_SEPARATOR, bd=0, highlightthickness=0)
-        debug_btn_wrapper.grid(row=0, column=1, sticky="e")
+        debug_btn_container = tk.Frame(header, bg=COLOR_BG_MAIN, bd=0, highlightthickness=0)
+        debug_btn_container.grid(row=0, column=1, sticky="e", padx=(8, 0))
         self.debug_toggle_btn = tk.Button(
-            debug_btn_wrapper,
+            debug_btn_container,
             text="Masquer",
             relief="flat",
             bd=0,
@@ -365,11 +368,13 @@ class TrackerUI(tk.Tk):
             fg=COLOR_CONTROL_FG,
             activebackground=COLOR_BG_SECONDARY,
             activeforeground=COLOR_CONTROL_FG,
+            font=(FONT_FAMILY, FONT_SIZE_BUTTON),
             cursor="hand2",
             command=lambda: self._set_debug_visible(False),
         )
-        self.debug_toggle_btn.pack(padx=1, pady=1)
-        self._style_secondary_button(self.debug_toggle_btn)
+        self.debug_toggle_btn.pack(side="top", fill="x", padx=0, pady=(0, 2))
+        tk.Frame(debug_btn_container, bg=COLOR_SEPARATOR, height=1).pack(fill="x", side="bottom")
+        self._bind_secondary_button_hover(self.debug_toggle_btn, base_bg=COLOR_BG_MAIN)
         self.debug_text = tk.Text(
             self.debug_col,
             wrap="word",
@@ -587,24 +592,16 @@ class TrackerUI(tk.Tk):
             except Exception:
                 pass
 
-    def _style_secondary_button(self, button, normal_bg=COLOR_BG_MAIN):
-        """Applique un style plat avec bordure grise et effet hover."""
-        normal_bg = normal_bg or button.cget("bg")
-        button.configure(
-            bg=normal_bg,
-            activebackground=COLOR_BG_SECONDARY,
-            activeforeground=COLOR_CONTROL_FG,
-            relief="flat",
-            borderwidth=0,
-            highlightthickness=0,
-        )
+    def _bind_secondary_button_hover(self, button, base_bg=COLOR_BG_MAIN):
+        """Applique un survol simple qui change le fond du bouton."""
+        base_bg = base_bg or button.cget("bg")
 
         def _on_enter(_event):
             if str(button.cget("state")) != "disabled":
                 button.configure(bg=COLOR_BG_SECONDARY)
 
         def _on_leave(_event):
-            button.configure(bg=normal_bg)
+            button.configure(bg=base_bg)
 
         button.bind("<Enter>", _on_enter, add="+")
         button.bind("<Leave>", _on_leave, add="+")
