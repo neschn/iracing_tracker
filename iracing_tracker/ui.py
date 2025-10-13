@@ -18,8 +18,8 @@ import sys
 import queue as _q
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QTimer, QSize
-from PySide6.QtGui import QIcon, QFont, QAction, QTextOption
+from PySide6.QtCore import Qt, QTimer, QSize, QSettings
+from PySide6.QtGui import QIcon, QFont, QAction, QTextOption, QActionGroup, QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QMenuBar, QMenu, QComboBox,
@@ -130,6 +130,100 @@ def _make_tire_square(text: str, bg: str = None, border: str = None) -> QWidget:
     return w
 
 
+
+
+# --------------------------------------------------------------------
+# Gestion de thème (Clair / Sombre / Système)
+# --------------------------------------------------------------------
+class ThemeManager:
+    """
+    Fournit un jeu de couleurs cohérent pour light/dark et un mode "system".
+    Stocke le choix dans QSettings et suit le thème système si demandé.
+    """
+    SETTINGS_ORG = "iRacingTracker"
+    SETTINGS_APP = "iRacingTracker"
+    SETTINGS_KEY = "theme.mode"   # "system" | "light" | "dark"
+
+    def __init__(self, app: QApplication):
+        self.app = app
+        self.settings = QSettings(self.SETTINGS_ORG, self.SETTINGS_APP)
+        self.mode = self.settings.value(self.SETTINGS_KEY, "system")
+        # connexion au changement de schéma de couleur du système (Windows 10/11)
+        hints = self.app.styleHints()
+        try:
+            hints.colorSchemeChanged.connect(self._on_system_scheme_changed)
+        except Exception:
+            pass
+
+    # ---------- API publique ----------
+    def get_mode(self) -> str:
+        return self.mode
+
+    def set_mode(self, mode: str):
+        if mode not in ("system", "light", "dark"):
+            return
+        self.mode = mode
+        self.settings.setValue(self.SETTINGS_KEY, mode)
+
+    def effective_scheme(self) -> str:
+        """Retourne 'light' ou 'dark' selon le mode courant."""
+        if self.mode == "system":
+            return self._system_scheme()
+        return self.mode
+
+    def colors(self) -> dict:
+        """Renvoie le dictionnaire de couleurs pour le schéma effectif."""
+        scheme = self.effective_scheme()
+        if scheme == "dark":
+            # Palette sombre (contraste confortable)
+            return dict(
+                bg_main="#1f1f1f",
+                text="#e6e6e6",
+                bg_secondary="#2a2a2a",
+                banner_bg="#1f1f1f",
+                banner_text="#e6e6e6",
+                debug_bg="#262626",
+                log_bg="#262626",
+                separator="#3a3a3a",
+                control_fg="#e6e6e6",
+                tire_bg="#2b2b2b",
+                tire_border="#4b4b4b",
+                tire_text="#e6e6e6",
+            )
+        else:
+            # Palette claire = tes couleurs actuelles (aucun changement visuel)
+            return dict(
+                bg_main=COLOR_BG_MAIN,
+                text=COLOR_TEXT,
+                bg_secondary=COLOR_BG_SECONDARY,
+                banner_bg=COLOR_BANNER_BG,
+                banner_text=COLOR_BANNER_TEXT,
+                debug_bg=COLOR_DEBUG_TEXT_BG,
+                log_bg=COLOR_LOG_TEXT_BG,
+                separator=COLOR_SEPARATOR,
+                control_fg=COLOR_CONTROL_FG,
+                tire_bg=TIRE_SQUARE_BG,
+                tire_border=TIRE_SQUARE_BORDER,
+                tire_text=TIRE_SQUARE_TEXT_COLOR,
+            )
+
+    # ---------- Interne ----------
+    def _system_scheme(self) -> str:
+        try:
+            scheme = QGuiApplication.styleHints().colorScheme()
+            # Robustesse: on regarde la string de l'enum
+            s = str(scheme)
+            return "dark" if "Dark" in s else "light"
+        except Exception:
+            return "light"
+
+    def _on_system_scheme_changed(self, *args):
+        # Le TrackerUI re‑applique le thème si mode == "system"
+        pass
+
+
+
+
 # --------------------------------------------------------------------
 # Classe principale (composition autour d'un QMainWindow)
 # --------------------------------------------------------------------
@@ -140,6 +234,11 @@ class TrackerUI:
 
         # Fenêtre principale
         self._win = QMainWindow()
+
+        self._theme = ThemeManager(self._app)  # gestionnaire de thèmes
+        self._colors = None                    # couleurs effective du thème courant
+        self._seps = []                        # tous les séparateurs (H+V) à re‑styler
+        self._tire_squares = []                # les 8 carrés "pneus" à re‑styler
         self._win.setWindowTitle(WINDOW_TITLE)
         self._win.resize(*WINDOW_GEOMETRY)
         self._win.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
@@ -154,8 +253,9 @@ class TrackerUI:
 
         # Widget central
         central = QWidget()
-        central.setStyleSheet(f"QWidget{{background:{COLOR_BG_MAIN}; color:{COLOR_TEXT};}}")
+        self._central = central
         self._win.setCentralWidget(central)
+
 
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
@@ -163,6 +263,7 @@ class TrackerUI:
 
         # --- BANNIÈRE ---------------------------------------------------
         banner = QWidget()
+        self._banner = banner
         banner.setStyleSheet(f"QWidget{{background:{COLOR_BANNER_BG};}}")
         banner_lay = QVBoxLayout(banner)
         banner_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
@@ -172,8 +273,11 @@ class TrackerUI:
         self.banner_label.setStyleSheet(f"QLabel{{color:{COLOR_BANNER_TEXT};}}")
         banner_lay.addWidget(self.banner_label)
         root.addWidget(banner)
-        # fine bordure inférieure
-        root.addWidget(_hsep(central))
+        
+        self._sep_banner = _hsep(central)
+        self._seps.append(self._sep_banner)
+        root.addWidget(self._sep_banner)
+
 
         # --- ZONE CENTRALE (4 colonnes dont Debug masquable) ------------
         center = QWidget()
@@ -225,18 +329,27 @@ class TrackerUI:
         tg_lay.addWidget(tires_title, 0, 0, 1, 5)
 
         # Rangée 1
-        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 1, 0)
-        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 1, 1)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 1, 0)
+
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 1, 1)
         tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 1, 2)
-        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 1, 3)
-        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 1, 4)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 1, 3)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 1, 4)
 
         # Rangée 2
-        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 2, 0)
-        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 2, 1)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 2, 0)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 2, 1)
         tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 2, 2)
-        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 2, 3)
-        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 2, 4)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 2, 3)
+        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq)
+        tg_lay.addWidget(sq, 2, 4)
 
         sc_lay.addWidget(tires_grid)
         sc_lay.addStretch(1)
@@ -349,11 +462,13 @@ class TrackerUI:
 
         # Placement (session | sep | joueur | sep | tours | sep | debug)
         self.center_lay.addWidget(self.session_col, 0, 0)
-        self.center_lay.addWidget(_vsep(center), 0, 1)
+        self._sep_1 = _vsep(center); self._seps.append(self._sep_1)
+        self.center_lay.addWidget(self._sep_1, 0, 1)
         self.center_lay.addWidget(self.player_col, 0, 2)
-        self.center_lay.addWidget(_vsep(center), 0, 3)
+        self._sep_2 = _vsep(center); self._seps.append(self._sep_2)
+        self.center_lay.addWidget(self._sep_2, 0, 3)
         self.center_lay.addWidget(self.laps_col, 0, 4)
-        self._sep_debug = _vsep(center)
+        self._sep_debug = _vsep(center); self._seps.append(self._sep_debug)
         self.center_lay.addWidget(self._sep_debug, 0, 5)
         self.center_lay.addWidget(self.debug_col, 0, 6)
 
@@ -364,7 +479,10 @@ class TrackerUI:
         root.addWidget(center, 1)
 
         # --- LOGS -------------------------------------------------------
-        root.addWidget(_hsep(central))
+        self._sep_logs = _hsep(central)
+        self._seps.append(self._sep_logs)
+        root.addWidget(self._sep_logs)
+
 
         logs = QWidget()
         logs_lay = QVBoxLayout(logs)
@@ -394,6 +512,15 @@ class TrackerUI:
         self._queue_timer = QTimer(self._win)
         self._queue_timer.setInterval(16)
         self._queue_timer.timeout.connect(self._pump_event_queue)
+
+        # Applique le thème au démarrage
+        self._apply_theme(self._theme.colors())
+
+        # Suivi des changements de thème système (si supporté)
+        try:
+            self._app.styleHints().colorSchemeChanged.connect(self._on_system_color_scheme_changed)
+        except Exception:
+            pass
 
     # -------------------------
     # API publique (compat main.py)
@@ -456,7 +583,7 @@ class TrackerUI:
         en = bool(enabled)
         self.player_combo.setEnabled(en)
         # nuance visuelle simple
-        fg = COLOR_CONTROL_FG if en else "#888888"
+        fg = (self._colors["control_fg"] if getattr(self, "_colors", None) else COLOR_CONTROL_FG) if en else "#888888"
         self.player_combo.setStyleSheet(
             f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
         )
@@ -490,11 +617,97 @@ class TrackerUI:
         menubar.addMenu(edit_menu)
 
         view_menu = QMenu("Affichage", menubar)
+        # Debug toggle
         self._act_debug = QAction("Debug", view_menu, checkable=True)
         self._act_debug.setChecked(self.debug_visible.get())
         self._act_debug.triggered.connect(self._toggle_debug_action)
         view_menu.addAction(self._act_debug)
+
+        # ---- Thème ----
+        theme_menu = QMenu("Thème", menubar)
+        group = QActionGroup(self._win)
+        group.setExclusive(True)
+
+        self._act_theme_system = QAction("Système", group, checkable=True)
+        self._act_theme_light  = QAction("Clair",   group, checkable=True)
+        self._act_theme_dark   = QAction("Sombre",  group, checkable=True)
+
+        mode = self._theme.get_mode()
+        self._act_theme_system.setChecked(mode == "system")
+        self._act_theme_light.setChecked(mode == "light")
+        self._act_theme_dark.setChecked(mode == "dark")
+
+        self._act_theme_system.triggered.connect(lambda: self._on_theme_changed("system"))
+        self._act_theme_light.triggered.connect(lambda: self._on_theme_changed("light"))
+        self._act_theme_dark.triggered.connect(lambda: self._on_theme_changed("dark"))
+
+        theme_menu.addAction(self._act_theme_system)
+        theme_menu.addAction(self._act_theme_light)
+        theme_menu.addAction(self._act_theme_dark)
+        view_menu.addMenu(theme_menu)
+
         menubar.addMenu(view_menu)
+
+    def _on_theme_changed(self, mode: str):
+        """Choix utilisateur via le menu."""
+        self._theme.set_mode(mode)
+        self._apply_theme(self._theme.colors())
+
+    def _apply_theme(self, c: dict):
+        """Applique les couleurs du thème à tous les widgets concernés."""
+        self._colors = c
+
+        # Fond et texte généraux (container central)
+        self._central.setStyleSheet(f"QWidget{{background:{c['bg_main']}; color:{c['text']};}}")
+
+        # Bannière
+        self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}")
+        self.banner_label.setStyleSheet(f"QLabel{{color:{c['banner_text']};}}")
+
+        # Boutons secondaires (même style pour les 2)
+        btn_ss = (
+            "QPushButton{"
+            f"background:{c['bg_main']};"
+            "border:none;"
+            f"color:{c['text']};"
+            "}"
+            "QPushButton:hover{"
+            f"background:{c['bg_secondary']};"
+            "}"
+        )
+        self.edit_players_btn.setStyleSheet(btn_ss)
+        self.debug_toggle_btn.setStyleSheet(btn_ss)
+
+        # Zones de texte
+        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{c['bg_main']}; color:{c['text']};}}")
+        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}")
+        self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}")
+
+        # Séparateurs (H+V)
+        for sep in self._seps:
+            sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
+
+        # Combobox joueur: garder l'état enabled/disabled
+        self.set_player_menu_state(self.player_combo.isEnabled())
+
+        # Carrés pneus
+        for sq in self._tire_squares:
+            sq.setStyleSheet(
+                "QWidget{"
+                f"background:{c['tire_bg']};"
+                f"border:1px solid {c['tire_border']};"
+                f"border-radius:{TIRE_SQUARE_RADIUS}px;"
+                "}"
+            )
+            lab = sq.findChild(QLabel)
+            if lab:
+                lab.setStyleSheet(f"QLabel{{background:transparent; color:{c['tire_text']};}}")
+
+    def _on_system_color_scheme_changed(self):
+        """Appelé si Windows bascule clair/sombre et que le mode est 'Système'."""
+        if self._theme.get_mode() == "system":
+            self._apply_theme(self._theme.colors())
+
 
     def _toggle_debug_action(self, checked: bool):
         self.debug_visible.set(bool(checked))

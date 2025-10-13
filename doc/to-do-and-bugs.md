@@ -17,6 +17,7 @@ Mise à jour régulière pendant le développement.
 - Ajouter des statistiques globales (nombre de tours valides, moyenne, etc.)  
 - Verrouiller / encrypter le fichier de données pour empecher la modification des temps
 - Gérer tour invalide si drapeaux noir ou demande de ralentir ?
+- Créer un petit Widget transparent qui se mettra sur iracing pour afficher le nom du joueur actuel
 ---
 
 ## 🐞 Bugs
