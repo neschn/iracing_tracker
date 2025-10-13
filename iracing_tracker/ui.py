@@ -51,14 +51,26 @@ COLOR_CARD_RED = "#e57373"
 COLOR_CARD_GREEN = "#9ccc65"
 
 FONT_FAMILY = "Arial"
-FONT_SIZE_BASE = 12
-FONT_SIZE_SECTION = 11
+FONT_SIZE_LABELS = 12
+FONT_SIZE_SECTION_TITLE = 12
 FONT_SIZE_BANNER = 22
 FONT_SIZE_PLAYER = 20
-FONT_SIZE_VALUE_BIG = 18
-FONT_SIZE_DEBUG = 10
-FONT_SIZE_LOG = 15
+FONT_SIZE_LAPTIME = 24
+FONT_SIZE_LAST_LAPTIMES = 12
+FONT_SIZE_DEBUG = 12
+FONT_SIZE_LOG = 12
 FONT_SIZE_BUTTON = 9
+
+TIRE_SQUARE_WIDTH = 48          # px
+TIRE_SQUARE_HEIGHT = 72         # px
+TIRE_SQUARE_RADIUS = 8          # px
+TIRE_SQUARE_BG = "#eaeaea"      # fond neutre par défaut
+TIRE_SQUARE_BORDER = "#bdbdbd"  # bordure neutre
+TIRE_SQUARE_FONT_PT = 12        # taille de police
+TIRE_SQUARE_TEXT_COLOR = "black"
+
+TIRE_TEMP_PLACEHOLDER = "--°"
+TIRE_WEAR_PLACEHOLDER = "--%"
 
 DEBUG_INITIAL_VISIBLE = True
 LOG_TEXT_HEIGHT_ROWS = 8   # approximation (Qt: on gère la hauteur via policy)
@@ -90,18 +102,31 @@ def _hsep(parent: QWidget) -> QFrame:
     f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR}; max-height:1px;}}")
     return f
 
-def _make_tire_square(text: str, color: str) -> QWidget:
+def _make_tire_square(text: str, bg: str = None, border: str = None) -> QWidget:
+    """Carré stylé (taille, rayon, couleurs) avec valeurs par défaut neutres."""
+    bg = bg or TIRE_SQUARE_BG
+    border = border or TIRE_SQUARE_BORDER
+
     w = QWidget()
-    w.setStyleSheet(f"QWidget{{background:{color};}}")
-    w.setFixedSize(QSize(48, 48))
+    w.setFixedSize(QSize(TIRE_SQUARE_WIDTH, TIRE_SQUARE_HEIGHT))
+    w.setStyleSheet(
+        "QWidget{"
+        f"background:{bg};"
+        f"border:1px solid {border};"
+        f"border-radius:{TIRE_SQUARE_RADIUS}px;"
+        "}"
+    )
     lay = QVBoxLayout(w)
     lay.setContentsMargins(0, 0, 0, 0)
+
     lab = QLabel(text)
     lab.setAlignment(Qt.AlignCenter)
-    lab.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
-    lab.setStyleSheet("QLabel{color:black;}")
+    lab.setFont(QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT, QFont.Bold))
+    lab.setStyleSheet(f"QLabel{{background:transparent; color:{TIRE_SQUARE_TEXT_COLOR};}}")
+
     lay.addWidget(lab)
     return w
+
 
 # --------------------------------------------------------------------
 # Classe principale (composition autour d'un QMainWindow)
@@ -162,20 +187,24 @@ class TrackerUI:
         sc_lay.setSpacing(6)
 
         sec_label = QLabel("SESSION")
-        sec_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        sec_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         sc_lay.addWidget(sec_label)
 
         self.session_time_label = QLabel("Temps de session : 1:23:45")
+        self.session_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.track_label = QLabel("Circuit : ---")
+        self.track_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.car_label = QLabel("Voiture : ---")
+        self.car_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         sc_lay.addWidget(self.session_time_label)
         sc_lay.addWidget(self.track_label)
         sc_lay.addWidget(self.car_label)
         sc_lay.addWidget(_hsep(self.session_col))
 
         abs_info = QLabel("Record absolu (détenu par ---) :")
+        abs_info.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.absolute_record_value = QLabel("---")
-        self.absolute_record_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.absolute_record_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME, QFont.Bold))
         self.absolute_record_value.setAlignment(Qt.AlignCenter)
         sc_lay.addWidget(abs_info)
         sc_lay.addWidget(self.absolute_record_value)
@@ -186,16 +215,28 @@ class TrackerUI:
         tg_lay.setContentsMargins(0, 0, 0, 0)
         tg_lay.setHorizontalSpacing(12)
         tg_lay.setVerticalSpacing(8)
-        tg_lay.addWidget(QLabel("Température et usure des pneus :"), 0, 0, 1, 4)
-        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 1, 0)
-        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 1, 1)
+
+        # Titre de la section (prend toute la ligne)
+        tires_title = QLabel("Température et usure des pneus :")
+        tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        tg_lay.addWidget(tires_title, 0, 0, 1, 5)
+
+        # Rangée 1
+        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 1, 0)
+        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 1, 1)
         tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 1, 2)
-        tg_lay.addWidget(_make_tire_square("98%", COLOR_CARD_GREEN), 1, 3)
-        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 2, 0)
-        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 2, 1)
+        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 1, 3)
+        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 1, 4)
+
+        # Rangée 2
+        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 2, 0)
+        tg_lay.addWidget(_make_tire_square(TIRE_TEMP_PLACEHOLDER), 2, 1)
         tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 2, 2)
-        tg_lay.addWidget(_make_tire_square("98%", COLOR_CARD_GREEN), 2, 3)
+        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 2, 3)
+        tg_lay.addWidget(_make_tire_square(TIRE_WEAR_PLACEHOLDER), 2, 4)
+
         sc_lay.addWidget(tires_grid)
+        sc_lay.addStretch(1)
 
         # Colonne Joueur
         self.player_col = QWidget()
@@ -207,11 +248,12 @@ class TrackerUI:
         hp_lay = QHBoxLayout(header_player)
         hp_lay.setContentsMargins(0, 0, 0, 0)
         title_player = QLabel("JOUEUR")
-        title_player.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        title_player.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hp_lay.addWidget(title_player)
         hp_lay.addStretch(1)
         self.edit_players_btn = QPushButton("Éditer la liste")
         self.edit_players_btn.setCursor(Qt.PointingHandCursor)
+        self.edit_players_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.edit_players_btn.setStyleSheet(
             f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
             f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
@@ -233,18 +275,23 @@ class TrackerUI:
         pc_lay.addWidget(self.player_combo)
 
         pc_lay.addWidget(_hsep(self.player_col))
-        pc_lay.addWidget(QLabel("Record personnel :"))
+        lbl_personal = QLabel("Record personnel :")
+        lbl_personal.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        pc_lay.addWidget(lbl_personal)
         self.best_time_label = QLabel("---")
-        self.best_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.best_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME, QFont.Bold))
         self.best_time_label.setAlignment(Qt.AlignCenter)
         pc_lay.addWidget(self.best_time_label)
 
         pc_lay.addWidget(_hsep(self.player_col))
-        pc_lay.addWidget(QLabel("Dernier tour :"))
+        lbl_last = QLabel("Dernier tour :")
+        lbl_last.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        pc_lay.addWidget(lbl_last)
         self.current_lap_label = QLabel("---")
-        self.current_lap_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.current_lap_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME, QFont.Bold))
         self.current_lap_label.setAlignment(Qt.AlignCenter)
         pc_lay.addWidget(self.current_lap_label)
+        pc_lay.addStretch(1)
 
         # Colonne Derniers tours
         self.laps_col = QWidget()
@@ -252,11 +299,12 @@ class TrackerUI:
         lc_lay.setContentsMargins(8, 8, 8, 8)
         lc_lay.setSpacing(6)
         cap = QLabel("DERNIERS TOURS")
-        cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lc_lay.addWidget(cap)
         self.laps_text = QPlainTextEdit()
         self.laps_text.setReadOnly(True)
         self.laps_text.setFrameShape(QFrame.NoFrame)
+        self.laps_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES))
         self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_BG_MAIN};}}")
         self._populate_laps_placeholder()
         lc_lay.addWidget(self.laps_text, 1)
@@ -270,11 +318,12 @@ class TrackerUI:
         hd_lay = QHBoxLayout(header_dbg)
         hd_lay.setContentsMargins(0, 0, 0, 0)
         lbl_dbg = QLabel("DEBUG")
-        lbl_dbg.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        lbl_dbg.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hd_lay.addWidget(lbl_dbg)
         hd_lay.addStretch(1)
         self.debug_toggle_btn = QPushButton("Masquer")
         self.debug_toggle_btn.setCursor(Qt.PointingHandCursor)
+        self.debug_toggle_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.debug_toggle_btn.setStyleSheet(
             f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
             f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
@@ -286,6 +335,7 @@ class TrackerUI:
         self.debug_text = QPlainTextEdit()
         self.debug_text.setReadOnly(True)
         self.debug_text.setFrameShape(QFrame.NoFrame)
+        self.debug_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_DEBUG))
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_DEBUG_TEXT_BG};}}")
         self.debug_text.setWordWrapMode(QTextOption.NoWrap)
         dc_lay.addWidget(self.debug_text, 1)
@@ -313,11 +363,12 @@ class TrackerUI:
         logs_lay.setContentsMargins(8, 8, 8, 8)
         logs_lay.setSpacing(6)
         ltitle = QLabel("MESSAGES / LOGS")
-        ltitle.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        ltitle.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         logs_lay.addWidget(ltitle)
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFrameShape(QFrame.NoFrame)
+        self.log_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_LOG))
         self.log_text.setStyleSheet(f"QTextEdit{{background:{COLOR_LOG_TEXT_BG};}}")
         logs_lay.addWidget(self.log_text)
         root.addWidget(logs, 0)
