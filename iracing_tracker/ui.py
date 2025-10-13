@@ -87,6 +87,7 @@ TIRE_WEAR_PLACEHOLDER = "--%"
 
 SECTION_MARGIN = 15 
 SECTION_TITLE_GAP = 10
+SECTION_SEPARATOR_SPACING = 15
 SEPARATOR_THICKNESS = 1
 
 DEBUG_INITIAL_VISIBLE = True
@@ -312,8 +313,11 @@ class TrackerUI:
         sc_lay.addWidget(self.session_time_label)
         sc_lay.addWidget(self.track_label)
         sc_lay.addWidget(self.car_label)
-        s = _hsep(self.session_col); self._seps.append(s)
+        s = _hsep(self.session_col)
+        self._seps.append(s)
+        sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
         sc_lay.addWidget(s)
+        sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
 
         abs_info = QLabel("Record absolu (détenu par ---) :")
@@ -323,8 +327,11 @@ class TrackerUI:
         self.absolute_record_value.setAlignment(Qt.AlignCenter)
         sc_lay.addWidget(abs_info)
         sc_lay.addWidget(self.absolute_record_value)
-        s = _hsep(self.session_col); self._seps.append(s)
+        s = _hsep(self.session_col)
+        self._seps.append(s)
+        sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
         sc_lay.addWidget(s)
+        sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
         tires_grid = QWidget()
         tg_lay = QGridLayout(tires_grid)
@@ -396,8 +403,11 @@ class TrackerUI:
         self.player_combo.currentTextChanged.connect(self._on_player_changed)
         pc_lay.addWidget(self.player_combo)
 
-        s = _hsep(self.player_col); self._seps.append(s)
+        s = _hsep(self.player_col)
+        self._seps.append(s)
+        pc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
         pc_lay.addWidget(s)
+        pc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
         lbl_personal = QLabel("Record personnel :")
         lbl_personal.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
@@ -407,8 +417,11 @@ class TrackerUI:
         self.best_time_label.setAlignment(Qt.AlignCenter)
         pc_lay.addWidget(self.best_time_label)
 
-        s = _hsep(self.player_col); self._seps.append(s)
+        s = _hsep(self.player_col)
+        self._seps.append(s)
+        pc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
         pc_lay.addWidget(s)
+        pc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
         lbl_last = QLabel("Dernier tour :")
         lbl_last.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
