@@ -35,20 +35,18 @@ WINDOWS_ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
 
 WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = (1600, 1000)
-MIN_WIDTH = 900
-MIN_HEIGHT = 550
+MIN_WIDTH = 1200
+MIN_HEIGHT = 800
 
 COLOR_BG_MAIN = "#f0f0f0"
-COLOR_BG_SECONDARY = "#e5e5e5"
+COLOR_BG_SECONDARY = "#535353"
 COLOR_TEXT = "black"
 COLOR_CONTROL_FG = "black"
 COLOR_BANNER_BG = "#f0f0f0"
-COLOR_BANNER_TEXT = "#0d47a1"
+COLOR_BANNER_TEXT = "black"
 COLOR_DEBUG_TEXT_BG = "#f0f0f0"
 COLOR_LOG_TEXT_BG = "#f0f0f0"
 COLOR_SEPARATOR = "#cccccc"
-COLOR_CARD_RED = "#e57373"
-COLOR_CARD_GREEN = "#9ccc65"
 
 FONT_FAMILY = "Arial"
 FONT_SIZE_LABELS = 12
@@ -61,18 +59,20 @@ FONT_SIZE_DEBUG = 12
 FONT_SIZE_LOG = 12
 FONT_SIZE_BUTTON = 9
 
-TIRE_SQUARE_WIDTH = 48          # px
-TIRE_SQUARE_HEIGHT = 72         # px
-TIRE_SQUARE_RADIUS = 8          # px
-TIRE_SQUARE_BG = "#eaeaea"      # fond neutre par défaut
-TIRE_SQUARE_BORDER = "#bdbdbd"  # bordure neutre
-TIRE_SQUARE_FONT_PT = 12        # taille de police
+TIRE_SQUARE_WIDTH = 48          
+TIRE_SQUARE_HEIGHT = 72         
+TIRE_SQUARE_RADIUS = 8          
+TIRE_SQUARE_BG = "#eaeaea"      
+TIRE_SQUARE_BORDER = "#bdbdbd" 
+TIRE_SQUARE_FONT_PT = 12        
 TIRE_SQUARE_TEXT_COLOR = "black"
 
 TIRE_TEMP_PLACEHOLDER = "--°"
 TIRE_WEAR_PLACEHOLDER = "--%"
 
-UI_SECTION_MARGIN = 6 
+SECTION_MARGIN = 15 
+SECTION_TITLE_GAP = 10
+SEPARATOR_THICKNESS = 1
 
 DEBUG_INITIAL_VISIBLE = True
 LOG_TEXT_HEIGHT_ROWS = 8   # approximation (Qt: on gère la hauteur via policy)
@@ -92,16 +92,16 @@ class _BoolVarCompat:
 
 def _vsep(parent: QWidget) -> QFrame:
     f = QFrame(parent)
-    f.setFrameShape(QFrame.VLine)
-    f.setFrameShadow(QFrame.Plain)
-    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR}; max-width:1px;}}")
+    f.setFrameShape(QFrame.NoFrame)
+    f.setFixedWidth(SEPARATOR_THICKNESS)
+    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR};}}")
     return f
 
 def _hsep(parent: QWidget) -> QFrame:
     f = QFrame(parent)
-    f.setFrameShape(QFrame.HLine)
-    f.setFrameShadow(QFrame.Plain)
-    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR}; max-height:1px;}}")
+    f.setFrameShape(QFrame.NoFrame)
+    f.setFixedHeight(SEPARATOR_THICKNESS)
+    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR};}}")
     return f
 
 def _make_tire_square(text: str, bg: str = None, border: str = None) -> QWidget:
@@ -165,7 +165,7 @@ class TrackerUI:
         banner = QWidget()
         banner.setStyleSheet(f"QWidget{{background:{COLOR_BANNER_BG};}}")
         banner_lay = QVBoxLayout(banner)
-        banner_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        banner_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         self.banner_label = QLabel("")
         self.banner_label.setAlignment(Qt.AlignCenter)
         self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
@@ -178,19 +178,20 @@ class TrackerUI:
         # --- ZONE CENTRALE (4 colonnes dont Debug masquable) ------------
         center = QWidget()
         self.center_lay = QGridLayout(center)
-        self.center_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
-        self.center_lay.setHorizontalSpacing(12)
+        self.center_lay.setContentsMargins(0, 0, 0, 0)
+        self.center_lay.setHorizontalSpacing(0)
         self.center_lay.setVerticalSpacing(8)
 
         # Colonne Session
         self.session_col = QWidget()
         sc_lay = QVBoxLayout(self.session_col)
-        sc_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        sc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         sc_lay.setSpacing(6)
 
         sec_label = QLabel("SESSION")
         sec_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         sc_lay.addWidget(sec_label)
+        sc_lay.addSpacing(SECTION_TITLE_GAP)
 
         self.session_time_label = QLabel("Temps de session : 1:23:45")
         self.session_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
@@ -243,7 +244,7 @@ class TrackerUI:
         # Colonne Joueur
         self.player_col = QWidget()
         pc_lay = QVBoxLayout(self.player_col)
-        pc_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        pc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         pc_lay.setSpacing(6)
 
         header_player = QWidget()
@@ -263,6 +264,7 @@ class TrackerUI:
         self.edit_players_btn.setEnabled(False)  # même comportement que l'original (placeholder)
         hp_lay.addWidget(self.edit_players_btn)
         pc_lay.addWidget(header_player)
+        pc_lay.addSpacing(SECTION_TITLE_GAP)
 
         # Sélecteur de joueur
         self._players_list = list(players) if players else ["---"]
@@ -298,11 +300,13 @@ class TrackerUI:
         # Colonne Derniers tours
         self.laps_col = QWidget()
         lc_lay = QVBoxLayout(self.laps_col)
-        lc_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        lc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         lc_lay.setSpacing(6)
         cap = QLabel("DERNIERS TOURS")
         cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lc_lay.addWidget(cap)
+        lc_lay.addSpacing(SECTION_TITLE_GAP)
+
         self.laps_text = QPlainTextEdit()
         self.laps_text.setReadOnly(True)
         self.laps_text.setFrameShape(QFrame.NoFrame)
@@ -314,7 +318,7 @@ class TrackerUI:
         # Colonne Debug (masquable)
         self.debug_col = QWidget()
         dc_lay = QVBoxLayout(self.debug_col)
-        dc_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        dc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         dc_lay.setSpacing(6)
         header_dbg = QWidget()
         hd_lay = QHBoxLayout(header_dbg)
@@ -333,6 +337,7 @@ class TrackerUI:
         self.debug_toggle_btn.clicked.connect(lambda: self._set_debug_visible(False))
         hd_lay.addWidget(self.debug_toggle_btn)
         dc_lay.addWidget(header_dbg)
+        dc_lay.addSpacing(SECTION_TITLE_GAP)
 
         self.debug_text = QPlainTextEdit()
         self.debug_text.setReadOnly(True)
@@ -360,13 +365,16 @@ class TrackerUI:
 
         # --- LOGS -------------------------------------------------------
         root.addWidget(_hsep(central))
+
         logs = QWidget()
         logs_lay = QVBoxLayout(logs)
-        logs_lay.setContentsMargins(UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN, UI_SECTION_MARGIN)
+        logs_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         logs_lay.setSpacing(6)
         ltitle = QLabel("MESSAGES / LOGS")
         ltitle.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         logs_lay.addWidget(ltitle)
+        logs_lay.addSpacing(SECTION_TITLE_GAP)
+
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFrameShape(QFrame.NoFrame)
