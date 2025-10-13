@@ -1,556 +1,487 @@
-﻿"""
-ui.py - Interface utilisateur Tkinter
-"""
+﻿# ui.py — Port PySide6 (Qt) de l'interface Tkinter d'origine
+# ----------------------------------------------------------
+# Dépendance: PySide6
+# pip install PySide6
+#
+# Cette classe conserve la même API publique que l'ancienne :
+#  - debug_visible.get()
+#  - set_on_player_change(cb), set_on_debug_toggle(cb)
+#  - bind_event_queue(queue), mainloop()
+#  - add_log(), update_context(), update_debug(), update_player_personal_record(),
+#    update_current_lap_time(), set_player_menu_state(), update_players(),
+#    get_selected_player(), set_banner()
+#
+# Le worker thread et la logique métier ne changent pas (voir main.py).  ⮕  API compatible.
 
 import os
-import tkinter as tk
-from tkinter import scrolledtext 
-from tkinter import font as tkfont
-from tkinter import ttk
+import sys
+import queue as _q
 from datetime import datetime
-import queue as _q  # pour attraper queue.Empty proprement
 
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QIcon, QFont, QAction, QTextOption
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QMenuBar, QMenu, QComboBox,
+    QSizePolicy, QSpacerItem
+)
+
+# --------------------------------------------------------------------
+# Paramètres visuels (reprennent l'esprit de la version Tkinter)
+# --------------------------------------------------------------------
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets"))
 ICON_PATH = os.path.join(ASSETS_DIR, "icon.png")
 WINDOWS_ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
-# -----------------------
-# Paramètres faciles à éditer
-# -----------------------
-WINDOW_TITLE = "iRacing Tracker"            # Titre de la fenêtre principale
-WINDOW_GEOMETRY = "1600x1000"               # Taille initiale (largeur x hauteur)
-MIN_WIDTH = 900                             # Largeur minimale de la fenêtre
-MIN_HEIGHT = 550                            # Hauteur minimale de la fenêtre
-# --- Thème / Apparence ---
-COLOR_BG_MAIN = "#f0f0f0"                 # Couleur de fond générale (gris clair)
-COLOR_BG_SECONDARY = "#e5e5e5"            # Couleur de fond secondaire (hover boutons)
-COLOR_TEXT = "black"                        # Couleur de texte par défaut
-COLOR_CONTROL_FG = "black"                  # Couleur du texte des contrôles
-COLOR_BANNER_BG = "#f0f0f0"               # Fond de la bannière supérieure
-COLOR_BANNER_TEXT = "#0d47a1"             # Couleur du texte de la bannière
-COLOR_DEBUG_TEXT_BG = "#f0f0f0"           # Fond de la zone Debug
-COLOR_LOG_TEXT_BG = "#f0f0f0"             # Fond de la zone Logs
-COLOR_SEPARATOR = "#cccccc"               # Couleur des lignes de séparation
-COLOR_CARD_RED = "#e57373"                # Couleur des cartes rouges (pneus)
-COLOR_CARD_GREEN = "#9ccc65"              # Couleur des cartes vertes (pneus)
-# --- Polices ---
-FONT_FAMILY = "Arial"                       # Police utilisée dans l’UI
-FONT_SIZE_BASE = 12                         # Taille de texte par défaut
-FONT_SIZE_SECTION = 11                      # Taille des titres de section
-FONT_SIZE_BANNER = 22                       # Taille du texte de bannière
-FONT_SIZE_PLAYER = 20                       # Taille du sélecteur de joueur
-FONT_SIZE_VALUE_BIG = 18                    # Taille des valeurs mises en avant
-FONT_SIZE_DEBUG = 10                        # Taille du texte de la zone Debug
-FONT_SIZE_LOG = 15                          # Taille du texte de la zone Logs
-FONT_SIZE_BUTTON = 9                        # Taille du texte des boutons secondaires
-# --- Layout ---
-DEBUG_INITIAL_VISIBLE = True                # État initial: panneau Debug visible
-LOG_TEXT_HEIGHT = 8                         # Hauteur (lignes) du bloc Logs
-BANNER_MIN_HEIGHT = 100                     # Hauteur minimale de la bannière
-SECTION_PAD_X = 5                           # Marge interne horizontale standard
-SECTION_PAD_Y = 12                          # Marge interne verticale standard
-HSEP_INSET = SECTION_PAD_X                  # Retrait horizontal des séparateurs
-TIME_COL_PX = 120                           # Largeur colonne "temps" (Derniers tours) en px
-class TrackerUI(tk.Tk):
-    """Interface principale, refonte UI selon maquette.
-    Layout:
-      - row0: bannière (messages importants)
-      - row1: colonnes: Session | Joueur | Derniers tours | Debug (optionnel)
-      - row2: messages/logs
-    """
+
+WINDOW_TITLE = "iRacing Tracker"
+WINDOW_GEOMETRY = (1600, 1000)
+MIN_WIDTH = 900
+MIN_HEIGHT = 550
+
+COLOR_BG_MAIN = "#f0f0f0"
+COLOR_BG_SECONDARY = "#e5e5e5"
+COLOR_TEXT = "black"
+COLOR_CONTROL_FG = "black"
+COLOR_BANNER_BG = "#f0f0f0"
+COLOR_BANNER_TEXT = "#0d47a1"
+COLOR_DEBUG_TEXT_BG = "#f0f0f0"
+COLOR_LOG_TEXT_BG = "#f0f0f0"
+COLOR_SEPARATOR = "#cccccc"
+COLOR_CARD_RED = "#e57373"
+COLOR_CARD_GREEN = "#9ccc65"
+
+FONT_FAMILY = "Arial"
+FONT_SIZE_BASE = 12
+FONT_SIZE_SECTION = 11
+FONT_SIZE_BANNER = 22
+FONT_SIZE_PLAYER = 20
+FONT_SIZE_VALUE_BIG = 18
+FONT_SIZE_DEBUG = 10
+FONT_SIZE_LOG = 15
+FONT_SIZE_BUTTON = 9
+
+DEBUG_INITIAL_VISIBLE = True
+LOG_TEXT_HEIGHT_ROWS = 8   # approximation (Qt: on gère la hauteur via policy)
+TIME_COL_PX = 120          # réserve visuelle pour la colonne "temps"
+
+# --------------------------------------------------------------------
+# Petits utilitaires pour compatibilité Tk
+# --------------------------------------------------------------------
+class _BoolVarCompat:
+    """Expose .get() / .set() à la manière de tk.BooleanVar pour garder main.py inchangé."""
+    def __init__(self, value=False):
+        self._v = bool(value)
+    def get(self):
+        return bool(self._v)
+    def set(self, v: bool):
+        self._v = bool(v)
+
+def _vsep(parent: QWidget) -> QFrame:
+    f = QFrame(parent)
+    f.setFrameShape(QFrame.VLine)
+    f.setFrameShadow(QFrame.Plain)
+    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR}; max-width:1px;}}")
+    return f
+
+def _hsep(parent: QWidget) -> QFrame:
+    f = QFrame(parent)
+    f.setFrameShape(QFrame.HLine)
+    f.setFrameShadow(QFrame.Plain)
+    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR}; max-height:1px;}}")
+    return f
+
+def _make_tire_square(text: str, color: str) -> QWidget:
+    w = QWidget()
+    w.setStyleSheet(f"QWidget{{background:{color};}}")
+    w.setFixedSize(QSize(48, 48))
+    lay = QVBoxLayout(w)
+    lay.setContentsMargins(0, 0, 0, 0)
+    lab = QLabel(text)
+    lab.setAlignment(Qt.AlignCenter)
+    lab.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+    lab.setStyleSheet("QLabel{color:black;}")
+    lay.addWidget(lab)
+    return w
+
+# --------------------------------------------------------------------
+# Classe principale (composition autour d'un QMainWindow)
+# --------------------------------------------------------------------
+class TrackerUI:
     def __init__(self, players: list, on_player_change, on_debug_toggle=None):
-        if os.name == "nt":
-            self._ensure_windows_app_id()
-        super().__init__()
-        # Fenêtre
-        self.title(WINDOW_TITLE)
-        self.geometry(WINDOW_GEOMETRY)
-        self.minsize(MIN_WIDTH, MIN_HEIGHT)
-        self.configure(bg=COLOR_BG_MAIN)
-        self._init_window_icon()
+        # QApplication (unique) dans le thread UI
+        self._app = QApplication.instance() or QApplication(sys.argv)
+
+        # Fenêtre principale
+        self._win = QMainWindow()
+        self._win.setWindowTitle(WINDOW_TITLE)
+        self._win.resize(*WINDOW_GEOMETRY)
+        self._win.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
+        self._apply_window_icon()
+
+        # Compat .debug_visible.get()
+        self.debug_visible = _BoolVarCompat(DEBUG_INITIAL_VISIBLE)
+
+        # Callbacks externes
         self.on_player_change = on_player_change
-        self.debug_visible = tk.BooleanVar(value=DEBUG_INITIAL_VISIBLE)
         self.on_debug_toggle = on_debug_toggle
-        # Menu principal
-        self._build_menubar()
-        # --- Grille fenêtre: 3 lignes / 1 colonne ---
-        self.grid_rowconfigure(0, weight=0, minsize=BANNER_MIN_HEIGHT)
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_rowconfigure(2, weight=0)
-        self.grid_columnconfigure(0, weight=1)
-        # -----------------------
-        # Bannière
-        # -----------------------
-        self.banner_frame = tk.Frame(self, bg=COLOR_BANNER_BG, bd=0, relief="flat", highlightthickness=0)
-        self.banner_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
-        self.banner_label = tk.Label(
-            self.banner_frame,
-            text="",
-            font=(FONT_FAMILY, FONT_SIZE_BANNER, "bold"),
-            bg=COLOR_BANNER_BG,
-            fg=COLOR_BANNER_TEXT,
-            anchor="center",
+
+        # Widget central
+        central = QWidget()
+        central.setStyleSheet(f"QWidget{{background:{COLOR_BG_MAIN}; color:{COLOR_TEXT};}}")
+        self._win.setCentralWidget(central)
+
+        root = QVBoxLayout(central)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # --- BANNIÈRE ---------------------------------------------------
+        banner = QWidget()
+        banner.setStyleSheet(f"QWidget{{background:{COLOR_BANNER_BG};}}")
+        banner_lay = QVBoxLayout(banner)
+        banner_lay.setContentsMargins(8, 12, 8, 12)
+        self.banner_label = QLabel("")
+        self.banner_label.setAlignment(Qt.AlignCenter)
+        self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
+        self.banner_label.setStyleSheet(f"QLabel{{color:{COLOR_BANNER_TEXT};}}")
+        banner_lay.addWidget(self.banner_label)
+        root.addWidget(banner)
+        # fine bordure inférieure
+        root.addWidget(_hsep(central))
+
+        # --- ZONE CENTRALE (4 colonnes dont Debug masquable) ------------
+        center = QWidget()
+        self.center_lay = QGridLayout(center)
+        self.center_lay.setContentsMargins(8, 8, 8, 8)
+        self.center_lay.setHorizontalSpacing(12)
+        self.center_lay.setVerticalSpacing(8)
+
+        # Colonne Session
+        self.session_col = QWidget()
+        sc_lay = QVBoxLayout(self.session_col)
+        sc_lay.setContentsMargins(8, 8, 8, 8)
+        sc_lay.setSpacing(6)
+
+        sec_label = QLabel("SESSION")
+        sec_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        sc_lay.addWidget(sec_label)
+
+        self.session_time_label = QLabel("Temps de session : 1:23:45")
+        self.track_label = QLabel("Circuit : ---")
+        self.car_label = QLabel("Voiture : ---")
+        sc_lay.addWidget(self.session_time_label)
+        sc_lay.addWidget(self.track_label)
+        sc_lay.addWidget(self.car_label)
+        sc_lay.addWidget(_hsep(self.session_col))
+
+        abs_info = QLabel("Record absolu (détenu par ---) :")
+        self.absolute_record_value = QLabel("---")
+        self.absolute_record_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.absolute_record_value.setAlignment(Qt.AlignCenter)
+        sc_lay.addWidget(abs_info)
+        sc_lay.addWidget(self.absolute_record_value)
+        sc_lay.addWidget(_hsep(self.session_col))
+
+        tires_grid = QWidget()
+        tg_lay = QGridLayout(tires_grid)
+        tg_lay.setContentsMargins(0, 0, 0, 0)
+        tg_lay.setHorizontalSpacing(12)
+        tg_lay.setVerticalSpacing(8)
+        tg_lay.addWidget(QLabel("Température et usure des pneus :"), 0, 0, 1, 4)
+        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 1, 0)
+        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 1, 1)
+        tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 1, 2)
+        tg_lay.addWidget(_make_tire_square("98%", COLOR_CARD_GREEN), 1, 3)
+        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 2, 0)
+        tg_lay.addWidget(_make_tire_square("65°", COLOR_CARD_RED), 2, 1)
+        tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 2, 2)
+        tg_lay.addWidget(_make_tire_square("98%", COLOR_CARD_GREEN), 2, 3)
+        sc_lay.addWidget(tires_grid)
+
+        # Colonne Joueur
+        self.player_col = QWidget()
+        pc_lay = QVBoxLayout(self.player_col)
+        pc_lay.setContentsMargins(8, 8, 8, 8)
+        pc_lay.setSpacing(6)
+
+        header_player = QWidget()
+        hp_lay = QHBoxLayout(header_player)
+        hp_lay.setContentsMargins(0, 0, 0, 0)
+        title_player = QLabel("JOUEUR")
+        title_player.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        hp_lay.addWidget(title_player)
+        hp_lay.addStretch(1)
+        self.edit_players_btn = QPushButton("Éditer la liste")
+        self.edit_players_btn.setCursor(Qt.PointingHandCursor)
+        self.edit_players_btn.setStyleSheet(
+            f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
+            f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
         )
-        self.banner_label.pack(fill="x", padx=SECTION_PAD_X, pady=SECTION_PAD_Y)
-        # fine bordure basse
-        tk.Frame(self.banner_frame, bg=COLOR_SEPARATOR, height=1).pack(fill="x", side="bottom")
-        # -----------------------
-        # Zone centrale: 3 colonnes (+1 Debug optionnelle)
-        # -----------------------
-        self.columns = tk.Frame(self, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.columns.grid(row=1, column=0, sticky="nsew")
-        self.columns.grid_rowconfigure(0, weight=1)
-        for c in (0, 2, 4, 6):
-            self.columns.grid_columnconfigure(c, weight=1)
-        for s in (1, 3, 5):
-            self.columns.grid_columnconfigure(s, weight=0, minsize=1)
-        def _vsep(col):
-            f = tk.Frame(self.columns, bg=COLOR_SEPARATOR, width=1)
-            f.grid(row=0, column=col, sticky="ns")
-            return f
-        # Session (col 0)
-        self.session_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.session_col.grid(row=0, column=0, sticky="nsew", padx=SECTION_PAD_X)
-        # Joueur (col 2)
-        self.player_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.player_col.grid(row=0, column=2, sticky="nsew", padx=SECTION_PAD_X)
-        # Derniers tours (col 4)
-        self.laps_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.laps_col.grid(row=0, column=4, sticky="nsew", padx=SECTION_PAD_X)
-        # Séparateurs verticaux
-        self.sep_0 = _vsep(1)
-        self.sep_1 = _vsep(3)
-        self.sep_2 = _vsep(5)
-        # --- Contenu colonne Session ---
-        section_style = {"bg": COLOR_BG_MAIN, "fg": COLOR_TEXT, "font": (FONT_FAMILY, FONT_SIZE_SECTION, "bold")}
-        base_style = {"bg": COLOR_BG_MAIN, "fg": COLOR_TEXT, "font": (FONT_FAMILY, FONT_SIZE_BASE)}
-        def hsep(parent):
-            f = tk.Frame(parent, bg=COLOR_SEPARATOR, height=1)
-            f.pack(fill="x", padx=HSEP_INSET, pady=8)
-            return f
-        tk.Label(self.session_col, text="SESSION", **section_style, anchor="w").pack(
-            fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 6)
-        )
-        self.session_time_label = tk.Label(
-            self.session_col, text="Temps de session : 1:23:45", **base_style, anchor="w"
-        )
-        self.session_time_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
-        self.track_label = tk.Label(self.session_col, text="Circuit : ---", **base_style, anchor="w")
-        self.track_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 2))
-        self.car_label = tk.Label(self.session_col, text="Voiture : ---", **base_style, anchor="w")
-        self.car_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 10))
-        hsep(self.session_col)
-        self.absolute_record_info = tk.Label(
-            self.session_col, text="Record absolu (détenu par ---) :", **base_style, anchor="w"
-        )
-        self.absolute_record_info.pack(fill="x", padx=SECTION_PAD_X)
-        self.absolute_record_value = tk.Label(
-            self.session_col,
-            text="---",
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_TEXT,
-            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
-            anchor="center",
-        )
-        self.absolute_record_value.pack(fill="x", padx=SECTION_PAD_X, pady=(2, 10))
-        # Séparateur entre le bloc "Record absolu" et la section pneus
-        hsep(self.session_col)
-        tk.Label(
-            self.session_col, text="Température et usure des pneus :", **base_style, anchor="w"
-        ).pack(fill="x", padx=SECTION_PAD_X, pady=(0, 6))
-        def tire_square(parent, text, color):
-            frm = tk.Frame(parent, bg=color, width=48, height=48)
-            frm.pack_propagate(False)
-            tk.Label(frm, text=text, bg=color, fg="black", font=(FONT_FAMILY, 12, "bold")).pack(
-                expand=True, fill="both"
-            )
-            return frm
-        tires_grid = tk.Frame(self.session_col, bg=COLOR_BG_MAIN)
-        tires_grid.pack(anchor="w", padx=SECTION_PAD_X)
-        for _ in range(2):
-            row = tk.Frame(tires_grid, bg=COLOR_BG_MAIN)
-            row.pack(anchor="w")
-            tire_square(row, "65°", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
-            tire_square(row, "65°", COLOR_CARD_RED).pack(side="left", padx=8, pady=6)
-            tire_square(row, "98%", COLOR_CARD_GREEN).pack(side="left", padx=24, pady=6)
-            tire_square(row, "98%", COLOR_CARD_GREEN).pack(side="left", padx=8, pady=6)
-        # --- Contenu colonne Joueur ---
-        header_player = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
-        header_player.pack(fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
-        tk.Label(header_player, text="JOUEUR", **section_style).pack(side="left")
-        edit_btn_container = tk.Frame(header_player, bg=COLOR_BG_MAIN, bd=0, highlightthickness=0)
-        edit_btn_container.pack(side="right", padx=(8, 0))
-        self.edit_players_btn = tk.Button(
-            edit_btn_container,
-            text="Éditer la liste",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_CONTROL_FG,
-            activebackground=COLOR_BG_SECONDARY,
-            activeforeground=COLOR_CONTROL_FG,
-            font=(FONT_FAMILY, FONT_SIZE_BUTTON),
-            cursor="hand2",
-            command=lambda: None,
-        )
-        self.edit_players_btn.pack(side="top", fill="x", padx=0, pady=(0, 2))
-        edit_btn_underline = tk.Frame(edit_btn_container, bg=COLOR_SEPARATOR, height=1)
-        edit_btn_underline.pack(fill="x", side="bottom")
-        self._bind_secondary_button_hover(self.edit_players_btn, base_bg=COLOR_BG_MAIN)
-        # Sélecteur joueur (ttk.Combobox, plein-largeur, flèche ▼, fond gris, police grande)
-        self.current_player = tk.StringVar(value=players[0] if players else "---")
-        self.current_player.trace_add("write", self._on_player_change)
-        initial_value = players[0] if players else "---"
-        self.current_player.set(initial_value)
-        extra_values = players[1:] if len(players) > 1 else []
-        select_wrap = tk.Frame(self.player_col, bg=COLOR_BG_MAIN)
-        select_wrap.pack(fill="x", padx=SECTION_PAD_X, pady=(10, 14))
-        # Affichage actuel + flèche ▼
+        self.edit_players_btn.setEnabled(False)  # même comportement que l'original (placeholder)
+        hp_lay.addWidget(self.edit_players_btn)
+        pc_lay.addWidget(header_player)
+
+        # Sélecteur de joueur
         self._players_list = list(players) if players else ["---"]
-        self.player_display = tk.Label(
-            select_wrap, textvariable=self.current_player,
-            bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
-            font=(FONT_FAMILY, FONT_SIZE_PLAYER), anchor="center"
+        self.player_combo = QComboBox()
+        self.player_combo.setEditable(False)
+        self.player_combo.addItems(self._players_list)
+        self.player_combo.setCurrentIndex(0)
+        self.player_combo.setStyleSheet(
+            f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt;}}"
         )
-        self.player_display.pack(fill="x", side="left", expand=True)
-        self.player_arrow = tk.Label(
-            select_wrap, text="▼",
-            bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
-            font=(FONT_FAMILY, FONT_SIZE_PLAYER-2), width=2, anchor="center"
-        )
-        self.player_arrow.pack(side="right")
-        def _open_player_dropdown(event=None):
-            # ferme popup existant
-            try:
-                if hasattr(self, "_player_popup") and self._player_popup.winfo_exists():
-                    self._player_popup.destroy()
-            except Exception:
-                pass
-            popup = tk.Toplevel(self)
-            self._player_popup = popup
-            popup.overrideredirect(True)
-            popup.configure(bg=COLOR_SEPARATOR)
-            x = select_wrap.winfo_rootx()
-            y = select_wrap.winfo_rooty() + select_wrap.winfo_height()
-            w = select_wrap.winfo_width()
-            # Calcule une hauteur adaptée à la police pour éviter le texte tronqué
-            try:
-                fnt = tkfont.Font(family=FONT_FAMILY, size=FONT_SIZE_PLAYER)
-                line_h = max(1, int(fnt.metrics("linespace")))
-            except Exception:
-                line_h = 20
-            item_h = line_h + 10
-            max_visible = min(8, max(1, len(self._players_list)))
-            total_h = int(item_h * max_visible + 2)
-            popup.geometry(f"{w}x{total_h}+{x}+{y}")
-            container = tk.Frame(popup, bg=COLOR_SEPARATOR)
-            container.pack(fill="both", expand=True)
-            canvas = tk.Canvas(container, bg=COLOR_BG_MAIN, highlightthickness=0, bd=0)
-            vsb = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-            canvas.configure(yscrollcommand=vsb.set)
-            canvas.pack(side="left", fill="both", expand=True)
-            vsb.pack(side="right", fill="y")
-            cont = tk.Frame(canvas, bg=COLOR_BG_MAIN)
-            canvas.create_window((0, 0), window=cont, anchor="nw")
-            def _choose(name):
-                self.current_player.set(name)
-                try:
-                    popup.destroy()
-                except Exception:
-                    pass
-            for name in self._players_list:
-                lbl = tk.Label(
-                    cont, text=name,
-                    bg=COLOR_BG_MAIN, fg=COLOR_CONTROL_FG,
-                    font=(FONT_FAMILY, FONT_SIZE_PLAYER), anchor="center",
-                    padx=6
-                )
-                lbl.pack(fill="x", ipady=6)
-                lbl.bind("<Button-1>", lambda e, n=name: _choose(n))
-                # pas de surbrillance bleue — garder gris
-                lbl.bind("<Enter>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
-                lbl.bind("<Leave>", lambda e, w=lbl: w.configure(bg=COLOR_BG_MAIN))
-            try:
-                cont.update_idletasks()
-                canvas.configure(scrollregion=canvas.bbox("all"))
-            except Exception:
-                pass
-            def _wheel(ev):
-                delta = -1 if getattr(ev, "delta", 0) > 0 else 1
-                canvas.yview_scroll(delta, "units")
-                return "break"
-            canvas.bind("<MouseWheel>", _wheel)
-            canvas.bind("<Button-4>", lambda e: (canvas.yview_scroll(-1, "units"), "break"))
-            canvas.bind("<Button-5>", lambda e: (canvas.yview_scroll(1, "units"), "break"))
-            def _close_on_click(event):
-                try:
-                    if not (x <= event.x_root <= x+w and y <= event.y_root <= y+popup.winfo_height()):
-                        if popup.winfo_exists():
-                            popup.destroy()
-                except Exception:
-                    pass
-            self.bind_all("<Button-1>", _close_on_click, add=True)
-        self.player_display.bind("<Button-1>", _open_player_dropdown)
-        self.player_arrow.bind("<Button-1>", _open_player_dropdown)
-        tk.Frame(select_wrap, bg=COLOR_SEPARATOR, height=1).pack(fill="x", pady=(4, 0))
-        # Bloc Record personnel
-        hsep(self.player_col)
-        tk.Label(self.player_col, text="Record personnel :", **base_style, anchor="w").pack(
-            fill="x", padx=SECTION_PAD_X, pady=(6, 2)
-        )
-        self.best_time_label = tk.Label(
-            self.player_col,
-            text="---",
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_TEXT,
-            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
-            anchor="center",
-        )
-        self.best_time_label.pack(fill="x", padx=SECTION_PAD_X, pady=(0, 10))
-        hsep(self.player_col)
-        tk.Label(self.player_col, text="Dernier tour :", **base_style, anchor="w").pack(
-            fill="x", padx=SECTION_PAD_X, pady=(6, 2)
-        )
-        self.current_lap_label = tk.Label(
-            self.player_col,
-            text="---",
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_TEXT,
-            font=(FONT_FAMILY, FONT_SIZE_VALUE_BIG, "bold"),
-            anchor="center",
-        )
-        self.current_lap_label.pack(fill="x", padx=SECTION_PAD_X)
-        # --- Contenu colonne Derniers tours ---
-        tk.Label(self.laps_col, text="DERNIERS TOURS", **section_style, anchor="w").pack(
-            fill="x", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0)
-        )
-        laps_box = tk.Frame(self.laps_col, bg=COLOR_BG_MAIN)
-        laps_box.pack(expand=True, fill="both", padx=SECTION_PAD_X, pady=(6, 0))
-        self.laps_text = tk.Text(
-            laps_box,
-            wrap="none",
-            font=(FONT_FAMILY, FONT_SIZE_BASE),
-            bg=COLOR_BG_MAIN,
-            state="disabled",
-            height=10,
-            takefocus=0,
-            cursor="arrow",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-        )
-        self.laps_text.pack(expand=True, fill="both")
-        self.laps_text.bind("<MouseWheel>", self._on_laps_mousewheel)
-        self.laps_text.bind("<Button-4>", self._on_laps_mousewheel_linux)
-        self.laps_text.bind("<Button-5>", self._on_laps_mousewheel_linux)
-        self.laps_text.bind("<Configure>", self._update_laps_tabs)
+        self.player_combo.currentTextChanged.connect(self._on_player_changed)
+        pc_lay.addWidget(self.player_combo)
+
+        pc_lay.addWidget(_hsep(self.player_col))
+        pc_lay.addWidget(QLabel("Record personnel :"))
+        self.best_time_label = QLabel("---")
+        self.best_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.best_time_label.setAlignment(Qt.AlignCenter)
+        pc_lay.addWidget(self.best_time_label)
+
+        pc_lay.addWidget(_hsep(self.player_col))
+        pc_lay.addWidget(QLabel("Dernier tour :"))
+        self.current_lap_label = QLabel("---")
+        self.current_lap_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_VALUE_BIG, QFont.Bold))
+        self.current_lap_label.setAlignment(Qt.AlignCenter)
+        pc_lay.addWidget(self.current_lap_label)
+
+        # Colonne Derniers tours
+        self.laps_col = QWidget()
+        lc_lay = QVBoxLayout(self.laps_col)
+        lc_lay.setContentsMargins(8, 8, 8, 8)
+        lc_lay.setSpacing(6)
+        cap = QLabel("DERNIERS TOURS")
+        cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        lc_lay.addWidget(cap)
+        self.laps_text = QPlainTextEdit()
+        self.laps_text.setReadOnly(True)
+        self.laps_text.setFrameShape(QFrame.NoFrame)
+        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_BG_MAIN};}}")
         self._populate_laps_placeholder()
-        # --- Colonne Debug (col 6) ---
-        self.debug_col = tk.Frame(self.columns, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        # Marge gauche/droite homogène pour éviter d'être collé aux bords
-        self.debug_col.grid(row=0, column=6, sticky="nsew", padx=(SECTION_PAD_X, SECTION_PAD_X))
-        self.debug_col.grid_rowconfigure(1, weight=1)
-        self.debug_col.grid_columnconfigure(0, weight=1)
-        header = tk.Frame(self.debug_col, bg=COLOR_BG_MAIN)
-        header.grid(row=0, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
-        header.grid_columnconfigure(0, weight=1)
-        lbl = tk.Label(header, text="DEBUG", **section_style)
-        lbl.grid(row=0, column=0, sticky="w")
-        debug_btn_container = tk.Frame(header, bg=COLOR_BG_MAIN, bd=0, highlightthickness=0)
-        debug_btn_container.grid(row=0, column=1, sticky="e", padx=(8, 0))
-        self.debug_toggle_btn = tk.Button(
-            debug_btn_container,
-            text="Masquer",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_CONTROL_FG,
-            activebackground=COLOR_BG_SECONDARY,
-            activeforeground=COLOR_CONTROL_FG,
-            font=(FONT_FAMILY, FONT_SIZE_BUTTON),
-            cursor="hand2",
-            command=lambda: self._set_debug_visible(False),
+        lc_lay.addWidget(self.laps_text, 1)
+
+        # Colonne Debug (masquable)
+        self.debug_col = QWidget()
+        dc_lay = QVBoxLayout(self.debug_col)
+        dc_lay.setContentsMargins(8, 8, 8, 8)
+        dc_lay.setSpacing(6)
+        header_dbg = QWidget()
+        hd_lay = QHBoxLayout(header_dbg)
+        hd_lay.setContentsMargins(0, 0, 0, 0)
+        lbl_dbg = QLabel("DEBUG")
+        lbl_dbg.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        hd_lay.addWidget(lbl_dbg)
+        hd_lay.addStretch(1)
+        self.debug_toggle_btn = QPushButton("Masquer")
+        self.debug_toggle_btn.setCursor(Qt.PointingHandCursor)
+        self.debug_toggle_btn.setStyleSheet(
+            f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
+            f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
         )
-        self.debug_toggle_btn.pack(side="top", fill="x", padx=0, pady=(0, 2))
-        tk.Frame(debug_btn_container, bg=COLOR_SEPARATOR, height=1).pack(fill="x", side="bottom")
-        self._bind_secondary_button_hover(self.debug_toggle_btn, base_bg=COLOR_BG_MAIN)
-        self.debug_text = tk.Text(
-            self.debug_col,
-            wrap="word",
-            font=(FONT_FAMILY, FONT_SIZE_DEBUG),
-            bg=COLOR_DEBUG_TEXT_BG,
-            state="disabled",
-            takefocus=0,
-            cursor="arrow",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-        )
-        # Padding gauche/droite homogène pour éviter d'être collé aux bords
-        self.debug_text.grid(row=1, column=0, sticky="nsew", padx=(SECTION_PAD_X, SECTION_PAD_X), pady=(6, 6))
-        self.debug_text.bind("<MouseWheel>", self._on_debug_mousewheel)
-        self.debug_text.bind("<Button-4>", self._on_debug_mousewheel_linux)
-        self.debug_text.bind("<Button-5>", self._on_debug_mousewheel_linux)
-        self._apply_debug_visibility()
-        self.after(0, self._update_laps_tabs)
-        # -----------------------
-        # Logs (plein largeur)
-        # -----------------------
-        self.log_container = tk.Frame(self, bg=COLOR_BG_MAIN, bd=0, relief="flat", highlightthickness=0)
-        self.log_container.grid(row=2, column=0, sticky="nsew")
-        self.log_container.grid_columnconfigure(0, weight=1)
-        tk.Frame(self.log_container, bg=COLOR_SEPARATOR, height=1).grid(row=0, column=0, sticky="ew", padx=0)
-        tk.Label(
-            self.log_container,
-            text="MESSAGES / LOGS",
-            bg=COLOR_BG_MAIN,
-            fg=COLOR_TEXT,
-            font=(FONT_FAMILY, FONT_SIZE_SECTION, "bold"),
-            anchor="w",
-        ).grid(row=1, column=0, sticky="ew", padx=SECTION_PAD_X, pady=(SECTION_PAD_Y // 2, 0))
-        self.log_text = scrolledtext.ScrolledText(
-            self.log_container,
-            wrap="word",
-            font=(FONT_FAMILY, FONT_SIZE_LOG),
-            height=LOG_TEXT_HEIGHT,
-            bg=COLOR_LOG_TEXT_BG,
-            state="disabled",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-        )
-        self.log_text.grid(row=2, column=0, sticky="nsew", padx=SECTION_PAD_X, pady=(6, SECTION_PAD_Y))
-        self.log_text.configure(takefocus=0, cursor="arrow", borderwidth=0)
-        self.log_text.bind("<MouseWheel>", self._on_log_mousewheel)
-        self.log_text.bind("<Button-4>", self._on_log_mousewheel_linux)
-        self.log_text.bind("<Button-5>", self._on_log_mousewheel_linux)
-    # -----------------------
-    # Menu bar
-    # -----------------------
-    def _build_menubar(self):
-        menubar = tk.Menu(self)
-        file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="(à venir)", state="disabled")
-        edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="(à venir)", state="disabled")
-        view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_checkbutton(label="Debug", variable=self.debug_visible, command=self._toggle_debug)
-        menubar.add_cascade(label="Fichier", menu=file_menu)
-        menubar.add_cascade(label="Édition", menu=edit_menu)
-        menubar.add_cascade(label="Affichage", menu=view_menu)
-        self.config(menu=menubar)
-        self._menubar = menubar
-    # -----------------------
-    # API publique utilisée par main.py
-    # -----------------------
-    def _on_player_change(self, *args):
-        self.on_player_change(self.current_player.get())
-    def update_context(self, track: str, car: str):
-        self.track_label.config(text=f"Circuit : {track}")
-        self.car_label.config(text=f"Voiture : {car}")
-    def update_player_personal_record(self, best_time_str: str):
-        self.best_time_label.config(text=f"{best_time_str}")
-    def update_current_lap_time(self, text: str):
-        self.current_lap_label.config(text=f"{text}")
-    def update_debug(self, data: dict):
-        first_visible_idx = self.debug_text.index("@0,0")
-        first_fraction, last = self.debug_text.yview()
-        at_bottom = first_fraction > 0.0 and last >= 0.999
-        self.debug_text.config(state="normal")
-        try:
-            self.debug_text.delete("1.0", "end")
-            for k, v in data.items():
-                self.debug_text.insert("end", f"{k}: {v}\n")
-            if at_bottom:
-                self.debug_text.see("end")
-            else:
-                try:
-                    self.debug_text.yview(first_visible_idx)
-                except tk.TclError:
-                    self.debug_text.see(first_visible_idx)
-        finally:
-            self.debug_text.config(state="disabled")
-    def _on_debug_mousewheel(self, event):
-        if event.delta == 0:
-            return "break"
-        direction = -1 if event.delta > 0 else 1
-        self.debug_text.yview_scroll(direction, "units")
-        return "break"
-    def _on_debug_mousewheel_linux(self, event):
-        if event.num == 4:
-            self.debug_text.yview_scroll(-1, "units")
-        elif event.num == 5:
-            self.debug_text.yview_scroll(1, "units")
-        return "break"
-    def add_log(self, message: str):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.config(state="normal")
-        try:
-            self.log_text.insert("end", f"[{timestamp}] {message}\n")
-            self.log_text.see("end")
-        finally:
-            self.log_text.config(state="disabled")
-    def _on_log_mousewheel(self, event):
-        if event.delta == 0:
-            return "break"
-        direction = -1 if event.delta > 0 else 1
-        self.log_text.yview_scroll(direction, "units")
-        return "break"
-    def _on_log_mousewheel_linux(self, event):
-        if event.num == 4:
-            self.log_text.yview_scroll(-1, "units")
-        elif event.num == 5:
-            self.log_text.yview_scroll(1, "units")
-        return "break"
-    # Laps scrolling (texte sans scrollbar visible)
-    def _on_laps_mousewheel(self, event):
-        if event.delta == 0:
-            return "break"
-        direction = -1 if event.delta > 0 else 1
-        self.laps_text.yview_scroll(direction, "units")
-        return "break"
-    def _on_laps_mousewheel_linux(self, event):
-        if event.num == 4:
-            self.laps_text.yview_scroll(-1, "units")
-        elif event.num == 5:
-            self.laps_text.yview_scroll(1, "units")
-        return "break"
-    def update_players(self, players: list, current: str):
-        self._players_list = list(players) if players else ['---']
-        if current and players and current in players:
-            self.current_player.set(current)
-        elif players:
-            self.current_player.set(players[0])
-        else:
-            self.current_player.set('---')
-    def set_player_menu_state(self, enabled: bool):
-        self._player_enabled = bool(enabled)
-        state_fg = COLOR_CONTROL_FG if enabled else "#888"
-        try:
-            self.player_display.configure(fg=state_fg)
-            self.player_arrow.configure(fg=state_fg)
-        except Exception:
-            pass
-    def get_selected_player(self) -> str:
-        return self.current_player.get()
-    # -----------------------
-    # Intégration avec la queue (thread-safe)
-    # -----------------------
+        self.debug_toggle_btn.clicked.connect(lambda: self._set_debug_visible(False))
+        hd_lay.addWidget(self.debug_toggle_btn)
+        dc_lay.addWidget(header_dbg)
+
+        self.debug_text = QPlainTextEdit()
+        self.debug_text.setReadOnly(True)
+        self.debug_text.setFrameShape(QFrame.NoFrame)
+        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_DEBUG_TEXT_BG};}}")
+        self.debug_text.setWordWrapMode(QTextOption.NoWrap)
+        dc_lay.addWidget(self.debug_text, 1)
+
+        # Placement (session | sep | joueur | sep | tours | sep | debug)
+        self.center_lay.addWidget(self.session_col, 0, 0)
+        self.center_lay.addWidget(_vsep(center), 0, 1)
+        self.center_lay.addWidget(self.player_col, 0, 2)
+        self.center_lay.addWidget(_vsep(center), 0, 3)
+        self.center_lay.addWidget(self.laps_col, 0, 4)
+        self._sep_debug = _vsep(center)
+        self.center_lay.addWidget(self._sep_debug, 0, 5)
+        self.center_lay.addWidget(self.debug_col, 0, 6)
+
+        # Pas de stretch sur les colonnes séparateurs
+        for col in (1, 3, 5):
+            self.center_lay.setColumnStretch(col, 0)
+
+        root.addWidget(center, 1)
+
+        # --- LOGS -------------------------------------------------------
+        root.addWidget(_hsep(central))
+        logs = QWidget()
+        logs_lay = QVBoxLayout(logs)
+        logs_lay.setContentsMargins(8, 8, 8, 8)
+        logs_lay.setSpacing(6)
+        ltitle = QLabel("MESSAGES / LOGS")
+        ltitle.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION, QFont.Bold))
+        logs_lay.addWidget(ltitle)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setFrameShape(QFrame.NoFrame)
+        self.log_text.setStyleSheet(f"QTextEdit{{background:{COLOR_LOG_TEXT_BG};}}")
+        logs_lay.addWidget(self.log_text)
+        root.addWidget(logs, 0)
+
+        # --- MENU -------------------------------------------------------
+        self._build_menubar()
+
+        # Appliquer visibilité initiale de la colonne Debug
+        self._apply_debug_visibility(initial=True)
+
+        # Timer pour pomper la queue (équivalent de .after(16, ...))
+        self._event_queue = None
+        self._queue_timer = QTimer(self._win)
+        self._queue_timer.setInterval(16)
+        self._queue_timer.timeout.connect(self._pump_event_queue)
+
+    # -------------------------
+    # API publique (compat main.py)
+    # -------------------------
+    def mainloop(self):
+        self._win.show()
+        return self._app.exec()
+
     def set_on_player_change(self, cb):
-        """Permet de modifier le callback après création de l'UI."""
         self.on_player_change = cb
+
+    def set_on_debug_toggle(self, cb):
+        self.on_debug_toggle = cb
+
     def bind_event_queue(self, q):
-        """Enregistre la queue d'événements UI et lance la pompe .after()."""
         self._event_queue = q
-        self.after(16, self._pump_event_queue)  # ~60 FPS
+        self._queue_timer.start()
+
+    def update_context(self, track: str, car: str):
+        self.track_label.setText(f"Circuit : {track}")
+        self.car_label.setText(f"Voiture : {car}")
+
+    def update_player_personal_record(self, best_time_str: str):
+        self.best_time_label.setText(best_time_str or "---")
+
+    def update_current_lap_time(self, text: str):
+        self.current_lap_label.setText(text or "---")
+
+    def update_debug(self, data: dict):
+        # reste en bas si l'utilisateur est déjà en bas
+        sb = self.debug_text.verticalScrollBar()
+        at_bottom = sb.value() >= (sb.maximum() - 4)
+        # remplir
+        lines = []
+        for k, v in (data or {}).items():
+            lines.append(f"{k}: {v}")
+        self.debug_text.setPlainText("\n".join(lines))
+        if at_bottom:
+            sb.setValue(sb.maximum())
+
+    def add_log(self, message: str):
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.log_text.append(f"[{ts}] {message}")
+
+    def update_players(self, players: list, current: str):
+        self._players_list = list(players) if players else ["---"]
+        self.player_combo.blockSignals(True)
+        self.player_combo.clear()
+        self.player_combo.addItems(self._players_list)
+        # sélection
+        if current and players and current in players:
+            self.player_combo.setCurrentText(current)
+        elif players:
+            self.player_combo.setCurrentIndex(0)
+        else:
+            self.player_combo.setCurrentText("---")
+        self.player_combo.blockSignals(False)
+
+    def set_player_menu_state(self, enabled: bool):
+        en = bool(enabled)
+        self.player_combo.setEnabled(en)
+        # nuance visuelle simple
+        fg = COLOR_CONTROL_FG if en else "#888888"
+        self.player_combo.setStyleSheet(
+            f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
+        )
+
+    def get_selected_player(self) -> str:
+        return self.player_combo.currentText() or "---"
+
+    def set_banner(self, text: str = ""):
+        self.banner_label.setText(text or "")
+
+    # -------------------------
+    # Interne (UI)
+    # -------------------------
+    def _on_player_changed(self, name: str):
+        if callable(self.on_player_change):
+            try:
+                self.on_player_change(name)
+            except Exception:
+                pass
+
+    def _build_menubar(self):
+        menubar = QMenuBar(self._win)
+        self._win.setMenuBar(menubar)
+
+        file_menu = QMenu("Fichier", menubar)
+        file_menu.addAction(QAction("(à venir)", file_menu, enabled=False))
+        menubar.addMenu(file_menu)
+
+        edit_menu = QMenu("Édition", menubar)
+        edit_menu.addAction(QAction("(à venir)", edit_menu, enabled=False))
+        menubar.addMenu(edit_menu)
+
+        view_menu = QMenu("Affichage", menubar)
+        self._act_debug = QAction("Debug", view_menu, checkable=True)
+        self._act_debug.setChecked(self.debug_visible.get())
+        self._act_debug.triggered.connect(self._toggle_debug_action)
+        view_menu.addAction(self._act_debug)
+        menubar.addMenu(view_menu)
+
+    def _toggle_debug_action(self, checked: bool):
+        self.debug_visible.set(bool(checked))
+        self._apply_debug_visibility()
+        if callable(self.on_debug_toggle):
+            try:
+                self.on_debug_toggle(bool(checked))
+            except Exception:
+                pass
+
+    def _set_debug_visible(self, flag: bool):
+        self.debug_visible.set(bool(flag))
+        # synchroniser l'action du menu
+        self._act_debug.blockSignals(True)
+        self._act_debug.setChecked(self.debug_visible.get())
+        self._act_debug.blockSignals(False)
+        self._apply_debug_visibility()
+        if callable(self.on_debug_toggle):
+            try:
+                self.on_debug_toggle(self.debug_visible.get())
+            except Exception:
+                pass
+
+    def _apply_debug_visibility(self, initial: bool=False):
+        vis = self.debug_visible.get()
+        self.debug_col.setVisible(vis)
+        self._sep_debug.setVisible(vis)
+        self.debug_toggle_btn.setText("Masquer" if vis else "Afficher")
+
+        # Répartition équitable des colonnes visibles
+        if vis:
+            # 4 colonnes visibles → mêmes facteurs de stretch
+            for col in (0, 2, 4, 6):
+                self.center_lay.setColumnStretch(col, 1)
+        else:
+            # 3 colonnes visibles → mêmes facteurs de stretch, debug désactivé
+            for col in (0, 2, 4):
+                self.center_lay.setColumnStretch(col, 1)
+            self.center_lay.setColumnStretch(6, 0)  # colonne Debug sans stretch
+
+
     def _pump_event_queue(self):
-        if not hasattr(self, "_event_queue") or self._event_queue is None:
-            self.after(16, self._pump_event_queue)
+        if self._event_queue is None:
             return
         try:
             while True:
                 name, payload = self._event_queue.get_nowait()
+                payload = payload or {}
                 if name == "debug":
                     self.update_debug(payload)
                 elif name == "context":
@@ -568,80 +499,12 @@ class TrackerUI(tk.Tk):
         except _q.Empty:
             pass
         except Exception as e:
+            # Comme avant: on reste robuste, on consigne l'erreur dans les logs UI
             try:
                 self.add_log(f"UI error: {e}")
             except Exception:
                 pass
-        self.after(16, self._pump_event_queue)
-    def _on_root_resize(self, event):
-        # plus de réglage manuel des colonnes; les weights suffisent
-        pass
-    def _init_window_icon(self):
-        """Charge et applique l'icône personnalisée si disponible."""
-        if ICON_PATH and os.path.isfile(ICON_PATH):
-            try:
-                icon = tk.PhotoImage(file=ICON_PATH)
-                self._icon_image = icon  # garder une référence pour éviter le GC
-                self.iconphoto(False, icon)
-                self.iconphoto(True, icon)
-            except Exception:
-                self._icon_image = None
-        if os.name == "nt" and WINDOWS_ICON_PATH and os.path.isfile(WINDOWS_ICON_PATH):
-            try:
-                self.iconbitmap(default=WINDOWS_ICON_PATH)
-            except Exception:
-                pass
 
-    def _bind_secondary_button_hover(self, button, base_bg=COLOR_BG_MAIN):
-        """Applique un survol simple qui change le fond du bouton."""
-        base_bg = base_bg or button.cget("bg")
-
-        def _on_enter(_event):
-            if str(button.cget("state")) != "disabled":
-                button.configure(bg=COLOR_BG_SECONDARY)
-
-        def _on_leave(_event):
-            button.configure(bg=base_bg)
-
-        button.bind("<Enter>", _on_enter, add="+")
-        button.bind("<Leave>", _on_leave, add="+")
-
-    def _ensure_windows_app_id(self):
-        """Définit un AppUserModelID pour que Windows applique l'icône à la barre des tâches."""
-        try:
-            import ctypes
-
-            app_id = "iRacingTracker.UI"
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-        except Exception:
-            pass
-    def _toggle_debug(self):
-        """Affiche/masque la colonne Debug et le séparateur associé."""
-        self._apply_debug_visibility()
-        if self.on_debug_toggle is not None:
-            try:
-                self.on_debug_toggle(bool(self.debug_visible.get()))
-            except Exception:
-                self.add_log("UI error: on_debug_toggle callback")
-    def _set_debug_visible(self, flag: bool):
-        try:
-            self.debug_visible.set(bool(flag))
-        except Exception:
-            pass
-        self._toggle_debug()
-    def _apply_debug_visibility(self):
-        visible = bool(self.debug_visible.get())
-        if visible:
-            for c in (0, 2, 4, 6):
-                self.columns.grid_columnconfigure(c, weight=1, uniform="cols4", minsize=0)
-            self.debug_col.grid(row=0, column=6, sticky="nsew")
-            self.sep_2.grid(row=0, column=5, sticky="ns")
-        else:
-            self.debug_col.grid_remove()
-            self.sep_2.grid_remove()
-            self.columns.grid_columnconfigure(6, weight=0, minsize=0, uniform="col6")
-            for c in (0, 2, 4):
-                self.columns.grid_columnconfigure(c, weight=1, uniform="cols3", minsize=0)
     def _populate_laps_placeholder(self):
         lines = [
             "0:34.678\tNico",
@@ -654,25 +517,13 @@ class TrackerUI(tk.Tk):
             "0:34.132\tNico",
             "0:34.678\tNico",
         ]
-        self.laps_text.config(state="normal")
+        self.laps_text.setPlainText("\n".join(lines))
+
+    def _apply_window_icon(self):
         try:
-            for ln in lines:
-                self.laps_text.insert("end", ln + "\n")
-            self.laps_text.see("end")
-        finally:
-            self.laps_text.config(state="disabled")
-    def set_banner(self, text: str = ""):
-        self.banner_label.config(text=text)
-    def set_on_debug_toggle(self, cb):
-        """Permet de modifier le callback de notification Debug visible/masqué."""
-        self.on_debug_toggle = cb
-    def _update_laps_tabs(self, event=None):
-        try:
-            width = int(self.laps_text.winfo_width())
+            if os.path.isfile(ICON_PATH):
+                self._win.setWindowIcon(QIcon(ICON_PATH))
+            elif os.name == "nt" and os.path.isfile(WINDOWS_ICON_PATH):
+                self._win.setWindowIcon(QIcon(WINDOWS_ICON_PATH))
         except Exception:
-            return
-        # Tab-stop 1 = temps (gauche), Tab-stop 2 = nom (aligné à droite)
-        time_px = TIME_COL_PX
-        min_right = time_px + 60
-        right_px = max(min_right, width - SECTION_PAD_X - 6)
-        self.laps_text.configure(tabs=(f"{time_px}p", f"{right_px}p right"))
+            pass
