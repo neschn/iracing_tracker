@@ -38,15 +38,33 @@ WINDOW_GEOMETRY = (1600, 1000)
 MIN_WIDTH = 1200
 MIN_HEIGHT = 800
 
-COLOR_BG_MAIN = "#f0f0f0"
-COLOR_BG_SECONDARY = "#535353"
-COLOR_TEXT = "black"
-COLOR_CONTROL_FG = "black"
-COLOR_BANNER_BG = "#f0f0f0"
-COLOR_BANNER_TEXT = "black"
-COLOR_DEBUG_TEXT_BG = "#f0f0f0"
-COLOR_LOG_TEXT_BG = "#f0f0f0"
-COLOR_SEPARATOR = "#cccccc"
+# --- Thème clair ---
+LIGHT_BG_MAIN         = "#f0f0f0"
+LIGHT_TEXT            = "#000000"
+LIGHT_BG_SECONDARY    = "#e5e5e5"
+LIGHT_BANNER_BG       = "#f0f0f0"
+LIGHT_BANNER_TEXT     = "#0d47a1"
+LIGHT_DEBUG_BG        = "#f0f0f0"
+LIGHT_LOG_BG          = "#f0f0f0"
+LIGHT_SEPARATOR       = "#cccccc"
+LIGHT_CONTROL_FG      = "#000000"
+LIGHT_TIRE_BG         = "#eaeaea"
+LIGHT_TIRE_BORDER     = "#bdbdbd"
+LIGHT_TIRE_TEXT       = "#000000"
+
+# --- Thème sombre ---
+DARK_BG_MAIN          = "#1f1f1f"
+DARK_TEXT             = "#e6e6e6"
+DARK_BG_SECONDARY     = "#2a2a2a"
+DARK_BANNER_BG        = "#1f1f1f"
+DARK_BANNER_TEXT      = "#e6e6e6"
+DARK_DEBUG_BG         = "#262626"
+DARK_LOG_BG           = "#262626"
+DARK_SEPARATOR        = "#3a3a3a"
+DARK_CONTROL_FG       = "#e6e6e6"
+DARK_TIRE_BG          = "#2b2b2b"
+DARK_TIRE_BORDER      = "#4b4b4b"
+DARK_TIRE_TEXT        = "#e6e6e6"
 
 FONT_FAMILY = "Arial"
 FONT_SIZE_LABELS = 12
@@ -62,10 +80,7 @@ FONT_SIZE_BUTTON = 9
 TIRE_SQUARE_WIDTH = 48          
 TIRE_SQUARE_HEIGHT = 72         
 TIRE_SQUARE_RADIUS = 8          
-TIRE_SQUARE_BG = "#eaeaea"      
-TIRE_SQUARE_BORDER = "#bdbdbd" 
 TIRE_SQUARE_FONT_PT = 12        
-TIRE_SQUARE_TEXT_COLOR = "black"
 
 TIRE_TEMP_PLACEHOLDER = "--°"
 TIRE_WEAR_PLACEHOLDER = "--%"
@@ -94,27 +109,23 @@ def _vsep(parent: QWidget) -> QFrame:
     f = QFrame(parent)
     f.setFrameShape(QFrame.NoFrame)
     f.setFixedWidth(SEPARATOR_THICKNESS)
-    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR};}}")
+    # Couleur appliquée par _apply_theme()
     return f
 
 def _hsep(parent: QWidget) -> QFrame:
     f = QFrame(parent)
     f.setFrameShape(QFrame.NoFrame)
     f.setFixedHeight(SEPARATOR_THICKNESS)
-    f.setStyleSheet(f"QFrame{{background:{COLOR_SEPARATOR};}}")
+    # Couleur appliquée par _apply_theme()
     return f
 
-def _make_tire_square(text: str, bg: str = None, border: str = None) -> QWidget:
-    """Carré stylé (taille, rayon, couleurs) avec valeurs par défaut neutres."""
-    bg = bg or TIRE_SQUARE_BG
-    border = border or TIRE_SQUARE_BORDER
-
+def _make_tire_square(text: str) -> QWidget:
+    """Carré avec taille/rayon ; couleurs posées par _apply_theme()."""
     w = QWidget()
     w.setFixedSize(QSize(TIRE_SQUARE_WIDTH, TIRE_SQUARE_HEIGHT))
     w.setStyleSheet(
         "QWidget{"
-        f"background:{bg};"
-        f"border:1px solid {border};"
+        "border:1px solid transparent;"
         f"border-radius:{TIRE_SQUARE_RADIUS}px;"
         "}"
     )
@@ -124,11 +135,9 @@ def _make_tire_square(text: str, bg: str = None, border: str = None) -> QWidget:
     lab = QLabel(text)
     lab.setAlignment(Qt.AlignCenter)
     lab.setFont(QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT, QFont.Bold))
-    lab.setStyleSheet(f"QLabel{{background:transparent; color:{TIRE_SQUARE_TEXT_COLOR};}}")
-
+    # couleur du texte appliquée par _apply_theme()
     lay.addWidget(lab)
     return w
-
 
 
 
@@ -175,37 +184,36 @@ class ThemeManager:
         """Renvoie le dictionnaire de couleurs pour le schéma effectif."""
         scheme = self.effective_scheme()
         if scheme == "dark":
-            # Palette sombre (contraste confortable)
             return dict(
-                bg_main="#1f1f1f",
-                text="#e6e6e6",
-                bg_secondary="#2a2a2a",
-                banner_bg="#1f1f1f",
-                banner_text="#e6e6e6",
-                debug_bg="#262626",
-                log_bg="#262626",
-                separator="#3a3a3a",
-                control_fg="#e6e6e6",
-                tire_bg="#2b2b2b",
-                tire_border="#4b4b4b",
-                tire_text="#e6e6e6",
+                bg_main=DARK_BG_MAIN,
+                text=DARK_TEXT,
+                bg_secondary=DARK_BG_SECONDARY,
+                banner_bg=DARK_BANNER_BG,
+                banner_text=DARK_BANNER_TEXT,
+                debug_bg=DARK_DEBUG_BG,
+                log_bg=DARK_LOG_BG,
+                separator=DARK_SEPARATOR,
+                control_fg=DARK_CONTROL_FG,
+                tire_bg=DARK_TIRE_BG,
+                tire_border=DARK_TIRE_BORDER,
+                tire_text=DARK_TIRE_TEXT,
             )
         else:
-            # Palette claire = tes couleurs actuelles (aucun changement visuel)
             return dict(
-                bg_main=COLOR_BG_MAIN,
-                text=COLOR_TEXT,
-                bg_secondary=COLOR_BG_SECONDARY,
-                banner_bg=COLOR_BANNER_BG,
-                banner_text=COLOR_BANNER_TEXT,
-                debug_bg=COLOR_DEBUG_TEXT_BG,
-                log_bg=COLOR_LOG_TEXT_BG,
-                separator=COLOR_SEPARATOR,
-                control_fg=COLOR_CONTROL_FG,
-                tire_bg=TIRE_SQUARE_BG,
-                tire_border=TIRE_SQUARE_BORDER,
-                tire_text=TIRE_SQUARE_TEXT_COLOR,
+                bg_main=LIGHT_BG_MAIN,
+                text=LIGHT_TEXT,
+                bg_secondary=LIGHT_BG_SECONDARY,
+                banner_bg=LIGHT_BANNER_BG,
+                banner_text=LIGHT_BANNER_TEXT,
+                debug_bg=LIGHT_DEBUG_BG,
+                log_bg=LIGHT_LOG_BG,
+                separator=LIGHT_SEPARATOR,
+                control_fg=LIGHT_CONTROL_FG,
+                tire_bg=LIGHT_TIRE_BG,
+                tire_border=LIGHT_TIRE_BORDER,
+                tire_text=LIGHT_TIRE_TEXT,
             )
+
 
     # ---------- Interne ----------
     def _system_scheme(self) -> str:
@@ -264,13 +272,11 @@ class TrackerUI:
         # --- BANNIÈRE ---------------------------------------------------
         banner = QWidget()
         self._banner = banner
-        banner.setStyleSheet(f"QWidget{{background:{COLOR_BANNER_BG};}}")
         banner_lay = QVBoxLayout(banner)
         banner_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         self.banner_label = QLabel("")
         self.banner_label.setAlignment(Qt.AlignCenter)
         self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
-        self.banner_label.setStyleSheet(f"QLabel{{color:{COLOR_BANNER_TEXT};}}")
         banner_lay.addWidget(self.banner_label)
         root.addWidget(banner)
         
@@ -306,7 +312,9 @@ class TrackerUI:
         sc_lay.addWidget(self.session_time_label)
         sc_lay.addWidget(self.track_label)
         sc_lay.addWidget(self.car_label)
-        sc_lay.addWidget(_hsep(self.session_col))
+        s = _hsep(self.session_col); self._seps.append(s)
+        sc_lay.addWidget(s)
+
 
         abs_info = QLabel("Record absolu (détenu par ---) :")
         abs_info.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
@@ -315,7 +323,8 @@ class TrackerUI:
         self.absolute_record_value.setAlignment(Qt.AlignCenter)
         sc_lay.addWidget(abs_info)
         sc_lay.addWidget(self.absolute_record_value)
-        sc_lay.addWidget(_hsep(self.session_col))
+        s = _hsep(self.session_col); self._seps.append(s)
+        sc_lay.addWidget(s)
 
         tires_grid = QWidget()
         tg_lay = QGridLayout(tires_grid)
@@ -370,10 +379,6 @@ class TrackerUI:
         self.edit_players_btn = QPushButton("Éditer la liste")
         self.edit_players_btn.setCursor(Qt.PointingHandCursor)
         self.edit_players_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
-        self.edit_players_btn.setStyleSheet(
-            f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
-            f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
-        )
         self.edit_players_btn.setEnabled(False)  # même comportement que l'original (placeholder)
         hp_lay.addWidget(self.edit_players_btn)
         pc_lay.addWidget(header_player)
@@ -391,7 +396,9 @@ class TrackerUI:
         self.player_combo.currentTextChanged.connect(self._on_player_changed)
         pc_lay.addWidget(self.player_combo)
 
-        pc_lay.addWidget(_hsep(self.player_col))
+        s = _hsep(self.player_col); self._seps.append(s)
+        pc_lay.addWidget(s)
+
         lbl_personal = QLabel("Record personnel :")
         lbl_personal.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         pc_lay.addWidget(lbl_personal)
@@ -400,7 +407,9 @@ class TrackerUI:
         self.best_time_label.setAlignment(Qt.AlignCenter)
         pc_lay.addWidget(self.best_time_label)
 
-        pc_lay.addWidget(_hsep(self.player_col))
+        s = _hsep(self.player_col); self._seps.append(s)
+        pc_lay.addWidget(s)
+
         lbl_last = QLabel("Dernier tour :")
         lbl_last.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         pc_lay.addWidget(lbl_last)
@@ -424,7 +433,6 @@ class TrackerUI:
         self.laps_text.setReadOnly(True)
         self.laps_text.setFrameShape(QFrame.NoFrame)
         self.laps_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES))
-        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_BG_MAIN};}}")
         self._populate_laps_placeholder()
         lc_lay.addWidget(self.laps_text, 1)
 
@@ -443,10 +451,6 @@ class TrackerUI:
         self.debug_toggle_btn = QPushButton("Masquer")
         self.debug_toggle_btn.setCursor(Qt.PointingHandCursor)
         self.debug_toggle_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
-        self.debug_toggle_btn.setStyleSheet(
-            f"QPushButton{{background:{COLOR_BG_MAIN}; border:none;}}"
-            f"QPushButton:hover{{background:{COLOR_BG_SECONDARY};}}"
-        )
         self.debug_toggle_btn.clicked.connect(lambda: self._set_debug_visible(False))
         hd_lay.addWidget(self.debug_toggle_btn)
         dc_lay.addWidget(header_dbg)
@@ -456,7 +460,6 @@ class TrackerUI:
         self.debug_text.setReadOnly(True)
         self.debug_text.setFrameShape(QFrame.NoFrame)
         self.debug_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_DEBUG))
-        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{COLOR_DEBUG_TEXT_BG};}}")
         self.debug_text.setWordWrapMode(QTextOption.NoWrap)
         dc_lay.addWidget(self.debug_text, 1)
 
@@ -497,7 +500,6 @@ class TrackerUI:
         self.log_text.setReadOnly(True)
         self.log_text.setFrameShape(QFrame.NoFrame)
         self.log_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_LOG))
-        self.log_text.setStyleSheet(f"QTextEdit{{background:{COLOR_LOG_TEXT_BG};}}")
         logs_lay.addWidget(self.log_text)
         root.addWidget(logs, 0)
 
@@ -583,7 +585,7 @@ class TrackerUI:
         en = bool(enabled)
         self.player_combo.setEnabled(en)
         # nuance visuelle simple
-        fg = (self._colors["control_fg"] if getattr(self, "_colors", None) else COLOR_CONTROL_FG) if en else "#888888"
+        fg = (self._colors["control_fg"] if getattr(self, "_colors", None) else LIGHT_CONTROL_FG) if en else "#888888"
         self.player_combo.setStyleSheet(
             f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
         )
