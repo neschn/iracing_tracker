@@ -40,14 +40,14 @@ MIN_WIDTH = 1200
 MIN_HEIGHT = 800
 
 # --- Chrome fenêtre (bordure externe) ---
-WINDOW_BORDER_WIDTH   = 1      # épaisseur visuelle de la bordure
+WINDOW_BORDER_WIDTH   = 1    # épaisseur visuelle de la bordure
 WINDOW_BORDER_RADIUS  = 8      # rayon des coins (0 = coins droits)
 
 # --- Redimensionnement (zone d'accroche) ---
 RESIZE_BORDER_THICKNESS = 8    # épaisseur en px pour attraper les bords/cornes
 
 # --- Thème clair ---
-LIGHT_WINDOW_BORDER_COLOR = "#000000"
+LIGHT_WINDOW_BORDER_COLOR = "#646464"
 LIGHT_BG_MAIN         = "#f0f0f0"
 LIGHT_TEXT            = "#000000"
 LIGHT_BG_SECONDARY    = "#e5e5e5"
@@ -62,9 +62,9 @@ LIGHT_TIRE_BORDER     = "#bdbdbd"
 LIGHT_TIRE_TEXT       = "#000000"
 
 # --- Thème sombre ---
-DARK_WINDOW_BORDER_COLOR  = "#ffffff"
+DARK_WINDOW_BORDER_COLOR  = "#969696"
 DARK_BG_MAIN          = "#1f1f1f"
-DARK_TEXT             = "#e6e6e6"
+DARK_TEXT             = "#b9b9b9"
 DARK_BG_SECONDARY     = "#2a2a2a"
 DARK_BANNER_BG        = "#1f1f1f"
 DARK_BANNER_TEXT      = "#e6e6e6"
@@ -929,8 +929,9 @@ class TrackerUI:
             self._win.setAttribute(Qt.WA_TranslucentBackground, True)
 
         root = QVBoxLayout(central)
-        root.setContentsMargins(0, 0, 0, 0)
+        root.setContentsMargins(0, 0, 0, 0)  # marges ajustées dynamiquement par _apply_theme()
         root.setSpacing(0)
+        self._root_layout = root
 
         # --- BARRE DE TITRE PERSONNALIS�E --------------------------------
         self._title_bar = CustomTitleBar(self._win)
@@ -1362,6 +1363,13 @@ class TrackerUI:
             f"border-radius:{r}px;"
             "}"
         )
+
+        # Laisse apparaître la bordure tout autour: on décale le contenu d'une marge = largeur de bordure
+        try:
+            if hasattr(self, "_root_layout") and self._root_layout is not None:
+                self._root_layout.setContentsMargins(bw, bw, bw, bw)
+        except Exception:
+            pass
 
         # Bannière
         self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}")
