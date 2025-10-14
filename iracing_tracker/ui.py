@@ -39,7 +39,12 @@ WINDOW_GEOMETRY = (1600, 1000)
 MIN_WIDTH = 1200
 MIN_HEIGHT = 800
 
+# --- Chrome fenêtre (bordure externe) ---
+WINDOW_BORDER_WIDTH   = 1      # épaisseur visuelle de la bordure
+WINDOW_BORDER_RADIUS  = 8      # rayon des coins (0 = coins droits)
+
 # --- Thème clair ---
+LIGHT_WINDOW_BORDER_COLOR = "#000000"
 LIGHT_BG_MAIN         = "#f0f0f0"
 LIGHT_TEXT            = "#000000"
 LIGHT_BG_SECONDARY    = "#e5e5e5"
@@ -54,6 +59,7 @@ LIGHT_TIRE_BORDER     = "#bdbdbd"
 LIGHT_TIRE_TEXT       = "#000000"
 
 # --- Thème sombre ---
+DARK_WINDOW_BORDER_COLOR  = "#ffffff"
 DARK_BG_MAIN          = "#1f1f1f"
 DARK_TEXT             = "#e6e6e6"
 DARK_BG_SECONDARY     = "#2a2a2a"
@@ -163,7 +169,12 @@ if IS_WINDOWS:
 
     WM_NCHITTEST = 0x0084
     WM_GETMINMAXINFO = 0x0024
-
+    WM_NCLBUTTONDOWN  = 0x00A1
+    WM_NCLBUTTONDBLCLK = 0x00A3
+    WM_MOUSEMOVE       = 0x0200
+    WM_LBUTTONUP       = 0x0202
+    MK_LBUTTON         = 0x0001
+    WM_NCMOUSEMOVE = 0x00A0
     HTCLIENT = 1
     HTCAPTION = 2
     HTLEFT = 10
@@ -174,6 +185,8 @@ if IS_WINDOWS:
     HTBOTTOM = 15
     HTBOTTOMLEFT = 16
     HTBOTTOMRIGHT = 17
+    SM_CXDRAG = 68
+    SM_CYDRAG = 69
 
     MONITOR_DEFAULTTONEAREST = 0x00000002
 
@@ -204,15 +217,99 @@ class TrackerMainWindow(QMainWindow):
         super().__init__()
         self._border_width = 8
         self._title_bar_widget = None
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+
+        # Flags pour un bon comportement taskbar (minimize/maximize toggle)
+        self.setWindowFlags(
+            Qt.FramelessWindowHint
+            | Qt.Window
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
+        )
+
+        # État pour le drag depuis maximisé
+        self._drag_from_max = False
+        self._drag_start_global = QPoint()
+        self._drag_anchor_ratio = 0.5
+        if IS_WINDOWS:
+            self._drag_threshold_x = max(1, ctypes.windll.user32.GetSystemMetrics(SM_CXDRAG))
+            self._drag_threshold_y = max(1, ctypes.windll.user32.GetSystemMetrics(SM_CYDRAG))
+
+        # Suivi d’état (pas d’appel à windowState() ici)
+        self._last_window_state = Qt.WindowNoState
+        self._was_maximized_before_minimize = False
+        self._saved_normal_geom = None
+
 
     def set_title_bar_widget(self, widget: QWidget):
         self._title_bar_widget = widget
 
+    def resizeEvent(self, event):
+        try:
+            self._update_corner_region()
+        except Exception:
+            pass
+        super().resizeEvent(event)
+
     def changeEvent(self, event):
         if event.type() == QEvent.WindowStateChange:
-            self.window_state_changed.emit(self.windowState())
+            prev = getattr(self, "_last_window_state", Qt.WindowNoState)
+            new_state = self.windowState()
+
+            # On entre en maximisé -> mémoriser la géométrie "normale" pour un vrai restore
+            if (new_state & Qt.WindowMaximized) and not (prev & Qt.WindowMaximized):
+                try:
+                    self._saved_normal_geom = self.normalGeometry()
+                except Exception:
+                    self._saved_normal_geom = self.geometry()
+                    
+            # Si on entre en minimisé, mémoriser si on était maximisé avant
+            if new_state & Qt.WindowMinimized:
+                self._was_maximized_before_minimize = bool(prev & Qt.WindowMaximized)
+
+            # Si on sort du minimisé : si on était maximisé avant, re-maximiser proprement
+            if (prev & Qt.WindowMinimized) and not (new_state & Qt.WindowMinimized):
+                if self._was_maximized_before_minimize and not (new_state & Qt.WindowMaximized):
+                    QTimer.singleShot(0, self.showMaximized)
+                self._was_maximized_before_minimize = False
+
+            self.window_state_changed.emit(new_state)
+            try:
+                self._update_corner_region()
+            except Exception:
+                pass
+
+            self._last_window_state = new_state
+
         super().changeEvent(event)
+
+    def restore_normal_geometry(self):
+        self.showNormal()
+        try:
+            if self._saved_normal_geom and self._saved_normal_geom.isValid():
+                self.setGeometry(self._saved_normal_geom)
+        except Exception:
+            pass
+
+    def _update_corner_region(self):
+        # Découpe la forme de la fenêtre en arrondi (ou remet à 0 en maximisé)
+        if not IS_WINDOWS:
+            return
+        r = 0 if self.isMaximized() else max(0, int(WINDOW_BORDER_RADIUS))
+        hwnd = int(self.winId())
+        if r == 0:
+            ctypes.windll.user32.SetWindowRgn(hwnd, 0, True)
+            return
+        w, h = self.width(), self.height()
+        rgn = ctypes.windll.gdi32.CreateRoundRectRgn(0, 0, w + 1, h + 1, 2 * r, 2 * r)
+        ctypes.windll.user32.SetWindowRgn(hwnd, rgn, True)
+        ctypes.windll.gdi32.DeleteObject(rgn)
+
+    @staticmethod
+    def _make_lparam_from_point(pt: QPoint) -> int:
+        # fabrique un LPARAM (x,y) pour SendMessage
+        return ctypes.c_uint32(((pt.y() & 0xFFFF) << 16) | (pt.x() & 0xFFFF)).value
+
 
     def nativeEvent(self, eventType, message):
         if not IS_WINDOWS:
@@ -231,6 +328,61 @@ class TrackerMainWindow(QMainWindow):
         if msg.message == WM_GETMINMAXINFO:
             self._handle_get_min_max_info(msg.lParam)
             return True, 0
+        
+
+        # Double-clic dans la zone titre -> Max/Restore (comportement standard)
+        if msg.message == WM_NCLBUTTONDBLCLK and msg.wParam == HTCAPTION:
+            if self.isMaximized():
+                self.showNormal()
+            else:
+                self.showMaximized()
+            return True, 0
+
+        # Prépare un drag depuis l'état maximisé (NE RESTAURE PAS ENCORE)
+        if msg.message == WM_NCLBUTTONDOWN and msg.wParam == HTCAPTION and self.isMaximized():
+            self._drag_from_max = True
+            self._drag_start_global = self._unpack_lparam(msg.lParam)
+            # mémorise l'ancrage horizontal sous la souris
+            try:
+                if self._title_bar_widget:
+                    local = self._title_bar_widget.mapFromGlobal(self._drag_start_global)
+                    bar_w = max(1, self._title_bar_widget.width())
+                    self._drag_anchor_ratio = max(0.0, min(1.0, local.x() / bar_w))
+                else:
+                    self._drag_anchor_ratio = 0.5
+            except Exception:
+                self._drag_anchor_ratio = 0.5
+            return False, 0  # on laisse Windows gérer le clic (rien à déplacer en max)
+
+        # Si on bouge vraiment -> restaurer et relayer le drag natif
+        if self._drag_from_max and self.isMaximized() and (
+            msg.message == WM_MOUSEMOVE or msg.message == WM_NCMOUSEMOVE
+        ):
+            if msg.message == WM_MOUSEMOVE:
+                client_pos = self._unpack_lparam(msg.lParam)     # coords client
+                global_pos = self.mapToGlobal(client_pos)
+            else:  # WM_NCMOUSEMOVE -> coords écran directement
+                global_pos = self._unpack_lparam(msg.lParam)
+
+            dx = abs(global_pos.x() - self._drag_start_global.x())
+            dy = abs(global_pos.y() - self._drag_start_global.y())
+            if dx >= self._drag_threshold_x or dy >= self._drag_threshold_y:
+                self.showNormal()
+                new_x = int(global_pos.x() - self.width() * self._drag_anchor_ratio)
+                new_y = max(0, global_pos.y() - (self._title_bar_widget.HEIGHT // 2 if self._title_bar_widget else 10))
+                self.move(new_x, new_y)
+
+                ctypes.windll.user32.ReleaseCapture()
+                ctypes.windll.user32.SendMessageW(
+                    int(self.winId()), WM_NCLBUTTONDOWN, HTCAPTION, self._make_lparam_from_point(global_pos)
+                )
+                self._drag_from_max = False
+                return True, 0
+
+                # Bouton relâché -> on sort du mode "peut-être drag"
+        if msg.message == WM_LBUTTONUP and self._drag_from_max:
+            self._drag_from_max = False
+            return False, 0
 
         return super().nativeEvent(eventType, message)
 
@@ -428,10 +580,11 @@ class CustomTitleBar(QWidget):
 
     def _toggle_max_restore(self):
         if self._win.isMaximized():
-            self._win.showNormal()
+            self._win.restore_normal_geometry()  # <- appeler la méthode du QMainWindow
         else:
             self._win.showMaximized()
-        self._update_max_button_icon()
+        # (facultatif) pas besoin d'appeler _update_max_button_icon ici
+
 
     def _update_max_button_icon(self):
         icon_role = QStyle.SP_TitleBarNormalButton if self._win.isMaximized() else QStyle.SP_TitleBarMaxButton
@@ -481,6 +634,7 @@ class ThemeManager:
         scheme = self.effective_scheme()
         if scheme == "dark":
             return dict(
+                window_border=DARK_WINDOW_BORDER_COLOR,
                 bg_main=DARK_BG_MAIN,
                 text=DARK_TEXT,
                 bg_secondary=DARK_BG_SECONDARY,
@@ -502,6 +656,7 @@ class ThemeManager:
             )
         else:
             return dict(
+                window_border=LIGHT_WINDOW_BORDER_COLOR,
                 bg_main=LIGHT_BG_MAIN,
                 text=LIGHT_TEXT,
                 bg_secondary=LIGHT_BG_SECONDARY,
@@ -571,6 +726,10 @@ class TrackerUI:
         self._central = central
         self._win.setCentralWidget(central)
 
+        central.setObjectName("Root")
+        if WINDOW_BORDER_RADIUS > 0:
+            # Rend les coins visuellement arrondis si tu mets un rayon > 0
+            self._win.setAttribute(Qt.WA_TranslucentBackground, True)
 
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
@@ -580,6 +739,7 @@ class TrackerUI:
         self._title_bar = CustomTitleBar(self._win)
         self._win.set_title_bar_widget(self._title_bar)
         self._win.window_state_changed.connect(self._title_bar.on_window_state_changed)
+        self._win.window_state_changed.connect(self._on_window_state_for_chrome)
         root.addWidget(self._title_bar)
         self._title_bar.on_window_state_changed(self._win.windowState())
 
@@ -992,8 +1152,19 @@ class TrackerUI:
         self._colors = c
         self._title_bar.apply_colors(c)
 
-        # Fond et texte généraux (container central)
-        self._central.setStyleSheet(f"QWidget{{background:{c['bg_main']}; color:{c['text']};}}")
+        r  = 0 if self._win.isMaximized() else WINDOW_BORDER_RADIUS
+        bw = WINDOW_BORDER_WIDTH if r > 0 else 0
+
+        self._central.setStyleSheet(
+            "QWidget{"
+            f"background:{c['bg_main']};"
+            f"color:{c['text']};"
+            "}"
+            "QWidget#Root{"
+            f"border:{bw}px solid {c['window_border']};"
+            f"border-radius:{r}px;"
+            "}"
+        )
 
         # Bannière
         self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}")
@@ -1037,6 +1208,9 @@ class TrackerUI:
             lab = sq.findChild(QLabel)
             if lab:
                 lab.setStyleSheet(f"QLabel{{background:transparent; color:{c['tire_text']};}}")
+
+    def _on_window_state_for_chrome(self, *args):
+        self._apply_theme(self._colors or self._theme.colors())
 
     def _on_system_color_scheme_changed(self):
         """Appelé si Windows bascule clair/sombre et que le mode est 'Système'."""
