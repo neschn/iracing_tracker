@@ -235,10 +235,12 @@ class TrackerMainWindow(QMainWindow):
             self._drag_threshold_x = max(1, ctypes.windll.user32.GetSystemMetrics(SM_CXDRAG))
             self._drag_threshold_y = max(1, ctypes.windll.user32.GetSystemMetrics(SM_CYDRAG))
 
-        # Suivi d’état (pas d’appel à windowState() ici)
+        # Suivi d'état (pas d'appel à windowState() ici)
         self._last_window_state = Qt.WindowNoState
         self._was_maximized_before_minimize = False
         self._saved_normal_geom = None
+        # Évite d'écraser la géométrie "normale" juste après un restore depuis minimisé
+        self._suppress_next_save_normal = False
 
 
     def set_title_bar_widget(self, widget: QWidget):
@@ -257,11 +259,24 @@ class TrackerMainWindow(QMainWindow):
             new_state = self.windowState()
 
             # On entre en maximisé -> mémoriser la géométrie "normale" pour un vrai restore
+            # Attention aux transitions Minimized -> (Normal) -> Maximized lors d'un restore depuis la taskbar :
+            # on marque alors la prochaine entrée en maximisé pour NE PAS sauvegarder.
             if (new_state & Qt.WindowMaximized) and not (prev & Qt.WindowMaximized):
-                try:
-                    self._saved_normal_geom = self.normalGeometry()
-                except Exception:
-                    self._saved_normal_geom = self.geometry()
+                if self._suppress_next_save_normal:
+                    # Consomme le drapeau et n'écrase pas la géométrie sauvegardée
+                    self._suppress_next_save_normal = False
+                elif not (prev & Qt.WindowMinimized):
+                    try:
+                        candidate = self.normalGeometry()
+                    except Exception:
+                        candidate = self.geometry()
+                    # Ne mets à jour que si le candidat n'a pas la taille d'un maximisé (workarea)
+                    try:
+                        if candidate and candidate.isValid() and not self._is_geometry_maximized_like(candidate):
+                            self._saved_normal_geom = candidate
+                    except Exception:
+                        # En cas d'incertitude, mieux vaut ne pas écraser
+                        pass
                     
             # Si on entre en minimisé, mémoriser si on était maximisé avant
             if new_state & Qt.WindowMinimized:
@@ -270,6 +285,9 @@ class TrackerMainWindow(QMainWindow):
             # Si on sort du minimisé : si on était maximisé avant, re-maximiser proprement
             if (prev & Qt.WindowMinimized) and not (new_state & Qt.WindowMinimized):
                 if self._was_maximized_before_minimize and not (new_state & Qt.WindowMaximized):
+                    # On va re-maximiser immédiatement après restauration depuis la taskbar :
+                    # ne pas sauvegarder la géométrie normale à cette prochaine entrée en maximisé.
+                    self._suppress_next_save_normal = True
                     QTimer.singleShot(0, self.showMaximized)
                 self._was_maximized_before_minimize = False
 
@@ -290,6 +308,30 @@ class TrackerMainWindow(QMainWindow):
                 self.setGeometry(self._saved_normal_geom)
         except Exception:
             pass
+
+    def _is_geometry_maximized_like(self, g) -> bool:
+        try:
+            handle = self.windowHandle()
+        except Exception:
+            handle = None
+        screen = None
+        if handle:
+            try:
+                screen = handle.screen()
+            except Exception:
+                screen = None
+        if not screen:
+            try:
+                screen = QGuiApplication.primaryScreen()
+            except Exception:
+                screen = None
+        if not screen:
+            return False
+        try:
+            ag = screen.availableGeometry()
+            return (abs(g.width() - ag.width()) <= 2 and abs(g.height() - ag.height()) <= 2)
+        except Exception:
+            return False
 
     def _update_corner_region(self):
         # Découpe la forme de la fenêtre en arrondi (ou remet à 0 en maximisé)
