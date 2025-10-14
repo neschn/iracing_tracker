@@ -41,7 +41,7 @@ MIN_HEIGHT = 800
 
 # --- Chrome fenêtre (bordure externe) ---
 WINDOW_BORDER_WIDTH   = 1    # épaisseur visuelle de la bordure
-WINDOW_BORDER_RADIUS  = 8      # rayon des coins (0 = coins droits)
+WINDOW_BORDER_RADIUS  = 12     # rayon des coins (0 = coins droits)
 
 # --- Redimensionnement (zone d'accroche) ---
 RESIZE_BORDER_THICKNESS = 8    # épaisseur en px pour attraper les bords/cornes
@@ -62,7 +62,7 @@ LIGHT_TIRE_BORDER     = "#bdbdbd"
 LIGHT_TIRE_TEXT       = "#000000"
 
 # --- Thème sombre ---
-DARK_WINDOW_BORDER_COLOR  = "#969696"
+DARK_WINDOW_BORDER_COLOR  = "#383838"
 DARK_BG_MAIN          = "#1f1f1f"
 DARK_TEXT             = "#b9b9b9"
 DARK_BG_SECONDARY     = "#2a2a2a"
