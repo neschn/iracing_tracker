@@ -15,15 +15,16 @@
 
 import os
 import sys
+import ctypes
 import queue as _q
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QTimer, QSize, QSettings
+from PySide6.QtCore import Qt, QTimer, QSize, QSettings, Signal, QPoint, QEvent
 from PySide6.QtGui import QIcon, QFont, QAction, QTextOption, QActionGroup, QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QMenuBar, QMenu, QComboBox,
-    QSizePolicy, QSpacerItem
+    QSizePolicy, QSpacerItem, QToolButton, QStyle
 )
 
 # --------------------------------------------------------------------
@@ -65,6 +66,20 @@ DARK_CONTROL_FG       = "#e6e6e6"
 DARK_TIRE_BG          = "#2b2b2b"
 DARK_TIRE_BORDER      = "#4b4b4b"
 DARK_TIRE_TEXT        = "#e6e6e6"
+
+LIGHT_TITLE_BG                = "#e7e7e7"
+LIGHT_TITLE_FG                = "#111111"
+LIGHT_TITLE_BTN_HOVER         = "#d9d9d9"
+LIGHT_TITLE_BTN_PRESSED       = "#c4c4c4"
+LIGHT_TITLE_BTN_CLOSE_HOVER   = "#e81123"
+LIGHT_TITLE_BTN_CLOSE_PRESSED = "#b50d1c"
+
+DARK_TITLE_BG                 = "#2a2a2a"
+DARK_TITLE_FG                 = "#f1f1f1"
+DARK_TITLE_BTN_HOVER          = "#3a3a3a"
+DARK_TITLE_BTN_PRESSED        = "#4b4b4b"
+DARK_TITLE_BTN_CLOSE_HOVER    = "#c42b1c"
+DARK_TITLE_BTN_CLOSE_PRESSED  = "#9a1d13"
 
 FONT_FAMILY = "Arial"
 FONT_SIZE_LABELS = 12
@@ -141,6 +156,286 @@ def _make_tire_square(text: str) -> QWidget:
     return w
 
 
+IS_WINDOWS = os.name == "nt"
+
+if IS_WINDOWS:
+    from ctypes import wintypes
+
+    WM_NCHITTEST = 0x0084
+    WM_GETMINMAXINFO = 0x0024
+
+    HTCLIENT = 1
+    HTCAPTION = 2
+    HTLEFT = 10
+    HTRIGHT = 11
+    HTTOP = 12
+    HTTOPLEFT = 13
+    HTTOPRIGHT = 14
+    HTBOTTOM = 15
+    HTBOTTOMLEFT = 16
+    HTBOTTOMRIGHT = 17
+
+    MONITOR_DEFAULTTONEAREST = 0x00000002
+
+    class MINMAXINFO(ctypes.Structure):
+        _fields_ = [
+            ("ptReserved", wintypes.POINT),
+            ("ptMaxSize", wintypes.POINT),
+            ("ptMaxPosition", wintypes.POINT),
+            ("ptMinTrackSize", wintypes.POINT),
+            ("ptMaxTrackSize", wintypes.POINT),
+        ]
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("rcMonitor", wintypes.RECT),
+            ("rcWork", wintypes.RECT),
+            ("dwFlags", wintypes.DWORD),
+        ]
+
+
+class TrackerMainWindow(QMainWindow):
+    """QMainWindow frameless avec gestion du redimensionnement/windows spécifique."""
+
+    window_state_changed = Signal(Qt.WindowStates)
+
+    def __init__(self):
+        super().__init__()
+        self._border_width = 8
+        self._title_bar_widget = None
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+
+    def set_title_bar_widget(self, widget: QWidget):
+        self._title_bar_widget = widget
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.WindowStateChange:
+            self.window_state_changed.emit(self.windowState())
+        super().changeEvent(event)
+
+    def nativeEvent(self, eventType, message):
+        if not IS_WINDOWS:
+            return super().nativeEvent(eventType, message)
+
+        if eventType not in ("windows_generic_MSG", b"windows_generic_MSG"):
+            return super().nativeEvent(eventType, message)
+
+        msg = ctypes.wintypes.MSG.from_address(int(message))
+
+        if msg.message == WM_NCHITTEST:
+            result = self._handle_nc_hit_test(msg.lParam)
+            if result is not None:
+                return True, result
+
+        if msg.message == WM_GETMINMAXINFO:
+            self._handle_get_min_max_info(msg.lParam)
+            return True, 0
+
+        return super().nativeEvent(eventType, message)
+
+    def _handle_nc_hit_test(self, lparam):
+        if self.isMaximized():
+            if self._title_bar_widget:
+                global_pos = self._unpack_lparam(lparam)
+                local = self._title_bar_widget.mapFromGlobal(global_pos)
+                hit = self._title_bar_widget.hit_test(local)
+                if hit is not None:
+                    return hit
+            return None
+
+        global_pos = self._unpack_lparam(lparam)
+        local = self.mapFromGlobal(global_pos)
+
+        # Bords pour le redimensionnement
+        bw = self._border_width
+        w = self.width()
+        h = self.height()
+        x = local.x()
+        y = local.y()
+
+        if x < 0 or y < 0 or x > w or y > h:
+            return None
+
+        on_left = x <= bw
+        on_right = x >= w - bw
+        on_top = y <= bw
+        on_bottom = y >= h - bw
+
+        if on_top and on_left:
+            return HTTOPLEFT
+        if on_top and on_right:
+            return HTTOPRIGHT
+        if on_bottom and on_left:
+            return HTBOTTOMLEFT
+        if on_bottom and on_right:
+            return HTBOTTOMRIGHT
+        if on_top:
+            return HTTOP
+        if on_bottom:
+            return HTBOTTOM
+        if on_left:
+            return HTLEFT
+        if on_right:
+            return HTRIGHT
+
+        if self._title_bar_widget:
+            local_title = self._title_bar_widget.mapFromGlobal(global_pos)
+            hit = self._title_bar_widget.hit_test(local_title)
+            if hit is not None:
+                return hit
+
+        return None
+
+    def _handle_get_min_max_info(self, lparam):
+        if not IS_WINDOWS:
+            return
+
+        info = ctypes.cast(lparam, ctypes.POINTER(MINMAXINFO)).contents
+        info.ptMinTrackSize.x = self.minimumWidth()
+        info.ptMinTrackSize.y = self.minimumHeight()
+
+        monitor = ctypes.windll.user32.MonitorFromWindow(int(self.winId()), MONITOR_DEFAULTTONEAREST)
+        if monitor:
+            monitor_info = MONITORINFO()
+            monitor_info.cbSize = ctypes.sizeof(MONITORINFO)
+            if ctypes.windll.user32.GetMonitorInfoW(monitor, ctypes.byref(monitor_info)):
+                work = monitor_info.rcWork
+                info.ptMaxPosition.x = work.left
+                info.ptMaxPosition.y = work.top
+                info.ptMaxSize.x = work.right - work.left
+                info.ptMaxSize.y = work.bottom - work.top
+                info.ptMaxTrackSize.x = info.ptMaxSize.x
+                info.ptMaxTrackSize.y = info.ptMaxSize.y
+
+    @staticmethod
+    def _unpack_lparam(lparam) -> QPoint:
+        value = int(lparam) & 0xFFFFFFFF
+        x = ctypes.c_short(value & 0xFFFF).value
+        y = ctypes.c_short((value >> 16) & 0xFFFF).value
+        return QPoint(x, y)
+
+
+class CustomTitleBar(QWidget):
+    """Barre de titre personnalisée avec menu intégré (style VS Code)."""
+
+    HEIGHT = 36
+
+    def __init__(self, window: QMainWindow):
+        super().__init__(window)
+        self._win = window
+        self.setObjectName("CustomTitleBar")
+        self.setFixedHeight(self.HEIGHT)
+
+        self._menu_bar = QMenuBar(self)
+        self._menu_bar.setNativeMenuBar(False)
+        self._menu_bar.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self._icon_label = QLabel()
+        self._icon_label.setObjectName("TitleIcon")
+        self._icon_label.setFixedSize(18, 18)
+        self._icon_label.setScaledContents(True)
+        layout.addWidget(self._icon_label)
+        layout.addWidget(self._menu_bar)
+        layout.addStretch(1)
+
+        self._buttons_container = QWidget()
+        btn_layout = QHBoxLayout(self._buttons_container)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setSpacing(0)
+
+        self._btn_min = self._make_button(QStyle.SP_TitleBarMinButton, "Réduire")
+        self._btn_min.clicked.connect(self._win.showMinimized)
+
+        self._btn_max = self._make_button(QStyle.SP_TitleBarMaxButton, "Agrandir")
+        self._btn_max.clicked.connect(self._toggle_max_restore)
+
+        self._btn_close = self._make_button(QStyle.SP_TitleBarCloseButton, "Fermer")
+        self._btn_close.setObjectName("CloseButton")
+        self._btn_close.clicked.connect(self._win.close)
+
+        btn_layout.addWidget(self._btn_min)
+        btn_layout.addWidget(self._btn_max)
+        btn_layout.addWidget(self._btn_close)
+
+        layout.addWidget(self._buttons_container)
+
+    def menu_bar(self) -> QMenuBar:
+        return self._menu_bar
+
+    def set_icon(self, icon: QIcon):
+        if icon and not icon.isNull():
+            self._icon_label.setPixmap(icon.pixmap(18, 18))
+        else:
+            self._icon_label.clear()
+
+    def apply_colors(self, colors: dict):
+        bg = colors["title_bg"]
+        fg = colors["title_fg"]
+        hover = colors["title_btn_hover"]
+        pressed = colors["title_btn_pressed"]
+        close_hover = colors["title_btn_close_hover"]
+        close_pressed = colors["title_btn_close_pressed"]
+        menu_bg = colors["bg_secondary"]
+        separator = colors["separator"]
+
+        style = (
+            f"#CustomTitleBar{{background:{bg};}}"
+            f"#CustomTitleBar QLabel{{color:{fg};}}"
+            f"#CustomTitleBar QMenuBar{{background:{bg}; color:{fg}; border:0; padding:0;}}"
+            f"#CustomTitleBar QMenuBar::item{{background:transparent; color:{fg}; padding:3px 12px; margin:0 2px; border-radius:4px;}}"
+            f"#CustomTitleBar QMenuBar::item:selected{{background:{hover};}}"
+            f"#CustomTitleBar QMenu{{background:{menu_bg}; color:{fg}; border:1px solid {separator};}}"
+            f"#CustomTitleBar QMenu::item:selected{{background:{hover}; color:{fg};}}"
+            f"#CustomTitleBar QToolButton{{background:transparent; border:none; color:{fg};}}"
+            f"#CustomTitleBar QToolButton:hover{{background:{hover};}}"
+            f"#CustomTitleBar QToolButton:pressed{{background:{pressed};}}"
+            f"#CustomTitleBar QToolButton#CloseButton:hover{{background:{close_hover}; color:#ffffff;}}"
+            f"#CustomTitleBar QToolButton#CloseButton:pressed{{background:{close_pressed}; color:#ffffff;}}"
+        )
+        self.setStyleSheet(style)
+
+    def on_window_state_changed(self, state: Qt.WindowStates):
+        self._update_max_button_icon()
+        if state & Qt.WindowMaximized:
+            self._btn_max.setToolTip("Restaurer")
+        else:
+            self._btn_max.setToolTip("Agrandir")
+
+    def hit_test(self, pos: QPoint):
+        if not self.rect().contains(pos):
+            return None
+        if self._buttons_container.geometry().contains(pos):
+            return HTCLIENT if IS_WINDOWS else None
+        if self._menu_bar.geometry().contains(pos):
+            return HTCLIENT if IS_WINDOWS else None
+        return HTCAPTION if IS_WINDOWS else None
+
+    def _make_button(self, standard_icon, tooltip: str) -> QToolButton:
+        btn = QToolButton(self)
+        btn.setToolTip(tooltip)
+        btn.setCursor(Qt.ArrowCursor)
+        btn.setIcon(self.style().standardIcon(standard_icon))
+        btn.setIconSize(QSize(12, 12))
+        btn.setAutoRaise(False)
+        btn.setFocusPolicy(Qt.NoFocus)
+        btn.setFixedSize(46, self.HEIGHT)
+        return btn
+
+    def _toggle_max_restore(self):
+        if self._win.isMaximized():
+            self._win.showNormal()
+        else:
+            self._win.showMaximized()
+        self._update_max_button_icon()
+
+    def _update_max_button_icon(self):
+        icon_role = QStyle.SP_TitleBarNormalButton if self._win.isMaximized() else QStyle.SP_TitleBarMaxButton
+        self._btn_max.setIcon(self.style().standardIcon(icon_role))
 
 # --------------------------------------------------------------------
 # Gestion de thème (Clair / Sombre / Système)
@@ -198,6 +493,12 @@ class ThemeManager:
                 tire_bg=DARK_TIRE_BG,
                 tire_border=DARK_TIRE_BORDER,
                 tire_text=DARK_TIRE_TEXT,
+                title_bg=DARK_TITLE_BG,
+                title_fg=DARK_TITLE_FG,
+                title_btn_hover=DARK_TITLE_BTN_HOVER,
+                title_btn_pressed=DARK_TITLE_BTN_PRESSED,
+                title_btn_close_hover=DARK_TITLE_BTN_CLOSE_HOVER,
+                title_btn_close_pressed=DARK_TITLE_BTN_CLOSE_PRESSED,
             )
         else:
             return dict(
@@ -213,6 +514,12 @@ class ThemeManager:
                 tire_bg=LIGHT_TIRE_BG,
                 tire_border=LIGHT_TIRE_BORDER,
                 tire_text=LIGHT_TIRE_TEXT,
+                title_bg=LIGHT_TITLE_BG,
+                title_fg=LIGHT_TITLE_FG,
+                title_btn_hover=LIGHT_TITLE_BTN_HOVER,
+                title_btn_pressed=LIGHT_TITLE_BTN_PRESSED,
+                title_btn_close_hover=LIGHT_TITLE_BTN_CLOSE_HOVER,
+                title_btn_close_pressed=LIGHT_TITLE_BTN_CLOSE_PRESSED,
             )
 
 
@@ -242,7 +549,7 @@ class TrackerUI:
         self._app = QApplication.instance() or QApplication(sys.argv)
 
         # Fenêtre principale
-        self._win = QMainWindow()
+        self._win = TrackerMainWindow()
 
         self._theme = ThemeManager(self._app)  # gestionnaire de thèmes
         self._colors = None                    # couleurs effective du thème courant
@@ -251,7 +558,6 @@ class TrackerUI:
         self._win.setWindowTitle(WINDOW_TITLE)
         self._win.resize(*WINDOW_GEOMETRY)
         self._win.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
-        self._apply_window_icon()
 
         # Compat .debug_visible.get()
         self.debug_visible = _BoolVarCompat(DEBUG_INITIAL_VISIBLE)
@@ -269,6 +575,19 @@ class TrackerUI:
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+
+        # --- BARRE DE TITRE PERSONNALIS�E --------------------------------
+        self._title_bar = CustomTitleBar(self._win)
+        self._win.set_title_bar_widget(self._title_bar)
+        self._win.window_state_changed.connect(self._title_bar.on_window_state_changed)
+        root.addWidget(self._title_bar)
+        self._title_bar.on_window_state_changed(self._win.windowState())
+
+        self._sep_title = _hsep(central)
+        self._seps.append(self._sep_title)
+        root.addWidget(self._sep_title)
+
+        self._apply_window_icon()
 
         # --- BANNIÈRE ---------------------------------------------------
         banner = QWidget()
@@ -620,8 +939,8 @@ class TrackerUI:
                 pass
 
     def _build_menubar(self):
-        menubar = QMenuBar(self._win)
-        self._win.setMenuBar(menubar)
+        menubar = self._title_bar.menu_bar()
+        menubar.clear()
 
         file_menu = QMenu("Fichier", menubar)
         file_menu.addAction(QAction("(à venir)", file_menu, enabled=False))
@@ -671,6 +990,7 @@ class TrackerUI:
     def _apply_theme(self, c: dict):
         """Applique les couleurs du thème à tous les widgets concernés."""
         self._colors = c
+        self._title_bar.apply_colors(c)
 
         # Fond et texte généraux (container central)
         self._central.setStyleSheet(f"QWidget{{background:{c['bg_main']}; color:{c['text']};}}")
@@ -810,9 +1130,15 @@ class TrackerUI:
 
     def _apply_window_icon(self):
         try:
+            icon = None
             if os.path.isfile(ICON_PATH):
-                self._win.setWindowIcon(QIcon(ICON_PATH))
+                icon = QIcon(ICON_PATH)
             elif os.name == "nt" and os.path.isfile(WINDOWS_ICON_PATH):
-                self._win.setWindowIcon(QIcon(WINDOWS_ICON_PATH))
+                icon = QIcon(WINDOWS_ICON_PATH)
+
+            if icon is not None and not icon.isNull():
+                self._win.setWindowIcon(icon)
+                if hasattr(self, "_title_bar"):
+                    self._title_bar.set_icon(icon)
         except Exception:
             pass
