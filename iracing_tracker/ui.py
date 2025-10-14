@@ -20,7 +20,7 @@ import queue as _q
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer, QSize, QSettings, Signal, QPoint, QEvent
-from PySide6.QtGui import QIcon, QFont, QAction, QTextOption, QActionGroup, QGuiApplication
+from PySide6.QtGui import QIcon, QFont, QAction, QTextOption, QActionGroup, QGuiApplication, QCursor
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QMenuBar, QMenu, QComboBox,
@@ -42,6 +42,9 @@ MIN_HEIGHT = 800
 # --- Chrome fenêtre (bordure externe) ---
 WINDOW_BORDER_WIDTH   = 1      # épaisseur visuelle de la bordure
 WINDOW_BORDER_RADIUS  = 8      # rayon des coins (0 = coins droits)
+
+# --- Redimensionnement (zone d'accroche) ---
+RESIZE_BORDER_THICKNESS = 8    # épaisseur en px pour attraper les bords/cornes
 
 # --- Thème clair ---
 LIGHT_WINDOW_BORDER_COLOR = "#000000"
@@ -173,8 +176,12 @@ if IS_WINDOWS:
     WM_NCLBUTTONDBLCLK = 0x00A3
     WM_MOUSEMOVE       = 0x0200
     WM_LBUTTONUP       = 0x0202
+    WM_LBUTTONDOWN     = 0x0201
     MK_LBUTTON         = 0x0001
     WM_NCMOUSEMOVE = 0x00A0
+    WM_SYSCOMMAND = 0x0112
+    SC_SIZE = 0xF000
+    WM_SETCURSOR = 0x0020
     HTCLIENT = 1
     HTCAPTION = 2
     HTLEFT = 10
@@ -189,6 +196,23 @@ if IS_WINDOWS:
     SM_CYDRAG = 69
 
     MONITOR_DEFAULTTONEAREST = 0x00000002
+
+    # WMSZ_* constants for sizing directions (used with WM_SYSCOMMAND/SC_SIZE)
+    WMSZ_LEFT        = 1
+    WMSZ_RIGHT       = 2
+    WMSZ_TOP         = 3
+    WMSZ_TOPLEFT     = 4
+    WMSZ_TOPRIGHT    = 5
+    WMSZ_BOTTOM      = 6
+    WMSZ_BOTTOMLEFT  = 7
+    WMSZ_BOTTOMRIGHT = 8
+
+    # Standard cursor IDs
+    IDC_ARROW    = 32512
+    IDC_SIZENWSE = 32642
+    IDC_SIZENESW = 32643
+    IDC_SIZEWE   = 32644
+    IDC_SIZENS   = 32645
 
     class MINMAXINFO(ctypes.Structure):
         _fields_ = [
@@ -215,7 +239,7 @@ class TrackerMainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self._border_width = 8
+        self._border_width = RESIZE_BORDER_THICKNESS
         self._title_bar_widget = None
 
         # Flags pour un bon comportement taskbar (minimize/maximize toggle)
@@ -241,6 +265,8 @@ class TrackerMainWindow(QMainWindow):
         self._saved_normal_geom = None
         # Évite d'écraser la géométrie "normale" juste après un restore depuis minimisé
         self._suppress_next_save_normal = False
+        # Dernier code de hit-test (HT*) détecté au survol/souris pour gérer le redimensionnement
+        self._last_hit_code = None
 
 
     def set_title_bar_widget(self, widget: QWidget):
@@ -365,12 +391,24 @@ class TrackerMainWindow(QMainWindow):
         if msg.message == WM_NCHITTEST:
             result = self._handle_nc_hit_test(msg.lParam)
             if result is not None:
+                # Mémorise la zone pour un éventuel démarrage de redimensionnement côté client
+                self._last_hit_code = int(result)
                 return True, result
+            else:
+                self._last_hit_code = None
 
         if msg.message == WM_GETMINMAXINFO:
             self._handle_get_min_max_info(msg.lParam)
             return True, 0
         
+        # Gère l'affichage du curseur de redimensionnement aux bords/cornes
+        if msg.message == WM_SETCURSOR:
+            try:
+                self._handle_set_cursor()
+                return True, 1
+            except Exception:
+                pass
+
 
         # Double-clic dans la zone titre -> Max/Restore (comportement standard)
         if msg.message == WM_NCLBUTTONDBLCLK and msg.wParam == HTCAPTION:
@@ -395,6 +433,30 @@ class TrackerMainWindow(QMainWindow):
             except Exception:
                 self._drag_anchor_ratio = 0.5
             return False, 0  # on laisse Windows gérer le clic (rien à déplacer en max)
+
+        # Démarrage de redimensionnement (fallback) depuis la zone client
+        # Si la fenêtre est frameless, certains styles Windows n'activent pas le redimensionnement
+        # automatiquement. On le déclenche via WM_SYSCOMMAND/SC_SIZE quand clic-gauche près d'un bord.
+        if msg.message == WM_LBUTTONDOWN and not self.isMaximized():
+            # Recalcule un hit-test local pour robustesse, sans dépendre de _last_hit_code
+            try:
+                gp = QCursor.pos()
+            except Exception:
+                gp = None
+            if gp is not None:
+                hit = self._hit_from_global_point(gp)
+            else:
+                hit = self._last_hit_code or 0
+
+            wmsz = self._wmsz_from_hit(hit) if hit else 0
+
+            if wmsz != 0:
+                try:
+                    ctypes.windll.user32.ReleaseCapture()
+                    ctypes.windll.user32.SendMessageW(int(self.winId()), WM_SYSCOMMAND, SC_SIZE + wmsz, 0)
+                    return True, 0
+                except Exception:
+                    pass
 
         # Si on bouge vraiment -> restaurer et relayer le drag natif
         if self._drag_from_max and self.isMaximized() and (
@@ -425,6 +487,21 @@ class TrackerMainWindow(QMainWindow):
         if msg.message == WM_LBUTTONUP and self._drag_from_max:
             self._drag_from_max = False
             return False, 0
+
+        # Redimensionnement via non-client down (au cas où Windows ne l'initie pas tout seul sur frameless)
+        if msg.message == WM_NCLBUTTONDOWN and not self.isMaximized():
+            try:
+                hit = int(msg.wParam)
+            except Exception:
+                hit = 0
+            wmsz = self._wmsz_from_hit(hit) if hit else 0
+            if wmsz:
+                try:
+                    ctypes.windll.user32.ReleaseCapture()
+                    ctypes.windll.user32.SendMessageW(int(self.winId()), WM_SYSCOMMAND, SC_SIZE + wmsz, 0)
+                    return True, 0
+                except Exception:
+                    pass
 
         return super().nativeEvent(eventType, message)
 
@@ -508,6 +585,84 @@ class TrackerMainWindow(QMainWindow):
         x = ctypes.c_short(value & 0xFFFF).value
         y = ctypes.c_short((value >> 16) & 0xFFFF).value
         return QPoint(x, y)
+
+    def _wmsz_from_hit(self, hit: int) -> int:
+        if not IS_WINDOWS:
+            return 0
+        mapping = {
+            HTLEFT: 1, HTRIGHT: 2, HTTOP: 3, HTTOPLEFT: 4,
+            HTTOPRIGHT: 5, HTBOTTOM: 6, HTBOTTOMLEFT: 7, HTBOTTOMRIGHT: 8,
+        }
+        return mapping.get(hit, 0)
+
+    def _hit_from_global_point(self, gp: QPoint) -> int:
+        """Calcule un code HT* depuis une position globale sans dépendre du dernier NCHITTEST."""
+        if self.isMaximized():
+            return HTCLIENT
+        local = self.mapFromGlobal(gp)
+        x, y = local.x(), local.y()
+        w, h = self.width(), self.height()
+        if x < 0 or y < 0 or x > w or y > h:
+            return HTCLIENT
+        bw = self._border_width
+        on_left = x <= bw
+        on_right = x >= w - bw
+        on_top = y <= bw
+        on_bottom = y >= h - bw
+        if on_top and on_left:
+            return HTTOPLEFT
+        if on_top and on_right:
+            return HTTOPRIGHT
+        if on_bottom and on_left:
+            return HTBOTTOMLEFT
+        if on_bottom and on_right:
+            return HTBOTTOMRIGHT
+        if on_top:
+            return HTTOP
+        if on_bottom:
+            return HTBOTTOM
+        if on_left:
+            return HTLEFT
+        if on_right:
+            return HTRIGHT
+        return HTCLIENT
+
+    def _handle_set_cursor(self):
+        if not IS_WINDOWS:
+            return
+        # Pas de redimensionnement en maximisé -> curseur flèche
+        if self.isMaximized():
+            ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(None, IDC_ARROW))
+            return
+        # Position globale actuelle du curseur
+        gp = QCursor.pos()
+        local = self.mapFromGlobal(gp)
+        x, y = local.x(), local.y()
+        w, h = self.width(), self.height()
+        if x < 0 or y < 0 or x > w or y > h:
+            ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(None, IDC_ARROW))
+            return
+        bw = self._border_width
+        on_left = x <= bw
+        on_right = x >= w - bw
+        on_top = y <= bw
+        on_bottom = y >= h - bw
+
+        cursor_id = IDC_ARROW
+        if on_top and on_left:
+            cursor_id = IDC_SIZENWSE
+        elif on_bottom and on_right:
+            cursor_id = IDC_SIZENWSE
+        elif on_top and on_right:
+            cursor_id = IDC_SIZENESW
+        elif on_bottom and on_left:
+            cursor_id = IDC_SIZENESW
+        elif on_left or on_right:
+            cursor_id = IDC_SIZEWE
+        elif on_top or on_bottom:
+            cursor_id = IDC_SIZENS
+
+        ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(None, cursor_id))
 
 
 class CustomTitleBar(QWidget):
