@@ -75,16 +75,17 @@ class CustomTitleBar(QWidget):
         pressed = colors["title_btn_pressed"]
         close_hover = colors["title_btn_close_hover"]
         close_pressed = colors["title_btn_close_pressed"]
-        menu_bg = colors["bg_secondary"]
+        menu_item_bg = colors["menu_item_bg"]
         separator = colors["separator"]
 
         style = (
             f"#CustomTitleBar{{background:{bg};}}"
             f"#CustomTitleBar QLabel{{color:{fg}; font-family:{FONT_FAMILY};}}"
-            f"#CustomTitleBar QMenuBar{{background:{bg}; color:{fg}; border:0; padding:0;}}"
-            f"#CustomTitleBar QMenuBar::item{{background:transparent; color:{fg}; padding:3px 12px; margin:0 2px; border-radius:4px;}}"
+            f"#CustomTitleBar QMenuBar{{background:{menu_item_bg}; color:{fg}; border:0; padding:0;}}"
+            f"#CustomTitleBar QMenuBar::item{{background:{menu_item_bg}; color:{fg}; padding:3px 12px; margin:0 2px; border-radius:4px;}}"
             f"#CustomTitleBar QMenuBar::item:selected{{background:{hover};}}"
-            f"#CustomTitleBar QMenu{{background:{menu_bg}; color:{fg}; border:1px solid {separator};}}"
+            f"#CustomTitleBar QMenu{{background:{menu_item_bg}; color:{fg}; border:1px solid {separator};}}"
+            f"#CustomTitleBar QMenu::item{{background:{menu_item_bg}; color:{fg}; padding:4px 16px;}}"
             f"#CustomTitleBar QMenu::item:selected{{background:{hover}; color:{fg};}}"
             f"#CustomTitleBar QToolButton{{background:transparent; border:none; color:{fg};}}"
             f"#CustomTitleBar QToolButton:hover{{background:{hover};}}"
