@@ -274,7 +274,7 @@ class TrackerUI:
         self.debug_text.setReadOnly(True)
         self.debug_text.setFrameShape(QFrame.NoFrame)
         self.debug_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_DEBUG))
-        self.debug_text.setWordWrapMode(QTextOption.NoWrap)
+        self.debug_text.setWordWrapMode(QTextOption.WrapAnywhere)
         dc_lay.addWidget(self.debug_text, 1)
 
         # Placement grid (session | sep | joueur | sep | tours | sep | debug)
@@ -387,6 +387,24 @@ class TrackerUI:
             self.player_combo.setCurrentText("---")
         self.player_combo.blockSignals(False)
 
+    @staticmethod
+    def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
+                       hover_start: str, hover_end: str) -> str:
+        return (
+            f"{selector} QScrollBar:vertical{{background:{track}; width:12px; margin:4px 2px; "
+            f"border:1px solid {border}; border-radius:6px;}}"
+            f"{selector} QScrollBar::groove:vertical{{border:none; margin:2px;}}"
+            f"{selector} QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+            f"stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {border}; "
+            f"border-radius:4px; min-height:18px; margin:1px;}}"
+            f"{selector} QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+            f"stop:0 {hover_start}, stop:1 {hover_end});}}"
+            f"{selector} QScrollBar::add-line:vertical,{selector} QScrollBar::sub-line:vertical"
+            f"{{height:0; width:0; background:none; border:none;}}"
+            f"{selector} QScrollBar::add-page:vertical,{selector} QScrollBar::sub-page:vertical"
+            f"{{background:transparent;}}"
+        )
+
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
         self.player_combo.setEnabled(en)
@@ -399,11 +417,21 @@ class TrackerUI:
             hover_bg = colors.get("interactive_hover", "#dcdcdc")
             menu_bg = colors.get("menu_item_bg", base_bg)
             list_text = colors.get("text", "#000000")
-            track_border = colors.get("separator", "#b0b0b0")
-            handle_start = colors.get("separator", "#b0b0b0")
-            handle_end = colors.get("text", "#555555")
-            handle_hover_start = colors.get("text", "#666666")
-            handle_hover_end = colors.get("text", "#222222")
+            track_border = colors.get("scrollbar_border", colors.get("separator", "#b0b0b0"))
+            track_bg = colors.get("scrollbar_track", menu_bg)
+            handle_start = colors.get("scrollbar_handle_start", colors.get("separator", "#b0b0b0"))
+            handle_end = colors.get("scrollbar_handle_end", colors.get("text", "#555555"))
+            handle_hover_start = colors.get("scrollbar_handle_hover_start", colors.get("text", "#666666"))
+            handle_hover_end = colors.get("scrollbar_handle_hover_end", colors.get("text", "#222222"))
+            scroll_css = self._scrollbar_css(
+                "QComboBox QAbstractItemView",
+                track_bg,
+                track_border,
+                handle_start,
+                handle_end,
+                handle_hover_start,
+                handle_hover_end,
+            )
             combo_ss = (
                 f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; "
                 f"color:{text_color}; background:{base_bg}; border:1px solid transparent; padding:2px 6px;}}"
@@ -415,32 +443,27 @@ class TrackerUI:
                 f"selection-background-color:{hover_bg}; selection-color:{list_text}; border:0; outline:0;}}"
                 f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
                 f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
-                f"QComboBox QAbstractItemView QScrollBar:vertical{{background:{menu_bg}; width:12px; margin:4px 2px; border:1px solid {track_border}; border-radius:6px;}}"
-                "QComboBox QAbstractItemView QScrollBar::groove:vertical{border:none; margin:2px;}"
-                f"QComboBox QAbstractItemView QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {track_border}; border-radius:4px; min-height:18px; margin:1px;}}"
-                f"QComboBox QAbstractItemView QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {handle_hover_start}, stop:1 {handle_hover_end});}}"
-                "QComboBox QAbstractItemView QScrollBar::add-line:vertical,"
-                "QComboBox QAbstractItemView QScrollBar::sub-line:vertical{height:0; width:0; background:none; border:none;}"
-                "QComboBox QAbstractItemView QScrollBar::add-page:vertical,"
-                "QComboBox QAbstractItemView QScrollBar::sub-page:vertical{background:transparent;}"
+                f"{scroll_css}"
             )
             self.player_combo.setStyleSheet(combo_ss)
         else:
             fg = "#000000" if en else "#888888"
+            scroll_css = self._scrollbar_css(
+                "QComboBox QAbstractItemView",
+                "#f5f5f5",
+                "#bcbcbc",
+                "#cfcfcf",
+                "#8f8f8f",
+                "#9f9f9f",
+                "#6f6f6f",
+            )
             self.player_combo.setStyleSheet(
                 f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg}; padding:2px 6px;}}"
                 f"QComboBox::drop-down{{border:0; width:16px;}}"
                 "QComboBox QAbstractItemView{border:0; outline:0;}"
                 "QComboBox QAbstractItemView::item:hover{border:none; outline:0;}"
                 "QComboBox QAbstractItemView::item:selected{border:none; outline:0;}"
-                "QComboBox QAbstractItemView QScrollBar:vertical{width:12px; margin:4px 2px; border:1px solid #bcbcbc; border-radius:6px;}"
-                "QComboBox QAbstractItemView QScrollBar::groove:vertical{border:none; margin:2px;}"
-                "QComboBox QAbstractItemView QScrollBar::handle:vertical{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #cfcfcf, stop:1 #8f8f8f); border:1px solid #bcbcbc; border-radius:4px; min-height:18px; margin:1px;}"
-                "QComboBox QAbstractItemView QScrollBar::handle:vertical:hover{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9f9f9f, stop:1 #6f6f6f);}"
-                "QComboBox QAbstractItemView QScrollBar::add-line:vertical,"
-                "QComboBox QAbstractItemView QScrollBar::sub-line:vertical{height:0; width:0; background:none; border:none;}"
-                "QComboBox QAbstractItemView QScrollBar::add-page:vertical,"
-                "QComboBox QAbstractItemView QScrollBar::sub-page:vertical{background:transparent;}"
+                f"{scroll_css}"
             )
 
     def get_selected_player(self) -> str:
@@ -555,9 +578,34 @@ class TrackerUI:
         self.edit_players_btn.setStyleSheet(btn_ss)
         self.debug_toggle_btn.setStyleSheet(btn_ss)
 
-        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{c['bg_main']}; color:{c['text']};}}")
-        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}")
-        self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}")
+        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
+        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
+        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
+        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
+        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
+        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
+        plain_scroll_css = self._scrollbar_css(
+            "QPlainTextEdit",
+            scroll_track,
+            scroll_border,
+            handle_start,
+            handle_end,
+            handle_hover_start,
+            handle_hover_end,
+        )
+        text_scroll_css = self._scrollbar_css(
+            "QTextEdit",
+            scroll_track,
+            scroll_border,
+            handle_start,
+            handle_end,
+            handle_hover_start,
+            handle_hover_end,
+        )
+
+        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{c['bg_main']}; color:{c['text']};}}{plain_scroll_css}")
+        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
+        self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
 
         for sep in self._seps:
             sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
