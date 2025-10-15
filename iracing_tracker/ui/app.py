@@ -399,6 +399,11 @@ class TrackerUI:
             hover_bg = colors.get("interactive_hover", "#dcdcdc")
             menu_bg = colors.get("menu_item_bg", base_bg)
             list_text = colors.get("text", "#000000")
+            track_border = colors.get("separator", "#b0b0b0")
+            handle_start = colors.get("separator", "#b0b0b0")
+            handle_end = colors.get("text", "#555555")
+            handle_hover_start = colors.get("text", "#666666")
+            handle_hover_end = colors.get("text", "#222222")
             combo_ss = (
                 f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; "
                 f"color:{text_color}; background:{base_bg}; border:1px solid transparent; padding:2px 6px;}}"
@@ -410,12 +415,32 @@ class TrackerUI:
                 f"selection-background-color:{hover_bg}; selection-color:{list_text}; border:0; outline:0;}}"
                 f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
                 f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
+                f"QComboBox QAbstractItemView QScrollBar:vertical{{background:{menu_bg}; width:12px; margin:4px 2px; border:1px solid {track_border}; border-radius:6px;}}"
+                "QComboBox QAbstractItemView QScrollBar::groove:vertical{border:none; margin:2px;}"
+                f"QComboBox QAbstractItemView QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {track_border}; border-radius:4px; min-height:18px; margin:1px;}}"
+                f"QComboBox QAbstractItemView QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {handle_hover_start}, stop:1 {handle_hover_end});}}"
+                "QComboBox QAbstractItemView QScrollBar::add-line:vertical,"
+                "QComboBox QAbstractItemView QScrollBar::sub-line:vertical{height:0; width:0; background:none; border:none;}"
+                "QComboBox QAbstractItemView QScrollBar::add-page:vertical,"
+                "QComboBox QAbstractItemView QScrollBar::sub-page:vertical{background:transparent;}"
             )
             self.player_combo.setStyleSheet(combo_ss)
         else:
             fg = "#000000" if en else "#888888"
             self.player_combo.setStyleSheet(
-                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
+                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg}; padding:2px 6px;}}"
+                f"QComboBox::drop-down{{border:0; width:16px;}}"
+                "QComboBox QAbstractItemView{border:0; outline:0;}"
+                "QComboBox QAbstractItemView::item:hover{border:none; outline:0;}"
+                "QComboBox QAbstractItemView::item:selected{border:none; outline:0;}"
+                "QComboBox QAbstractItemView QScrollBar:vertical{width:12px; margin:4px 2px; border:1px solid #bcbcbc; border-radius:6px;}"
+                "QComboBox QAbstractItemView QScrollBar::groove:vertical{border:none; margin:2px;}"
+                "QComboBox QAbstractItemView QScrollBar::handle:vertical{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #cfcfcf, stop:1 #8f8f8f); border:1px solid #bcbcbc; border-radius:4px; min-height:18px; margin:1px;}"
+                "QComboBox QAbstractItemView QScrollBar::handle:vertical:hover{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9f9f9f, stop:1 #6f6f6f);}"
+                "QComboBox QAbstractItemView QScrollBar::add-line:vertical,"
+                "QComboBox QAbstractItemView QScrollBar::sub-line:vertical{height:0; width:0; background:none; border:none;}"
+                "QComboBox QAbstractItemView QScrollBar::add-page:vertical,"
+                "QComboBox QAbstractItemView QScrollBar::sub-page:vertical{background:transparent;}"
             )
 
     def get_selected_player(self) -> str:
