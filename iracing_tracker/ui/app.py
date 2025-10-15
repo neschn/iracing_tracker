@@ -510,10 +510,11 @@ class TrackerUI:
 
         btn_ss = (
             "QPushButton{"
-            f"background:{c['bg_secondary']};"
-            f"color:{c['text']};"
-            "border:none;"
-            "padding:6px 12px;"
+            f"background:{c['button_bg']};"
+            f"color:{c['control_fg']};"
+            f"border:{c['button_border_width']}px solid {c['button_border_color']};"
+            f"border-radius:{c['button_border_radius']}px;"
+            f"padding:{c['button_padding']};"
             "}"
             "QPushButton:hover{"
             f"background:{c['interactive_hover']};"
@@ -522,7 +523,7 @@ class TrackerUI:
             f"background:{c['interactive_hover']};"
             "}"
             "QPushButton:disabled{"
-            f"background:{c['bg_secondary']};"
+            f"background:{c['button_bg']};"
             "color:#888888;"
             "}"
         )

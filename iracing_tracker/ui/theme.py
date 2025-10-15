@@ -3,12 +3,16 @@ from PySide6.QtGui import QGuiApplication
 
 from .constants import (
     LIGHT_WINDOW_BORDER_COLOR, LIGHT_BG_MAIN, LIGHT_TEXT, LIGHT_BG_SECONDARY, LIGHT_MENU_ITEM_BG,
+    LIGHT_BUTTON_BG, LIGHT_BUTTON_BORDER_COLOR, LIGHT_BUTTON_BORDER_WIDTH,
+    LIGHT_BUTTON_BORDER_RADIUS, LIGHT_BUTTON_PADDING,
     LIGHT_BANNER_BG, LIGHT_BANNER_TEXT, LIGHT_DEBUG_BG, LIGHT_LOG_BG,
     LIGHT_SEPARATOR, LIGHT_CONTROL_FG, LIGHT_TIRE_BG, LIGHT_TIRE_BORDER, LIGHT_TIRE_TEXT,
     LIGHT_TITLE_BG, LIGHT_TITLE_FG, LIGHT_TITLE_BTN_HOVER, LIGHT_TITLE_BTN_PRESSED,
     LIGHT_TITLE_BTN_CLOSE_HOVER, LIGHT_TITLE_BTN_CLOSE_PRESSED, LIGHT_INTERACTIVE_HOVER_BG,
 
     DARK_WINDOW_BORDER_COLOR, DARK_BG_MAIN, DARK_TEXT, DARK_BG_SECONDARY, DARK_MENU_ITEM_BG,
+    DARK_BUTTON_BG, DARK_BUTTON_BORDER_COLOR, DARK_BUTTON_BORDER_WIDTH,
+    DARK_BUTTON_BORDER_RADIUS, DARK_BUTTON_PADDING,
     DARK_BANNER_BG, DARK_BANNER_TEXT, DARK_DEBUG_BG, DARK_LOG_BG,
     DARK_SEPARATOR, DARK_CONTROL_FG, DARK_TIRE_BG, DARK_TIRE_BORDER, DARK_TIRE_TEXT,
     DARK_TITLE_BG, DARK_TITLE_FG, DARK_TITLE_BTN_HOVER, DARK_TITLE_BTN_PRESSED,
@@ -78,6 +82,11 @@ class ThemeManager:
                 title_btn_close_hover=DARK_TITLE_BTN_CLOSE_HOVER,
                 title_btn_close_pressed=DARK_TITLE_BTN_CLOSE_PRESSED,
                 interactive_hover=DARK_INTERACTIVE_HOVER_BG,
+                button_bg=DARK_BUTTON_BG,
+                button_border_color=DARK_BUTTON_BORDER_COLOR,
+                button_border_width=DARK_BUTTON_BORDER_WIDTH,
+                button_border_radius=DARK_BUTTON_BORDER_RADIUS,
+                button_padding=DARK_BUTTON_PADDING,
             )
         else:
             return dict(
@@ -102,6 +111,11 @@ class ThemeManager:
                 title_btn_close_hover=LIGHT_TITLE_BTN_CLOSE_HOVER,
                 title_btn_close_pressed=LIGHT_TITLE_BTN_CLOSE_PRESSED,
                 interactive_hover=LIGHT_INTERACTIVE_HOVER_BG,
+                button_bg=LIGHT_BUTTON_BG,
+                button_border_color=LIGHT_BUTTON_BORDER_COLOR,
+                button_border_width=LIGHT_BUTTON_BORDER_WIDTH,
+                button_border_radius=LIGHT_BUTTON_BORDER_RADIUS,
+                button_padding=LIGHT_BUTTON_PADDING,
             )
 
     # ---------- Interne ----------
