@@ -407,9 +407,9 @@ class TrackerUI:
                 f"QComboBox:pressed{{background:{hover_bg};}}"
                 f"QComboBox::drop-down{{border:0; width:16px;}}"
                 f"QComboBox QAbstractItemView{{background:{menu_bg}; color:{list_text}; "
-                f"selection-background-color:{hover_bg}; selection-color:{list_text};}}"
-                f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text};}}"
-                f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text};}}"
+                f"selection-background-color:{hover_bg}; selection-color:{list_text}; border:0; outline:0;}}"
+                f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
+                f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
             )
             self.player_combo.setStyleSheet(combo_ss)
         else:
