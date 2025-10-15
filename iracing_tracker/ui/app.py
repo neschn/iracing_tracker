@@ -390,10 +390,33 @@ class TrackerUI:
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
         self.player_combo.setEnabled(en)
-        fg = (self._colors["control_fg"] if getattr(self, "_colors", None) else "#000000") if en else "#888888"
-        self.player_combo.setStyleSheet(
-            f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
-        )
+        colors = getattr(self, "_colors", None)
+        if colors:
+            fg_enabled = colors.get("control_fg", colors.get("text", "#000000"))
+            fg_disabled = "#888888"
+            text_color = fg_enabled if en else fg_disabled
+            base_bg = colors.get("bg_secondary", "#f0f0f0")
+            hover_bg = colors.get("interactive_hover", "#dcdcdc")
+            menu_bg = colors.get("menu_item_bg", base_bg)
+            list_text = colors.get("text", "#000000")
+            combo_ss = (
+                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; "
+                f"color:{text_color}; background:{base_bg}; border:1px solid transparent; padding:2px 6px;}}"
+                f"QComboBox:!enabled{{color:{fg_disabled};}}"
+                f"QComboBox:hover{{background:{hover_bg};}}"
+                f"QComboBox:pressed{{background:{hover_bg};}}"
+                f"QComboBox::drop-down{{border:0; width:16px;}}"
+                f"QComboBox QAbstractItemView{{background:{menu_bg}; color:{list_text}; "
+                f"selection-background-color:{hover_bg}; selection-color:{list_text};}}"
+                f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text};}}"
+                f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text};}}"
+            )
+            self.player_combo.setStyleSheet(combo_ss)
+        else:
+            fg = "#000000" if en else "#888888"
+            self.player_combo.setStyleSheet(
+                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg};}}"
+            )
 
     def get_selected_player(self) -> str:
         return self.player_combo.currentText() or "---"
@@ -487,12 +510,20 @@ class TrackerUI:
 
         btn_ss = (
             "QPushButton{"
-            f"background:{c['bg_main']};"
-            "border:none;"
+            f"background:{c['bg_secondary']};"
             f"color:{c['text']};"
+            "border:none;"
+            "padding:6px 12px;"
             "}"
             "QPushButton:hover{"
+            f"background:{c['interactive_hover']};"
+            "}"
+            "QPushButton:pressed{"
+            f"background:{c['interactive_hover']};"
+            "}"
+            "QPushButton:disabled{"
             f"background:{c['bg_secondary']};"
+            "color:#888888;"
             "}"
         )
         self.edit_players_btn.setStyleSheet(btn_ss)
