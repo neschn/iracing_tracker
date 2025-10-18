@@ -18,6 +18,7 @@ from .constants import (
     FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
     FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_LAST_LAPTIMES, FONT_SIZE_DEBUG,
     FONT_SIZE_LOG, FONT_SIZE_BUTTON,
+    BANNER_HEIGHT,
     SECTION_MARGIN, SECTION_TITLE_GAP, SECTION_SEPARATOR_SPACING,
     TIME_COL_PX,
     DEBUG_INITIAL_VISIBLE,
@@ -97,6 +98,8 @@ class TrackerUI:
         # ---- Bannière
         banner = QWidget()
         self._banner = banner
+        if BANNER_HEIGHT is not None:
+            banner.setFixedHeight(BANNER_HEIGHT)
         banner_lay = QVBoxLayout(banner)
         banner_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         self.banner_label = QLabel("")

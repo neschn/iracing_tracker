@@ -111,6 +111,7 @@ TIRE_TEMP_PLACEHOLDER = "--°"
 TIRE_WEAR_PLACEHOLDER = "--%"
 
 # Layout
+BANNER_HEIGHT = 150  # None pour hauteur automatique, sinon fixer en pixels
 SECTION_MARGIN = 15
 SECTION_TITLE_GAP = 10
 SECTION_SEPARATOR_SPACING = 15
