@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, QPoint, QSize
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtGui import QIcon, QFont, QFontDatabase
 from PySide6.QtWidgets import (
-    QWidget, QMenuBar, QSizePolicy, QLabel, QHBoxLayout, QToolButton, QStyle, QMenu
+    QWidget, QMenuBar, QSizePolicy, QLabel, QHBoxLayout, QToolButton, QStyle, QMenu, QStyleFactory
 )
 from PySide6.QtGui import QAction, QActionGroup
 
@@ -14,12 +14,24 @@ class CustomTitleBar(QWidget):
     """Barre de titre personnalisée avec menu intégré (style VS Code)."""
 
     HEIGHT = 36
+    _WINDOWS_CAPTION_GLYPHS = {
+        QStyle.SP_TitleBarMinButton: "\uE921",    # ChromeMinimize
+        QStyle.SP_TitleBarMaxButton: "\uE922",    # ChromeMaximize
+        QStyle.SP_TitleBarNormalButton: "\uE923", # ChromeRestore
+        QStyle.SP_TitleBarCloseButton: "\uE8BB",  # ChromeClose
+    }
+    _CAPTION_GLYPH_PIXEL_SIZE = 12
+    _CAPTION_ICON_MIN_SIZE = 10
+    _CAPTION_ICON_DELTA = -6
 
     def __init__(self, window):
         super().__init__(window)
         self._win = window
         self.setObjectName("CustomTitleBar")
         self.setFixedHeight(self.HEIGHT)
+        self._native_caption_style = self._create_windows_caption_style()
+        self._caption_font = None
+        self._use_windows_glyphs = self._init_windows_caption_glyphs()
 
         self._menu_bar = QMenuBar(self)
         self._menu_bar.setNativeMenuBar(False)
@@ -122,9 +134,23 @@ class CustomTitleBar(QWidget):
         btn = QToolButton(self)
         btn.setToolTip(tooltip)
         btn.setCursor(Qt.ArrowCursor)
-        btn.setIcon(self.style().standardIcon(standard_icon))
-        btn.setIconSize(QSize(self.style().pixelMetric(QStyle.PM_SmallIconSize),
-                      self.style().pixelMetric(QStyle.PM_SmallIconSize)))
+        if self._use_windows_glyphs and standard_icon in self._WINDOWS_CAPTION_GLYPHS:
+            btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+            btn.setIcon(QIcon())
+            font = QFont(self._caption_font)
+            btn.setFont(font)
+            btn.setText(self._WINDOWS_CAPTION_GLYPHS[standard_icon])
+        else:
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            style_for_icons = self._native_caption_style or self.style()
+            icon = style_for_icons.standardIcon(standard_icon, None, btn)
+            btn.setIcon(icon)
+            icon_px = style_for_icons.pixelMetric(QStyle.PM_TitleBarButtonIconSize, None, btn)
+            if icon_px <= 0:
+                icon_px = style_for_icons.pixelMetric(QStyle.PM_SmallIconSize, None, btn)
+            icon_px = max(self._CAPTION_ICON_MIN_SIZE, icon_px + self._CAPTION_ICON_DELTA)
+            btn.setIconSize(QSize(icon_px, icon_px))
+            btn.setText("")
         btn.setAutoRaise(False)
         btn.setFocusPolicy(Qt.NoFocus)
         btn.setFixedSize(46, self.HEIGHT)
@@ -138,4 +164,35 @@ class CustomTitleBar(QWidget):
 
     def _update_max_button_icon(self):
         icon_role = QStyle.SP_TitleBarNormalButton if self._win.isMaximized() else QStyle.SP_TitleBarMaxButton
-        self._btn_max.setIcon(self.style().standardIcon(icon_role))
+        if self._use_windows_glyphs and icon_role in self._WINDOWS_CAPTION_GLYPHS:
+            self._btn_max.setIcon(QIcon())
+            self._btn_max.setText(self._WINDOWS_CAPTION_GLYPHS[icon_role])
+        else:
+            style_for_icons = self._native_caption_style or self.style()
+            self._btn_max.setIcon(style_for_icons.standardIcon(icon_role, None, self._btn_max))
+            self._btn_max.setText("")
+
+    def _create_windows_caption_style(self):
+        if not IS_WINDOWS:
+            return None
+        try:
+            for key in ("WindowsVista", "Windows"):
+                style = QStyleFactory.create(key)
+                if style is not None:
+                    return style
+        except Exception:
+            pass
+        return None
+
+    def _init_windows_caption_glyphs(self) -> bool:
+        if not IS_WINDOWS:
+            return False
+        try:
+            if not QFontDatabase.hasFamily("Segoe MDL2 Assets"):
+                return False
+            font = QFont("Segoe MDL2 Assets")
+            font.setPixelSize(self._CAPTION_GLYPH_PIXEL_SIZE)
+            self._caption_font = font
+            return True
+        except Exception:
+            return False
