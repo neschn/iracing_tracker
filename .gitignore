@@ -18,3 +18,7 @@ Thumbs.db
 *.log
 dist/
 build/
+
+# Project utilities
+generate_tree.bat
+tree_structure.txt
