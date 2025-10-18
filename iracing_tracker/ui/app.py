@@ -133,6 +133,7 @@ class TrackerUI:
         sec_label = QLabel("SESSION")
         sec_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         sc_lay.addWidget(sec_label)
+        self._align_top(sc_lay, sec_label)
         sc_lay.addSpacing(SECTION_TITLE_GAP)
 
         self.session_time_label = QLabel("Temps de session : 1:23:45")
@@ -169,6 +170,7 @@ class TrackerUI:
         tires_title = QLabel("Température et usure des pneus :")
         tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         tg_lay.addWidget(tires_title, 0, 0, 1, 5)
+        self._align_top(tg_lay, tires_title)
 
         # Rangée 1
         sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 1, 0)
@@ -198,6 +200,7 @@ class TrackerUI:
         title_player = QLabel("JOUEUR")
         title_player.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hp_lay.addWidget(title_player)
+        self._align_top(hp_lay, title_player)
         hp_lay.addStretch(1)
         self.edit_players_btn = QPushButton("")
         self.edit_players_btn.setCursor(Qt.PointingHandCursor)
@@ -208,6 +211,7 @@ class TrackerUI:
         self.edit_players_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.edit_players_btn.setEnabled(False)  # placeholder inchangé
         hp_lay.addWidget(self.edit_players_btn)
+        self._align_top(hp_lay, self.edit_players_btn)
         pc_lay.addWidget(header_player)
         pc_lay.addSpacing(SECTION_TITLE_GAP)
 
@@ -253,6 +257,7 @@ class TrackerUI:
         cap = QLabel("DERNIERS TOURS")
         cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lc_lay.addWidget(cap)
+        self._align_top(lc_lay, cap)
         lc_lay.addSpacing(SECTION_TITLE_GAP)
 
         self.laps_text = QPlainTextEdit()
@@ -273,6 +278,7 @@ class TrackerUI:
         lbl_dbg = QLabel("DEBUG")
         lbl_dbg.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hd_lay.addWidget(lbl_dbg)
+        self._align_top(hd_lay, lbl_dbg)
         hd_lay.addStretch(1)
         self.debug_toggle_btn = QPushButton("")
         self.debug_toggle_btn.setCursor(Qt.PointingHandCursor)
@@ -283,6 +289,7 @@ class TrackerUI:
         self.debug_toggle_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.debug_toggle_btn.clicked.connect(lambda: self._set_debug_visible(False))
         hd_lay.addWidget(self.debug_toggle_btn)
+        self._align_top(hd_lay, self.debug_toggle_btn)
         dc_lay.addWidget(header_dbg)
         dc_lay.addSpacing(SECTION_TITLE_GAP)
 
@@ -321,6 +328,7 @@ class TrackerUI:
         ltitle = QLabel("MESSAGES / LOGS")
         ltitle.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         logs_lay.addWidget(ltitle)
+        self._align_top(logs_lay, ltitle)
         logs_lay.addSpacing(SECTION_TITLE_GAP)
 
         self.log_text = QTextEdit()
@@ -402,6 +410,15 @@ class TrackerUI:
         else:
             self.player_combo.setCurrentText("---")
         self.player_combo.blockSignals(False)
+
+    @staticmethod
+    def _align_top(layout, widget):
+        if layout is None or widget is None:
+            return
+        try:
+            layout.setAlignment(widget, Qt.AlignTop)
+        except Exception:
+            pass
 
     @staticmethod
     def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
