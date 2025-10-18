@@ -3,17 +3,19 @@ import sys,ctypes
 from datetime import datetime
 import queue as _q
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QFont, QTextOption
+from PySide6.QtCore import Qt, QTimer, QSize, QRectF
+from PySide6.QtGui import QIcon, QFont, QTextOption, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QComboBox,
     QSizePolicy, QSpacerItem, QMenu
 )
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtGui import QAction, QActionGroup
 
 from .constants import (
-    ICON_PATH, WINDOWS_ICON_PATH, WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
+    ICON_PATH, WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH,
+    WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
     FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
     FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_LAST_LAPTIMES, FONT_SIZE_DEBUG,
@@ -23,6 +25,7 @@ from .constants import (
     TIME_COL_PX,
     DEBUG_INITIAL_VISIBLE,
     TIRE_TEMP_PLACEHOLDER,
+    BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow
 from .titlebar import CustomTitleBar
@@ -56,6 +59,8 @@ class TrackerUI:
         self._colors = None
         self._seps = []
         self._tire_squares = []
+        self._action_icon_px = 18
+        self._last_action_icon_color = None
         self._win.setWindowTitle(WINDOW_TITLE)
         self._win.resize(*WINDOW_GEOMETRY)
         self._win.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
@@ -194,8 +199,12 @@ class TrackerUI:
         title_player.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hp_lay.addWidget(title_player)
         hp_lay.addStretch(1)
-        self.edit_players_btn = QPushButton("Éditer la liste")
+        self.edit_players_btn = QPushButton("")
         self.edit_players_btn.setCursor(Qt.PointingHandCursor)
+        self.edit_players_btn.setProperty("variant", "icon")
+        self.edit_players_btn.setFixedSize(32, 32)
+        self.edit_players_btn.setIconSize(QSize(self._action_icon_px, self._action_icon_px))
+        self.edit_players_btn.setToolTip("Éditer la liste des joueurs")
         self.edit_players_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.edit_players_btn.setEnabled(False)  # placeholder inchangé
         hp_lay.addWidget(self.edit_players_btn)
@@ -265,8 +274,12 @@ class TrackerUI:
         lbl_dbg.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         hd_lay.addWidget(lbl_dbg)
         hd_lay.addStretch(1)
-        self.debug_toggle_btn = QPushButton("Masquer")
+        self.debug_toggle_btn = QPushButton("")
         self.debug_toggle_btn.setCursor(Qt.PointingHandCursor)
+        self.debug_toggle_btn.setProperty("variant", "icon")
+        self.debug_toggle_btn.setFixedSize(32, 32)
+        self.debug_toggle_btn.setIconSize(QSize(self._action_icon_px, self._action_icon_px))
+        self.debug_toggle_btn.setToolTip("Masquer la zone debug")
         self.debug_toggle_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.debug_toggle_btn.clicked.connect(lambda: self._set_debug_visible(False))
         hd_lay.addWidget(self.debug_toggle_btn)
@@ -407,6 +420,56 @@ class TrackerUI:
             f"{selector} QScrollBar::add-page:vertical,{selector} QScrollBar::sub-page:vertical"
             f"{{background:transparent;}}"
         )
+
+    def _apply_action_icons(self, color: str):
+        target_color = color or "#000000"
+        if target_color == self._last_action_icon_color:
+            return
+        size = max(12, int(self._action_icon_px))
+        icon_size = QSize(size, size)
+
+        edit_icon = self._load_svg_icon(EDIT_ICON_PATH, target_color, size)
+        if edit_icon.isNull():
+            self.edit_players_btn.setIcon(QIcon())
+        else:
+            self.edit_players_btn.setIcon(edit_icon)
+        self.edit_players_btn.setIconSize(icon_size)
+
+        hide_icon = self._load_svg_icon(HIDE_ICON_PATH, target_color, size)
+        if hide_icon.isNull():
+            self.debug_toggle_btn.setIcon(QIcon())
+        else:
+            self.debug_toggle_btn.setIcon(hide_icon)
+        self.debug_toggle_btn.setIconSize(icon_size)
+
+        self._last_action_icon_color = target_color
+
+    @staticmethod
+    def _load_svg_icon(path: str, color: str, size: int) -> QIcon:
+        if not path or not os.path.isfile(path):
+            return QIcon()
+        try:
+            renderer = QSvgRenderer(path)
+            if not renderer.isValid():
+                return QIcon()
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            renderer.render(painter, QRectF(0, 0, size, size))
+            painter.end()
+
+            fg = QColor(color)
+            if not fg.isValid():
+                fg = QColor("#000000")
+            painter = QPainter(pixmap)
+            painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+            painter.fillRect(pixmap.rect(), fg)
+            painter.end()
+            return QIcon(pixmap)
+        except Exception:
+            return QIcon()
 
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
@@ -563,9 +626,9 @@ class TrackerUI:
             "QPushButton{"
             f"background:{c['button_bg']};"
             f"color:{c['control_fg']};"
-            f"border:{c['button_border_width']}px solid {c['button_border_color']};"
-            f"border-radius:{c['button_border_radius']}px;"
-            f"padding:{c['button_padding']};"
+            f"border:{BUTTON_BORDER_WIDTH}px solid {c['button_border_color']};"
+            f"border-radius:{BUTTON_BORDER_RADIUS}px;"
+            f"padding:{BUTTON_PADDING};"
             "}"
             "QPushButton:hover{"
             f"background:{c['interactive_hover']};"
@@ -578,8 +641,17 @@ class TrackerUI:
             "color:#888888;"
             "}"
         )
-        self.edit_players_btn.setStyleSheet(btn_ss)
-        self.debug_toggle_btn.setStyleSheet(btn_ss)
+        icon_override = (
+            "QPushButton[variant=\"icon\"]{"
+            f"padding:{ICON_BUTTON_PADDING};"
+            "min-width:28px;"
+            "min-height:28px;"
+            "}"
+        )
+        icon_btn_ss = btn_ss + icon_override
+        self.edit_players_btn.setStyleSheet(icon_btn_ss)
+        self.debug_toggle_btn.setStyleSheet(icon_btn_ss)
+        self._apply_action_icons(c.get("action_icon_color", c.get("control_fg", "#000000")))
 
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
         scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
@@ -659,7 +731,7 @@ class TrackerUI:
         vis = self.debug_visible.get()
         self.debug_col.setVisible(vis)
         self._sep_debug.setVisible(vis)
-        self.debug_toggle_btn.setText("Masquer" if vis else "Afficher")
+        self.debug_toggle_btn.setToolTip("Masquer la zone debug" if vis else "Afficher la zone debug")
 
         if vis:
             for col in (0, 2, 4, 6):

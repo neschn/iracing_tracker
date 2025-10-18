@@ -6,6 +6,8 @@ import os
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "assets"))
 ICON_PATH = os.path.join(ASSETS_DIR, "icon.png")
 WINDOWS_ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
+EDIT_ICON_PATH = os.path.join(ASSETS_DIR, "edit.svg")
+HIDE_ICON_PATH = os.path.join(ASSETS_DIR, "hide.svg")
 
 WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = (1600, 1000)
@@ -19,6 +21,12 @@ WINDOW_BORDER_RADIUS  = 12
 # Redimensionnement
 RESIZE_BORDER_THICKNESS = 8
 
+# Styles communs
+BUTTON_BORDER_WIDTH = 1
+BUTTON_BORDER_RADIUS = 6
+BUTTON_PADDING = "6px 12px"
+ICON_BUTTON_PADDING = "0px"
+
 # Thème clair
 LIGHT_WINDOW_BORDER_COLOR =     "#646464"
 LIGHT_BG_MAIN         = "#f0f0f0"
@@ -27,9 +35,6 @@ LIGHT_BG_SECONDARY    = "#e5e5e5"
 LIGHT_MENU_ITEM_BG    = "#f0f0f0"
 LIGHT_BUTTON_BG            = "#e5e5e5"
 LIGHT_BUTTON_BORDER_COLOR  = "#d0d0d0"
-LIGHT_BUTTON_BORDER_WIDTH  = 1
-LIGHT_BUTTON_BORDER_RADIUS = 6
-LIGHT_BUTTON_PADDING       = "6px 12px"
 LIGHT_SCROLLBAR_TRACK      = "#f5f5f5"
 LIGHT_SCROLLBAR_BORDER     = "#c8c8c8"
 LIGHT_SCROLLBAR_HANDLE_START = "#cfcfcf"
@@ -46,6 +51,7 @@ LIGHT_CONTROL_FG      = "#000000"
 LIGHT_TIRE_BG         = "#eaeaea"
 LIGHT_TIRE_BORDER     = "#bdbdbd"
 LIGHT_TIRE_TEXT       = "#000000"
+LIGHT_ACTION_ICON_COLOR = "#111111"
 
 LIGHT_TITLE_BG                = "#e7e7e7"
 LIGHT_TITLE_FG                = "#111111"
@@ -62,10 +68,6 @@ DARK_BG_SECONDARY     = "#2a2a2a"
 DARK_MENU_ITEM_BG     = "#1f1f1f"
 DARK_BUTTON_BG             = "#2a2a2a"
 DARK_BUTTON_BORDER_COLOR   = "#3a3a3a"
-DARK_BUTTON_BORDER_WIDTH   = 1
-DARK_BUTTON_BORDER_RADIUS  = 6
-DARK_BUTTON_PADDING        = "6px 12px"
-DARK_COMBO_BORDER_COLOR    = "#454545"
 DARK_SCROLLBAR_TRACK      = "#1f1f1f"
 DARK_SCROLLBAR_BORDER     = "#3a3a3a"
 DARK_SCROLLBAR_HANDLE_START = "#4d4d4d"
@@ -82,6 +84,7 @@ DARK_CONTROL_FG       = "#e6e6e6"
 DARK_TIRE_BG          = "#2b2b2b"
 DARK_TIRE_BORDER      = "#4b4b4b"
 DARK_TIRE_TEXT        = "#e6e6e6"
+DARK_ACTION_ICON_COLOR = "#e6e6e6"
 
 DARK_TITLE_BG                 = "#2a2a2a"
 DARK_TITLE_FG                 = "#f1f1f1"
@@ -108,7 +111,6 @@ TIRE_SQUARE_HEIGHT = 72
 TIRE_SQUARE_RADIUS = 8
 TIRE_SQUARE_FONT_PT = 12
 TIRE_TEMP_PLACEHOLDER = "--°"
-TIRE_WEAR_PLACEHOLDER = "--%"
 
 # Layout
 BANNER_HEIGHT = 150  # None pour hauteur automatique, sinon fixer en pixels
@@ -119,5 +121,4 @@ SEPARATOR_THICKNESS = 1
 
 # Divers
 DEBUG_INITIAL_VISIBLE = True
-LOG_TEXT_HEIGHT_ROWS = 8
 TIME_COL_PX = 120
