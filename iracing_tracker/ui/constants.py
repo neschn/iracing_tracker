@@ -14,7 +14,7 @@ MEDAL_SILVER_ICON_PATH = os.path.join(ASSETS_DIR, "medal_silver.svg")
 MEDAL_BRONZE_ICON_PATH = os.path.join(ASSETS_DIR, "medal_bronze.svg")
 
 WINDOW_TITLE = "iRacing Tracker"
-WINDOW_GEOMETRY = (1600, 1000)
+WINDOW_GEOMETRY = (1600, 1300)
 MIN_WIDTH = 1200
 MIN_HEIGHT = 800
 
