@@ -104,6 +104,7 @@ class LastLapsList(QListWidget):
         self._font = QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES)
         self._time_width = TIME_COL_PX
         self._text_color = "#000000"
+        self.setFont(self._font)
 
         self._delegate = _LastLapsDelegate(self._time_width, parent=self)
         self._delegate.set_text_color(self._text_color)
