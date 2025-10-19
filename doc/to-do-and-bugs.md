@@ -18,6 +18,7 @@ Mise à jour régulière pendant le développement.
 - Verrouiller / encrypter le fichier de données pour empecher la modification des temps
 - Gérer tour invalide si drapeaux noir ou demande de ralentir ?
 - Créer un petit Widget transparent qui se mettra sur iracing pour afficher le nom du joueur actuel
+- Afficher une photo du meilleur de la soirée
 - Ne pas créer les pneus en rangée mais en groupe de 4
 ---
 
