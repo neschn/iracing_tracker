@@ -14,7 +14,8 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtGui import QAction, QActionGroup
 
 from .constants import (
-    ICON_PATH, WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH,
+    ICON_PATH, WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH, LIST_ICON_PATH,
+    MEDAL_GOLD_ICON_PATH, MEDAL_SILVER_ICON_PATH, MEDAL_BRONZE_ICON_PATH,
     WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
     FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
@@ -155,13 +156,68 @@ class TrackerUI:
         s = _hsep(self.session_col); self._seps.append(s)
         sc_lay.addSpacing(SECTION_SEPARATOR_SPACING); sc_lay.addWidget(s); sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
-        abs_info = QLabel("Record absolu (détenu par ---) :")
-        abs_info.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.absolute_record_value = QLabel("---")
-        self.absolute_record_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME, QFont.Bold))
-        self.absolute_record_value.setAlignment(Qt.AlignCenter)
-        sc_lay.addWidget(abs_info)
-        sc_lay.addWidget(self.absolute_record_value)
+        ranking_header = QWidget()
+        rh_lay = QHBoxLayout(ranking_header)
+        rh_lay.setContentsMargins(0, 0, 0, 0)
+        self.absolute_ranking_label = QLabel("Classement :")
+        self.absolute_ranking_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        rh_lay.addWidget(self.absolute_ranking_label)
+        self._align_top(rh_lay, self.absolute_ranking_label)
+        rh_lay.addStretch(1)
+        self.rankings_btn = QPushButton("")
+        self.rankings_btn.setCursor(Qt.PointingHandCursor)
+        self.rankings_btn.setProperty("variant", "icon")
+        self.rankings_btn.setFixedSize(32, 32)
+        self.rankings_btn.setIconSize(QSize(self._action_icon_px, self._action_icon_px))
+        self.rankings_btn.setToolTip("Afficher le classement complet")
+        self.rankings_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
+        rh_lay.addWidget(self.rankings_btn)
+        self._align_top(rh_lay, self.rankings_btn)
+        sc_lay.addWidget(ranking_header)
+
+        ranking_rows = QWidget()
+        rr_lay = QVBoxLayout(ranking_rows)
+        rr_lay.setContentsMargins(0, 0, 0, 0)
+        rr_lay.setSpacing(4)
+        self._medal_icon_px = 26
+        medal_defs = [
+            (MEDAL_GOLD_ICON_PATH, "Nico"),
+            (MEDAL_SILVER_ICON_PATH, "Booki"),
+            (MEDAL_BRONZE_ICON_PATH, "Gillou"),
+        ]
+        self.absolute_rank_rows = []
+        for medal_path, placeholder_name in medal_defs:
+            row = QWidget()
+            row_lay = QHBoxLayout(row)
+            row_lay.setContentsMargins(0, 0, 0, 0)
+            row_lay.setSpacing(8)
+
+            medal_label = QLabel()
+            medal_label.setFixedSize(self._medal_icon_px, self._medal_icon_px)
+            medal_pix = self._load_svg_pixmap(medal_path, self._medal_icon_px)
+            if not medal_pix.isNull():
+                medal_label.setPixmap(medal_pix)
+                medal_label.setScaledContents(True)
+            row_lay.addWidget(medal_label)
+
+            time_label = QLabel("-:--.---")
+            time_font = QFont(FONT_FAMILY, FONT_SIZE_LAPTIME, QFont.Bold)
+            time_label.setFont(time_font)
+            time_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            row_lay.addWidget(time_label)
+
+            player_label = QLabel(placeholder_name)
+            player_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME))
+            player_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            player_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            row_lay.addWidget(player_label, 1)
+
+            rr_lay.addWidget(row)
+            self.absolute_rank_rows.append(
+                {"medal": medal_label, "time": time_label, "player": player_label, "path": medal_path}
+            )
+
+        sc_lay.addWidget(ranking_rows)
 
         s = _hsep(self.session_col); self._seps.append(s)
         sc_lay.addSpacing(SECTION_SEPARATOR_SPACING); sc_lay.addWidget(s); sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
@@ -458,6 +514,14 @@ class TrackerUI:
             self.edit_players_btn.setIcon(edit_icon)
         self.edit_players_btn.setIconSize(icon_size)
 
+        list_icon = self._load_svg_icon(LIST_ICON_PATH, target_color, size)
+        if hasattr(self, "rankings_btn"):
+            if list_icon.isNull():
+                self.rankings_btn.setIcon(QIcon())
+            else:
+                self.rankings_btn.setIcon(list_icon)
+            self.rankings_btn.setIconSize(icon_size)
+
         hide_icon = self._load_svg_icon(HIDE_ICON_PATH, target_color, size)
         if hide_icon.isNull():
             self.debug_toggle_btn.setIcon(QIcon())
@@ -493,6 +557,25 @@ class TrackerUI:
             return QIcon(pixmap)
         except Exception:
             return QIcon()
+
+    @staticmethod
+    def _load_svg_pixmap(path: str, size: int) -> QPixmap:
+        if not path or not os.path.isfile(path):
+            return QPixmap()
+        try:
+            renderer = QSvgRenderer(path)
+            if not renderer.isValid():
+                return QPixmap()
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            renderer.render(painter, QRectF(0, 0, size, size))
+            painter.end()
+            return pixmap
+        except Exception:
+            return QPixmap()
 
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
@@ -673,6 +756,8 @@ class TrackerUI:
         )
         icon_btn_ss = btn_ss + icon_override
         self.edit_players_btn.setStyleSheet(icon_btn_ss)
+        if hasattr(self, "rankings_btn"):
+            self.rankings_btn.setStyleSheet(icon_btn_ss)
         self.debug_toggle_btn.setStyleSheet(icon_btn_ss)
         self._apply_action_icons(c.get("action_icon_color", c.get("control_fg", "#000000")))
 

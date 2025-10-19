@@ -8,6 +8,10 @@ ICON_PATH = os.path.join(ASSETS_DIR, "icon.png")
 WINDOWS_ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
 EDIT_ICON_PATH = os.path.join(ASSETS_DIR, "edit.svg")
 HIDE_ICON_PATH = os.path.join(ASSETS_DIR, "hide.svg")
+LIST_ICON_PATH = os.path.join(ASSETS_DIR, "list.svg")
+MEDAL_GOLD_ICON_PATH = os.path.join(ASSETS_DIR, "medal_gold.svg")
+MEDAL_SILVER_ICON_PATH = os.path.join(ASSETS_DIR, "medal_silver.svg")
+MEDAL_BRONZE_ICON_PATH = os.path.join(ASSETS_DIR, "medal_bronze.svg")
 
 WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = (1600, 1000)
