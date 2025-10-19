@@ -194,10 +194,16 @@ class TrackerUI:
 
             medal_label = QLabel()
             medal_label.setFixedSize(self._medal_icon_px, self._medal_icon_px)
+            medal_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             medal_pix = self._load_svg_pixmap(medal_path, self._medal_icon_px)
             if not medal_pix.isNull():
-                medal_label.setPixmap(medal_pix)
-                medal_label.setScaledContents(True)
+                scaled = medal_pix.scaled(
+                    self._medal_icon_px,
+                    self._medal_icon_px,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation,
+                )
+                medal_label.setPixmap(scaled)
             row_lay.addWidget(medal_label)
 
             time_label = QLabel("-:--.---")
@@ -571,7 +577,17 @@ class TrackerUI:
 
             painter = QPainter(pixmap)
             painter.setRenderHint(QPainter.Antialiasing)
-            renderer.render(painter, QRectF(0, 0, size, size))
+            view_box = renderer.viewBoxF()
+            if not view_box.isValid() or view_box.isEmpty():
+                view_box = QRectF(0, 0, size, size)
+            max_dim = max(view_box.width(), view_box.height(), 1.0)
+            scale = size / max_dim
+            target_w = view_box.width() * scale
+            target_h = view_box.height() * scale
+            target_x = (size - target_w) / 2.0
+            target_y = (size - target_h) / 2.0
+            target_rect = QRectF(target_x, target_y, target_w, target_h)
+            renderer.render(painter, target_rect)
             painter.end()
             return pixmap
         except Exception:
