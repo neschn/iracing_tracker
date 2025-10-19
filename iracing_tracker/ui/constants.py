@@ -12,6 +12,7 @@ LIST_ICON_PATH = os.path.join(ASSETS_DIR, "list.svg")
 MEDAL_GOLD_ICON_PATH = os.path.join(ASSETS_DIR, "medal_gold.svg")
 MEDAL_SILVER_ICON_PATH = os.path.join(ASSETS_DIR, "medal_silver.svg")
 MEDAL_BRONZE_ICON_PATH = os.path.join(ASSETS_DIR, "medal_bronze.svg")
+TIRE_ICON_PATH = os.path.join(ASSETS_DIR, "tire.svg")
 
 WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = (1600, 1300)
@@ -119,6 +120,7 @@ TIRE_SQUARE_HEIGHT = 72
 TIRE_SQUARE_RADIUS = 8
 TIRE_SQUARE_FONT_PT = 12
 TIRE_TEMP_PLACEHOLDER = "--°"
+TIRE_WEAR_PLACEHOLDER = "--%"
 
 # Layout
 BANNER_HEIGHT = 150  # None pour hauteur automatique, sinon fixer en pixels

@@ -1,5 +1,5 @@
-from PySide6.QtCore import QSize, Qt, QRect
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtCore import QSize, Qt, QRect, QRectF
+from PySide6.QtGui import QFont, QColor, QPalette, QPixmap, QPainter
 from PySide6.QtWidgets import (
     QWidget,
     QFrame,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QApplication,
 )
+from PySide6.QtSvg import QSvgRenderer
 
 from .constants import (
     SEPARATOR_THICKNESS,
@@ -60,27 +61,80 @@ def hsep(parent: QWidget) -> QFrame:
     return f
 
 
-def make_tire_square(text: str) -> QWidget:
+class TireInfoWidget(QWidget):
     """
-    Petit "carré" (rectangle) pour température/usure pneus.
-    Les couleurs sont posées par _apply_theme().
+    Petit widget pour représenter un pneu avec son libellé et sa valeur.
     """
-    w = QWidget()
-    w.setFixedSize(QSize(TIRE_SQUARE_WIDTH, TIRE_SQUARE_HEIGHT))
-    w.setStyleSheet(
-        "QWidget{"
-        "border:1px solid transparent;"
-        f"border-radius:{TIRE_SQUARE_RADIUS}px;"
-        "}"
-    )
-    lay = QVBoxLayout(w)
-    lay.setContentsMargins(0, 0, 0, 0)
 
-    lab = QLabel(text)
-    lab.setAlignment(Qt.AlignCenter)
-    lab.setFont(QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT, QFont.Bold))
-    lay.addWidget(lab)
-    return w
+    def __init__(self, position_text: str, value_text: str, icon_path: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("TireInfoWidget")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+
+        self._icon_path = icon_path
+        self._icon_size = QSize(TIRE_SQUARE_WIDTH, TIRE_SQUARE_HEIGHT)
+        self._renderer = QSvgRenderer(self._icon_path, self)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(8, 8, 8, 8)
+        lay.setSpacing(6)
+        lay.setAlignment(Qt.AlignCenter)
+
+        self.position_label = QLabel(position_text.upper())
+        self.position_label.setAlignment(Qt.AlignCenter)
+        pos_font = QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT, QFont.Bold)
+        self.position_label.setFont(pos_font)
+        lay.addWidget(self.position_label)
+
+        self.icon_label = QLabel()
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setFixedSize(self._icon_size)
+        self.icon_label.setStyleSheet("QLabel{background:transparent;}")
+        lay.addWidget(self.icon_label)
+
+        self.value_label = QLabel(value_text)
+        self.value_label.setAlignment(Qt.AlignCenter)
+        val_font = QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT)
+        self.value_label.setFont(val_font)
+        lay.addWidget(self.value_label)
+
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.setMinimumWidth(self._icon_size.width() + 16)
+
+        # Valeurs par défaut avant application du thème.
+        self.apply_palette("#eaeaea", "#bdbdbd", "#000000")
+
+    def set_value_text(self, text: str):
+        self.value_label.setText(text)
+
+    def set_position_text(self, text: str):
+        self.position_label.setText(text.upper())
+
+    def set_icon_color(self, color: str | QColor):
+        qcolor = QColor(color)
+        pixmap = QPixmap(self._icon_size)
+        pixmap.fill(Qt.transparent)
+        if self._renderer.isValid():
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            target = QRectF(0, 0, self._icon_size.width(), self._icon_size.height())
+            self._renderer.render(painter, target)
+            painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+            painter.fillRect(pixmap.rect(), qcolor)
+            painter.end()
+        self.icon_label.setPixmap(pixmap)
+
+    def apply_palette(self, background: str, border: str, text_color: str):
+        self.setStyleSheet(
+            f"background:{background};"
+            f"border:1px solid {border};"
+            f"border-radius:{TIRE_SQUARE_RADIUS}px;"
+        )
+        text_css = f"QLabel{{color:{text_color}; background:transparent;}}"
+        self.position_label.setStyleSheet(text_css)
+        self.value_label.setStyleSheet(text_css)
+        self.set_icon_color(text_color)
+
 
 
 class LastLapsList(QListWidget):

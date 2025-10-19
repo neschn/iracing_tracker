@@ -26,6 +26,8 @@ from .constants import (
     TIME_COL_PX, MEDAL_ICON_SIZE,
     DEBUG_INITIAL_VISIBLE,
     TIRE_TEMP_PLACEHOLDER,
+    TIRE_WEAR_PLACEHOLDER,
+    TIRE_ICON_PATH,
     BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow
@@ -35,7 +37,7 @@ from .widgets import (
     BoolVarCompat as _BoolVarCompat,
     hsep as _hsep,
     vsep as _vsep,
-    make_tire_square as _make_tire_square,
+    TireInfoWidget as _TireInfoWidget,
     LastLapsList as _LastLapsList,
 )
 
@@ -65,7 +67,8 @@ class TrackerUI:
         self._theme = ThemeManager(self._app)
         self._colors = None
         self._seps = []
-        self._tire_squares = []
+        self._tire_widgets = []
+        self._tires_map = {"temperature": {}, "wear": {}}
         self._action_icon_px = 18
         self._last_action_icon_color = None
         self._win.setWindowTitle(WINDOW_TITLE)
@@ -258,31 +261,83 @@ class TrackerUI:
         sc_lay.addSpacing(SECTION_SEPARATOR_SPACING); sc_lay.addWidget(s); sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
 
         # Températures/usure pneus
-        tires_grid = QWidget()
-        tg_lay = QGridLayout(tires_grid)
-        tg_lay.setContentsMargins(0, 0, 0, 0)
-        tg_lay.setHorizontalSpacing(12)
-        tg_lay.setVerticalSpacing(8)
+        tires_section = QWidget()
+        tires_layout = QVBoxLayout(tires_section)
+        tires_layout.setContentsMargins(0, 0, 0, 0)
+        tires_layout.setSpacing(12)
 
-        tires_title = QLabel("Température et usure des pneus :")
-        tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        tg_lay.addWidget(tires_title, 0, 0, 1, 5)
-        self._align_top(tg_lay, tires_title)
+        tires_title = QLabel("Pneus")
+        tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
+        tires_title.setAlignment(Qt.AlignCenter)
+        tires_layout.addWidget(tires_title)
+        self._align_top(tires_layout, tires_title)
 
-        # Rangée 1
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 1, 0)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 1, 1)
-        tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 1, 2)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 1, 3)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 1, 4)
-        # Rangée 2
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 2, 0)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 2, 1)
-        tg_lay.addItem(QSpacerItem(24, 1, QSizePolicy.Fixed, QSizePolicy.Minimum), 2, 2)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 2, 3)
-        sq = _make_tire_square(TIRE_TEMP_PLACEHOLDER); self._tire_squares.append(sq); tg_lay.addWidget(sq, 2, 4)
+        tires_content = QWidget()
+        tc_lay = QHBoxLayout(tires_content)
+        tc_lay.setContentsMargins(0, 0, 0, 0)
+        tc_lay.setSpacing(24)
+        tires_layout.addWidget(tires_content, alignment=Qt.AlignHCenter)
 
-        sc_lay.addWidget(tires_grid)
+        tc_lay.addStretch(1)
+
+        temp_column = QWidget()
+        temp_col_lay = QVBoxLayout(temp_column)
+        temp_col_lay.setContentsMargins(0, 0, 0, 0)
+        temp_col_lay.setSpacing(12)
+
+        temp_label = QLabel("Températures :")
+        temp_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        temp_label.setAlignment(Qt.AlignCenter)
+        temp_col_lay.addWidget(temp_label)
+        self._align_top(temp_col_lay, temp_label)
+
+        temp_grid = QGridLayout()
+        temp_grid.setContentsMargins(0, 0, 0, 0)
+        temp_grid.setHorizontalSpacing(24)
+        temp_grid.setVerticalSpacing(12)
+        temp_col_lay.addLayout(temp_grid)
+
+        temp_positions = [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]
+        for code, row, col in temp_positions:
+            widget = _TireInfoWidget(code, TIRE_TEMP_PLACEHOLDER, TIRE_ICON_PATH)
+            temp_grid.addWidget(widget, row, col)
+            self._tire_widgets.append(widget)
+            self._tires_map["temperature"][code] = widget
+
+        tc_lay.addWidget(temp_column, alignment=Qt.AlignTop)
+
+        sep_tires = _vsep(tires_content); self._seps.append(sep_tires)
+        sep_tires.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        tc_lay.addWidget(sep_tires, 0, Qt.AlignTop)
+
+        wear_column = QWidget()
+        wear_col_lay = QVBoxLayout(wear_column)
+        wear_col_lay.setContentsMargins(0, 0, 0, 0)
+        wear_col_lay.setSpacing(12)
+
+        wear_label = QLabel("Profil :")
+        wear_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        wear_label.setAlignment(Qt.AlignCenter)
+        wear_col_lay.addWidget(wear_label)
+        self._align_top(wear_col_lay, wear_label)
+
+        wear_grid = QGridLayout()
+        wear_grid.setContentsMargins(0, 0, 0, 0)
+        wear_grid.setHorizontalSpacing(24)
+        wear_grid.setVerticalSpacing(12)
+        wear_col_lay.addLayout(wear_grid)
+
+        wear_positions = [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]
+        for code, row, col in wear_positions:
+            widget = _TireInfoWidget(code, TIRE_WEAR_PLACEHOLDER, TIRE_ICON_PATH)
+            wear_grid.addWidget(widget, row, col)
+            self._tire_widgets.append(widget)
+            self._tires_map["wear"][code] = widget
+
+        tc_lay.addWidget(wear_column, alignment=Qt.AlignTop)
+        tc_lay.addStretch(1)
+
+        sc_lay.addWidget(tires_section, 0, Qt.AlignHCenter)
         sc_lay.addStretch(1)
 
         # Colonne joueur
@@ -887,17 +942,8 @@ class TrackerUI:
 
         self.set_player_menu_state(self.player_combo.isEnabled())
 
-        for sq in self._tire_squares:
-            sq.setStyleSheet(
-                "QWidget{"
-                f"background:{c['tire_bg']};"
-                f"border:1px solid {c['tire_border']};"
-                "border-radius:8px;"
-                "}"
-            )
-            lab = sq.findChild(QLabel)
-            if lab:
-                lab.setStyleSheet(f"QLabel{{background:transparent; color:{c['tire_text']};}}")
+        for tire_widget in self._tire_widgets:
+            tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
 
     def _on_window_state_for_chrome(self, *args):
         self._apply_theme(self._colors or self._theme.colors())
