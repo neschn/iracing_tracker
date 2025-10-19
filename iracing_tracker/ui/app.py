@@ -136,6 +136,7 @@ class TrackerUI:
 
         # Colonne session
         self.session_col = QWidget()
+        self.session_col.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         sc_lay = QVBoxLayout(self.session_col)
         sc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         sc_lay.setSpacing(6)
@@ -262,6 +263,7 @@ class TrackerUI:
 
         # Températures/usure pneus
         tires_section = QWidget()
+        tires_section.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         tires_layout = QVBoxLayout(tires_section)
         tires_layout.setContentsMargins(0, 0, 0, 0)
         tires_layout.setSpacing(12)
@@ -276,11 +278,11 @@ class TrackerUI:
         tc_lay = QHBoxLayout(tires_content)
         tc_lay.setContentsMargins(0, 0, 0, 0)
         tc_lay.setSpacing(24)
-        tires_layout.addWidget(tires_content, alignment=Qt.AlignHCenter)
-
-        tc_lay.addStretch(1)
+        tires_content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        tires_layout.addWidget(tires_content, 1)
 
         temp_column = QWidget()
+        temp_column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         temp_col_lay = QVBoxLayout(temp_column)
         temp_col_lay.setContentsMargins(0, 0, 0, 0)
         temp_col_lay.setSpacing(12)
@@ -295,7 +297,12 @@ class TrackerUI:
         temp_grid.setContentsMargins(0, 0, 0, 0)
         temp_grid.setHorizontalSpacing(24)
         temp_grid.setVerticalSpacing(12)
-        temp_col_lay.addLayout(temp_grid)
+        temp_col_lay.addLayout(temp_grid, 1)
+
+        temp_grid.setColumnStretch(0, 1)
+        temp_grid.setColumnStretch(1, 1)
+        temp_grid.setRowStretch(0, 1)
+        temp_grid.setRowStretch(1, 1)
 
         temp_positions = [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]
         for code, row, col in temp_positions:
@@ -304,13 +311,14 @@ class TrackerUI:
             self._tire_widgets.append(widget)
             self._tires_map["temperature"][code] = widget
 
-        tc_lay.addWidget(temp_column, alignment=Qt.AlignTop)
+        tc_lay.addWidget(temp_column, 1, Qt.AlignTop)
 
         sep_tires = _vsep(tires_content); self._seps.append(sep_tires)
         sep_tires.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        tc_lay.addWidget(sep_tires, 0, Qt.AlignTop)
+        tc_lay.addWidget(sep_tires)
 
         wear_column = QWidget()
+        wear_column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         wear_col_lay = QVBoxLayout(wear_column)
         wear_col_lay.setContentsMargins(0, 0, 0, 0)
         wear_col_lay.setSpacing(12)
@@ -325,7 +333,12 @@ class TrackerUI:
         wear_grid.setContentsMargins(0, 0, 0, 0)
         wear_grid.setHorizontalSpacing(24)
         wear_grid.setVerticalSpacing(12)
-        wear_col_lay.addLayout(wear_grid)
+        wear_col_lay.addLayout(wear_grid, 1)
+
+        wear_grid.setColumnStretch(0, 1)
+        wear_grid.setColumnStretch(1, 1)
+        wear_grid.setRowStretch(0, 1)
+        wear_grid.setRowStretch(1, 1)
 
         wear_positions = [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]
         for code, row, col in wear_positions:
@@ -334,14 +347,13 @@ class TrackerUI:
             self._tire_widgets.append(widget)
             self._tires_map["wear"][code] = widget
 
-        tc_lay.addWidget(wear_column, alignment=Qt.AlignTop)
-        tc_lay.addStretch(1)
+        tc_lay.addWidget(wear_column, 1, Qt.AlignTop)
 
-        sc_lay.addWidget(tires_section, 0, Qt.AlignHCenter)
-        sc_lay.addStretch(1)
+        sc_lay.addWidget(tires_section, 1)
 
         # Colonne joueur
         self.player_col = QWidget()
+        self.player_col.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         pc_lay = QVBoxLayout(self.player_col)
         pc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         pc_lay.setSpacing(6)
@@ -403,6 +415,7 @@ class TrackerUI:
 
         # Colonne derniers tours
         self.laps_col = QWidget()
+        self.laps_col.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         lc_lay = QVBoxLayout(self.laps_col)
         lc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         lc_lay.setSpacing(6)
@@ -418,6 +431,7 @@ class TrackerUI:
 
         # Colonne debug (masquable)
         self.debug_col = QWidget()
+        self.debug_col.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         dc_lay = QVBoxLayout(self.debug_col)
         dc_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         dc_lay.setSpacing(6)
@@ -461,6 +475,8 @@ class TrackerUI:
         self.center_lay.addWidget(self._sep_debug, 0, 5)
         self.center_lay.addWidget(self.debug_col, 0, 6)
 
+        for col in (0, 2, 4, 6):
+            self.center_lay.setColumnStretch(col, 1)
         for col in (1, 3, 5):
             self.center_lay.setColumnStretch(col, 0)
 

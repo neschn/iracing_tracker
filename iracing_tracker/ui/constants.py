@@ -121,6 +121,8 @@ TIRE_SQUARE_RADIUS = 8
 TIRE_SQUARE_FONT_PT = 12
 TIRE_TEMP_PLACEHOLDER = "--°"
 TIRE_WEAR_PLACEHOLDER = "--%"
+TIRE_ICON_BASE_PX = 54
+TIRE_ICON_MAX_SCALE = 1.5
 
 # Layout
 BANNER_HEIGHT = 150  # None pour hauteur automatique, sinon fixer en pixels
