@@ -23,7 +23,7 @@ from .constants import (
     FONT_SIZE_LOG, FONT_SIZE_BUTTON,
     BANNER_HEIGHT,
     SECTION_MARGIN, SECTION_TITLE_GAP, SECTION_SEPARATOR_SPACING,
-    TIME_COL_PX,
+    TIME_COL_PX, MEDAL_ICON_SIZE,
     DEBUG_INITIAL_VISIBLE,
     TIRE_TEMP_PLACEHOLDER,
     BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
@@ -179,7 +179,7 @@ class TrackerUI:
         rr_lay = QVBoxLayout(ranking_rows)
         rr_lay.setContentsMargins(0, 0, 0, 0)
         rr_lay.setSpacing(4)
-        self._medal_icon_px = 26
+        self._medal_icon_px = MEDAL_ICON_SIZE
         medal_defs = [
             (MEDAL_GOLD_ICON_PATH, "Nico"),
             (MEDAL_SILVER_ICON_PATH, "Booki"),
