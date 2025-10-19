@@ -30,7 +30,13 @@ from .constants import (
 from .window import TrackerMainWindow
 from .titlebar import CustomTitleBar
 from .theme import ThemeManager
-from .widgets import BoolVarCompat as _BoolVarCompat, hsep as _hsep, vsep as _vsep, make_tire_square as _make_tire_square
+from .widgets import (
+    BoolVarCompat as _BoolVarCompat,
+    hsep as _hsep,
+    vsep as _vsep,
+    make_tire_square as _make_tire_square,
+    LastLapsList as _LastLapsList,
+)
 
 # -------------------------------------------------------
 # Pour que l'affichage de l'icone dans la barre des tâches fonctionne correctement
@@ -260,12 +266,9 @@ class TrackerUI:
         self._align_top(lc_lay, cap)
         lc_lay.addSpacing(SECTION_TITLE_GAP)
 
-        self.laps_text = QPlainTextEdit()
-        self.laps_text.setReadOnly(True)
-        self.laps_text.setFrameShape(QFrame.NoFrame)
-        self.laps_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES))
+        self.laps_list = _LastLapsList()
         self._populate_laps_placeholder()
-        lc_lay.addWidget(self.laps_text, 1)
+        lc_lay.addWidget(self.laps_list, 1)
 
         # Colonne debug (masquable)
         self.debug_col = QWidget()
@@ -385,6 +388,9 @@ class TrackerUI:
 
     def update_current_lap_time(self, text: str):
         self.current_lap_label.setText(text or "---")
+
+    def update_last_laps(self, entries):
+        self.laps_list.set_items(entries)
 
     def update_debug(self, data: dict):
         sb = self.debug_text.verticalScrollBar()
@@ -685,6 +691,15 @@ class TrackerUI:
             handle_hover_start,
             handle_hover_end,
         )
+        list_scroll_css = self._scrollbar_css(
+            "QListWidget",
+            scroll_track,
+            scroll_border,
+            handle_start,
+            handle_end,
+            handle_hover_start,
+            handle_hover_end,
+        )
         text_scroll_css = self._scrollbar_css(
             "QTextEdit",
             scroll_track,
@@ -695,7 +710,7 @@ class TrackerUI:
             handle_hover_end,
         )
 
-        self.laps_text.setStyleSheet(f"QPlainTextEdit{{background:{c['bg_main']}; color:{c['text']};}}{plain_scroll_css}")
+        self.laps_list.apply_palette(c['text'], c['bg_main'], list_scroll_css)
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
         self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
 
@@ -777,6 +792,13 @@ class TrackerUI:
                     self.update_player_personal_record(payload.get("text", "---"))
                 elif name == "current_lap":
                     self.update_current_lap_time(payload.get("text", "---"))
+                elif name == "last_laps":
+                    entries = payload.get("entries")
+                    if entries is None:
+                        entries = payload.get("lines")
+                    if entries is None:
+                        entries = payload.get("text")
+                    self.update_last_laps(entries or [])
                 elif name == "banner":
                     self.set_banner(payload.get("text", ""))
         except _q.Empty:
@@ -799,7 +821,7 @@ class TrackerUI:
             "0:34.132\tNico",
             "0:34.678\tNico",
         ]
-        self.laps_text.setPlainText("\n".join(lines))
+        self.laps_list.set_items(lines)
 
     def _apply_window_icon(self):
         try:
