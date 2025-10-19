@@ -20,7 +20,7 @@ from .constants import (
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
     FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
     FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_LAST_LAPTIMES, FONT_SIZE_DEBUG,
-    FONT_SIZE_LOG, FONT_SIZE_BUTTON,
+    FONT_SIZE_LOG, FONT_SIZE_BUTTON, FONT_SIZE_RANKING_PLAYER, FONT_WEIGHT_RANKING_PLAYER,
     BANNER_HEIGHT,
     SECTION_MARGIN, SECTION_TITLE_GAP, SECTION_SEPARATOR_SPACING,
     TIME_COL_PX, MEDAL_ICON_SIZE,
@@ -213,7 +213,9 @@ class TrackerUI:
             row_lay.addWidget(time_label)
 
             player_label = QLabel(placeholder_name)
-            player_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LAPTIME))
+            player_font = QFont(FONT_FAMILY, FONT_SIZE_RANKING_PLAYER)
+            player_font.setWeight(self._resolve_font_weight(FONT_WEIGHT_RANKING_PLAYER))
+            player_label.setFont(player_font)
             player_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             player_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             row_lay.addWidget(player_label, 1)
@@ -592,6 +594,43 @@ class TrackerUI:
             return pixmap
         except Exception:
             return QPixmap()
+
+    @staticmethod
+    def _resolve_font_weight(weight) -> QFont.Weight:
+        mapping = {
+            "thin": QFont.Weight.Thin,
+            "extralight": QFont.Weight.ExtraLight,
+            "ultralight": QFont.Weight.ExtraLight,
+            "light": QFont.Weight.Light,
+            "normal": QFont.Weight.Normal,
+            "regular": QFont.Weight.Normal,
+            "medium": QFont.Weight.Medium,
+            "semibold": QFont.Weight.DemiBold,
+            "demibold": QFont.Weight.DemiBold,
+            "bold": QFont.Weight.Bold,
+            "extrabold": QFont.Weight.ExtraBold,
+            "black": QFont.Weight.Black,
+        }
+        if isinstance(weight, str):
+            key = weight.strip().lower()
+            if key in mapping:
+                return mapping[key]
+        try:
+            value = int(weight)
+            candidates = [
+                QFont.Weight.Thin,
+                QFont.Weight.ExtraLight,
+                QFont.Weight.Light,
+                QFont.Weight.Normal,
+                QFont.Weight.Medium,
+                QFont.Weight.DemiBold,
+                QFont.Weight.Bold,
+                QFont.Weight.ExtraBold,
+                QFont.Weight.Black,
+            ]
+            return min(candidates, key=lambda enum: abs(enum.value - value))
+        except Exception:
+            return QFont.Weight.Normal
 
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
