@@ -20,10 +20,7 @@ from PySide6.QtSvg import QSvgRenderer
 from .constants import (
     SEPARATOR_THICKNESS,
     FONT_FAMILY,
-    TIRE_SQUARE_WIDTH,
-    TIRE_SQUARE_HEIGHT,
-    TIRE_SQUARE_RADIUS,
-    TIRE_SQUARE_FONT_PT,
+    FONT_SIZE_LABELS,
     TIRE_ICON_BASE_PX,
     TIRE_ICON_MAX_SCALE,
     FONT_SIZE_LAST_LAPTIMES,
@@ -100,7 +97,7 @@ class TireInfoWidget(QWidget):
 
         self.position_label = QLabel(position_text.upper())
         self.position_label.setAlignment(Qt.AlignCenter)
-        pos_font = QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT, QFont.Bold)
+        pos_font = QFont(FONT_FAMILY, FONT_SIZE_LABELS, QFont.Bold)
         self.position_label.setFont(pos_font)
         lay.addWidget(self.position_label)
 
@@ -112,7 +109,7 @@ class TireInfoWidget(QWidget):
 
         self.value_label = QLabel(value_text)
         self.value_label.setAlignment(Qt.AlignCenter)
-        val_font = QFont(FONT_FAMILY, TIRE_SQUARE_FONT_PT)
+        val_font = QFont(FONT_FAMILY, FONT_SIZE_LABELS)
         self.value_label.setFont(val_font)
         lay.addWidget(self.value_label)
 
