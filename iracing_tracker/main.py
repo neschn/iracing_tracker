@@ -75,7 +75,7 @@ def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, r
         context_ready = False
         last_best_text = None
         ui_q.put(("context", {"track": "---", "car": "---"}))
-        ui_q.put(("player_best", {"text": "---"}))
+        ui_q.put(("player_best", {"text": "-:--.---"}))
 
     def _handle_session_not_active():
         nonlocal is_waiting_session_msg_sent, session_start_msg_sent
