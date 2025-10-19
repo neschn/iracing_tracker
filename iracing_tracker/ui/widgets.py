@@ -1,5 +1,5 @@
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QSize, Qt, QRect
+from PySide6.QtGui import QFont, QColor, QPalette
 from PySide6.QtWidgets import (
     QWidget,
     QFrame,
@@ -7,9 +7,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QListWidget,
     QListWidgetItem,
-    QHBoxLayout,
     QSizePolicy,
     QAbstractItemView,
+    QListView,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QStyle,
+    QApplication,
 )
 
 from .constants import (
@@ -29,6 +33,7 @@ class BoolVarCompat:
     Remplace tk.BooleanVar pour conserver l'API (.get() / .set()) attendue
     par la logique existante (main.py).
     """
+
     def __init__(self, value=False):
         self._v = bool(value)
 
@@ -92,11 +97,17 @@ class LastLapsList(QListWidget):
         self.setUniformItemSizes(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setSpacing(2)
+        self.setSpacing(0)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setResizeMode(QListView.Adjust)
+        self.setWrapping(False)
         self._font = QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES)
         self._time_width = TIME_COL_PX
         self._text_color = "#000000"
-        self._row_labels = []
+
+        self._delegate = _LastLapsDelegate(self._time_width, parent=self)
+        self._delegate.set_text_color(self._text_color)
+        self.setItemDelegate(self._delegate)
 
         self.setStyleSheet(
             "QListWidget{border:none; background:transparent;}"
@@ -115,7 +126,6 @@ class LastLapsList(QListWidget):
             entries = entries.splitlines()
 
         self.clear()
-        self._row_labels.clear()
 
         normalized = []
         for entry in entries or []:
@@ -138,42 +148,15 @@ class LastLapsList(QListWidget):
 
         for time_str, player in normalized:
             item = QListWidgetItem("")
-            row_widget = QWidget()
-            row_widget.setStyleSheet("QWidget{background:transparent;}")
-            layout = QHBoxLayout(row_widget)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(6)
-
-            time_label = QLabel(time_str)
-            time_label.setFont(self._font)
-            time_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            time_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
-            if self._time_width:
-                time_label.setMinimumWidth(self._time_width)
-            layout.addWidget(time_label)
-
-            player_label = QLabel(player)
-            player_label.setFont(self._font)
-            player_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            player_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-            layout.addWidget(player_label)
-
-            item.setSizeHint(row_widget.sizeHint())
+            item.setFlags(Qt.NoItemFlags)
+            item.setData(Qt.UserRole, (time_str, player))
             self.addItem(item)
-            self.setItemWidget(item, row_widget)
-            self._row_labels.append((time_label, player_label))
-
-        self._apply_text_color(self._text_color)
-
-    def _apply_text_color(self, color):
-        for time_label, player_label in self._row_labels:
-            sheet = f"QLabel{{color:{color}; background:transparent;}}"
-            time_label.setStyleSheet(sheet)
-            player_label.setStyleSheet(sheet)
 
     def apply_palette(self, text_color, background, extra_css=""):
         if text_color:
             self._text_color = text_color
+            self._delegate.set_text_color(text_color)
+        self._delegate.set_time_width(self._time_width)
         base = "QListWidget{border:none;"
         if background:
             base += f" background:{background};"
@@ -184,4 +167,74 @@ class LastLapsList(QListWidget):
         if extra_css:
             base += extra_css
         self.setStyleSheet(base)
-        self._apply_text_color(self._text_color)
+
+
+class _LastLapsDelegate(QStyledItemDelegate):
+    """
+    Délégué pour dessiner proprement un temps (colonne fixe) et un pilote
+    aligné à droite avec ellipsis automatique.
+    """
+
+    def __init__(self, time_width: int, spacing: int = 12, parent=None):
+        super().__init__(parent)
+        self._time_width = int(time_width or 0)
+        self._spacing = int(spacing or 0)
+        self._text_color = QColor("#000000")
+
+    def set_time_width(self, width: int):
+        self._time_width = int(width or 0)
+
+    def set_text_color(self, color: str):
+        if color:
+            col = QColor(color)
+            if col.isValid():
+                self._text_color = col
+
+    def paint(self, painter, option, index):
+        data = index.data(Qt.UserRole)
+        if not data or not isinstance(data, (tuple, list)) or len(data) < 2:
+            super().paint(painter, option, index)
+            return
+
+        time_str, player = data
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
+        style = opt.widget.style() if opt.widget else QApplication.style()
+        style.drawPrimitive(QStyle.PE_PanelItemViewItem, opt, painter, opt.widget)
+
+        painter.save()
+        painter.setFont(opt.font)
+        color = self._text_color if self._text_color.isValid() else opt.palette.color(QPalette.Text)
+        painter.setPen(color)
+
+        rect = QRect(opt.rect)
+
+        time_rect = QRect(rect)
+        time_rect.setWidth(max(0, self._time_width))
+
+        fm = painter.fontMetrics()
+        time_text = fm.elidedText(str(time_str), Qt.ElideRight, time_rect.width())
+        painter.drawText(time_rect, Qt.AlignLeft | Qt.AlignVCenter, time_text)
+
+        player_rect = QRect(rect)
+        player_rect.setLeft(time_rect.right() + self._spacing)
+        player_rect.adjust(0, 0, -2, 0)
+        player_width = max(0, player_rect.width())
+        player_text = fm.elidedText(str(player), Qt.ElideRight, player_width)
+        painter.drawText(player_rect, Qt.AlignRight | Qt.AlignVCenter, player_text)
+
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        data = index.data(Qt.UserRole)
+        player = ""
+        if data and isinstance(data, (tuple, list)) and len(data) >= 2:
+            player = str(data[1])
+        fm = opt.fontMetrics
+        height = fm.height() + 4
+        width = self._time_width + self._spacing + fm.horizontalAdvance(player)
+        return QSize(width, height)
