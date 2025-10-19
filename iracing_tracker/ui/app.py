@@ -143,15 +143,42 @@ class TrackerUI:
         self._align_top(sc_lay, sec_label)
         sc_lay.addSpacing(SECTION_TITLE_GAP)
 
-        self.session_time_label = QLabel("Temps de session : 1:23:45")
+
+        info_rows = QWidget()
+        ir_lay = QGridLayout(info_rows)
+        ir_lay.setContentsMargins(0, 0, 0, 0)
+        ir_lay.setHorizontalSpacing(12)
+        ir_lay.setVerticalSpacing(4)
+
+        self.session_time_label = QLabel("Temps de session :")
         self.session_time_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.track_label = QLabel("Circuit : ---")
+        ir_lay.addWidget(self.session_time_label, 0, 0, Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.session_time_value = QLabel("-:--:--")
+        self.session_time_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        ir_lay.addWidget(self.session_time_value, 0, 1, Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.track_label = QLabel("Circuit :")
         self.track_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.car_label = QLabel("Voiture : ---")
+        ir_lay.addWidget(self.track_label, 1, 0, Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.track_value = QLabel("---")
+        self.track_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        self.track_value.setWordWrap(True)
+        ir_lay.addWidget(self.track_value, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.car_label = QLabel("Voiture :")
         self.car_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        sc_lay.addWidget(self.session_time_label)
-        sc_lay.addWidget(self.track_label)
-        sc_lay.addWidget(self.car_label)
+        ir_lay.addWidget(self.car_label, 2, 0, Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.car_value = QLabel("---")
+        self.car_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+        self.car_value.setWordWrap(True)
+        ir_lay.addWidget(self.car_value, 2, 1, Qt.AlignLeft | Qt.AlignVCenter)
+
+        ir_lay.setColumnStretch(0, 0)
+        ir_lay.setColumnStretch(1, 1)
+        sc_lay.addWidget(info_rows)
 
         s = _hsep(self.session_col); self._seps.append(s)
         sc_lay.addSpacing(SECTION_SEPARATOR_SPACING); sc_lay.addWidget(s); sc_lay.addSpacing(SECTION_SEPARATOR_SPACING)
@@ -444,8 +471,8 @@ class TrackerUI:
         self._queue_timer.start()
 
     def update_context(self, track: str, car: str):
-        self.track_label.setText(f"Circuit : {track}")
-        self.car_label.setText(f"Voiture : {car}")
+        self.track_value.setText(track or "---")
+        self.car_value.setText(car or "---")
 
     def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.setText(best_time_str or "---")
