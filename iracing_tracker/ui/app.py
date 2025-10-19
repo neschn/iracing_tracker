@@ -28,6 +28,7 @@ from .constants import (
     TIRE_TEMP_PLACEHOLDER,
     TIRE_WEAR_PLACEHOLDER,
     TIRE_ICON_PATH,
+    TIRE_SECTION_HEADER_SPACING,
     BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow
@@ -292,6 +293,7 @@ class TrackerUI:
         temp_label.setAlignment(Qt.AlignCenter)
         temp_col_lay.addWidget(temp_label)
         self._align_top(temp_col_lay, temp_label)
+        temp_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
 
         temp_grid = QGridLayout()
         temp_grid.setContentsMargins(0, 0, 0, 0)
@@ -328,6 +330,7 @@ class TrackerUI:
         wear_label.setAlignment(Qt.AlignCenter)
         wear_col_lay.addWidget(wear_label)
         self._align_top(wear_col_lay, wear_label)
+        wear_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
 
         wear_grid = QGridLayout()
         wear_grid.setContentsMargins(0, 0, 0, 0)
