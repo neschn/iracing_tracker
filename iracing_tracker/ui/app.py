@@ -710,7 +710,8 @@ class TrackerUI:
             handle_hover_end,
         )
 
-        self.laps_list.apply_palette(c['text'], c['bg_main'], list_scroll_css)
+        hover_color = c.get('last_laps_hover', c.get('interactive_hover'))
+        self.laps_list.apply_palette(c['text'], c['bg_main'], hover_color, list_scroll_css)
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
         self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
 

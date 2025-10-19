@@ -104,10 +104,17 @@ class LastLapsList(QListWidget):
         self._font = QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES)
         self._time_width = TIME_COL_PX
         self._text_color = "#000000"
+        self._hover_row = -1
         self.setFont(self._font)
+        self.setMouseTracking(True)
+        try:
+            self.viewport().setMouseTracking(True)
+        except Exception:
+            pass
 
         self._delegate = _LastLapsDelegate(self._time_width, parent=self)
         self._delegate.set_text_color(self._text_color)
+        self._delegate.set_hovered_row(self._hover_row)
         self.setItemDelegate(self._delegate)
 
         self.setStyleSheet(
@@ -127,6 +134,8 @@ class LastLapsList(QListWidget):
             entries = entries.splitlines()
 
         self.clear()
+        self._hover_row = -1
+        self._delegate.set_hovered_row(-1)
 
         normalized = []
         for entry in entries or []:
@@ -149,15 +158,16 @@ class LastLapsList(QListWidget):
 
         for time_str, player in normalized:
             item = QListWidgetItem("")
-            item.setFlags(Qt.NoItemFlags)
+            item.setFlags(Qt.ItemIsEnabled)
             item.setData(Qt.UserRole, (time_str, player))
             self.addItem(item)
 
-    def apply_palette(self, text_color, background, extra_css=""):
+    def apply_palette(self, text_color, background, hover_color, extra_css=""):
         if text_color:
             self._text_color = text_color
             self._delegate.set_text_color(text_color)
         self._delegate.set_time_width(self._time_width)
+        self._delegate.set_hover_color(hover_color)
         base = "QListWidget{border:none;"
         if background:
             base += f" background:{background};"
@@ -168,6 +178,23 @@ class LastLapsList(QListWidget):
         if extra_css:
             base += extra_css
         self.setStyleSheet(base)
+        self.viewport().update()
+
+    def mouseMoveEvent(self, event):
+        idx = self.indexAt(event.pos())
+        row = idx.row() if idx.isValid() else -1
+        if row != self._hover_row:
+            self._hover_row = row
+            self._delegate.set_hovered_row(row)
+            self.viewport().update()
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        if self._hover_row != -1:
+            self._hover_row = -1
+            self._delegate.set_hovered_row(-1)
+            self.viewport().update()
+        super().leaveEvent(event)
 
 
 class _LastLapsDelegate(QStyledItemDelegate):
@@ -181,6 +208,8 @@ class _LastLapsDelegate(QStyledItemDelegate):
         self._time_width = int(time_width or 0)
         self._spacing = int(spacing or 0)
         self._text_color = QColor("#000000")
+        self._hover_bg = QColor(0, 0, 0, 0)
+        self._hover_row = -1
 
     def set_time_width(self, width: int):
         self._time_width = int(width or 0)
@@ -190,6 +219,19 @@ class _LastLapsDelegate(QStyledItemDelegate):
             col = QColor(color)
             if col.isValid():
                 self._text_color = col
+                return
+        self._text_color = QColor("#000000")
+
+    def set_hover_color(self, color):
+        if color:
+            col = QColor(color)
+            if col.isValid():
+                self._hover_bg = col
+                return
+        self._hover_bg = QColor(0, 0, 0, 0)
+
+    def set_hovered_row(self, row: int):
+        self._hover_row = int(row)
 
     def paint(self, painter, option, index):
         data = index.data(Qt.UserRole)
@@ -206,6 +248,8 @@ class _LastLapsDelegate(QStyledItemDelegate):
         style.drawPrimitive(QStyle.PE_PanelItemViewItem, opt, painter, opt.widget)
 
         painter.save()
+        if index.row() == self._hover_row and self._hover_bg.alpha() > 0:
+            painter.fillRect(opt.rect, self._hover_bg)
         painter.setFont(opt.font)
         color = self._text_color if self._text_color.isValid() else opt.palette.color(QPalette.Text)
         painter.setPen(color)

@@ -11,6 +11,7 @@ from .constants import (
     LIGHT_SEPARATOR, LIGHT_CONTROL_FG, LIGHT_TIRE_BG, LIGHT_TIRE_BORDER, LIGHT_TIRE_TEXT,
     LIGHT_TITLE_BG, LIGHT_TITLE_FG, LIGHT_TITLE_BTN_HOVER, LIGHT_TITLE_BTN_PRESSED,
     LIGHT_TITLE_BTN_CLOSE_HOVER, LIGHT_TITLE_BTN_CLOSE_PRESSED, LIGHT_INTERACTIVE_HOVER_BG,
+    LIGHT_LAST_LAPS_HOVER_BG,
     LIGHT_ACTION_ICON_COLOR,
 
     DARK_WINDOW_BORDER_COLOR, DARK_BG_MAIN, DARK_TEXT, DARK_BG_SECONDARY, DARK_MENU_ITEM_BG,
@@ -22,6 +23,7 @@ from .constants import (
     DARK_SEPARATOR, DARK_CONTROL_FG, DARK_TIRE_BG, DARK_TIRE_BORDER, DARK_TIRE_TEXT,
     DARK_TITLE_BG, DARK_TITLE_FG, DARK_TITLE_BTN_HOVER, DARK_TITLE_BTN_PRESSED,
     DARK_TITLE_BTN_CLOSE_HOVER, DARK_TITLE_BTN_CLOSE_PRESSED, DARK_INTERACTIVE_HOVER_BG,
+    DARK_LAST_LAPS_HOVER_BG,
     DARK_ACTION_ICON_COLOR,
 )
 
@@ -88,6 +90,7 @@ class ThemeManager:
                 title_btn_close_hover=DARK_TITLE_BTN_CLOSE_HOVER,
                 title_btn_close_pressed=DARK_TITLE_BTN_CLOSE_PRESSED,
                 interactive_hover=DARK_INTERACTIVE_HOVER_BG,
+                last_laps_hover=DARK_LAST_LAPS_HOVER_BG,
                 button_bg=DARK_BUTTON_BG,
                 button_border_color=DARK_BUTTON_BORDER_COLOR,
                 action_icon_color=DARK_ACTION_ICON_COLOR,
@@ -121,6 +124,7 @@ class ThemeManager:
                 title_btn_close_hover=LIGHT_TITLE_BTN_CLOSE_HOVER,
                 title_btn_close_pressed=LIGHT_TITLE_BTN_CLOSE_PRESSED,
                 interactive_hover=LIGHT_INTERACTIVE_HOVER_BG,
+                last_laps_hover=LIGHT_LAST_LAPS_HOVER_BG,
                 button_bg=LIGHT_BUTTON_BG,
                 button_border_color=LIGHT_BUTTON_BORDER_COLOR,
                 action_icon_color=LIGHT_ACTION_ICON_COLOR,
