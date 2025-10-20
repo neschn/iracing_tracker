@@ -1,3 +1,11 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/titlebar.py                                                                     #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Implémente une barre de titre personnalisée inspirée de VS Code.                               #
+################################################################################################################
+
 from PySide6.QtCore import Qt, QPoint, QSize
 from PySide6.QtGui import QIcon, QFont, QFontDatabase
 from PySide6.QtWidgets import (

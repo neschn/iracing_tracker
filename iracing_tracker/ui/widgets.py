@@ -1,3 +1,11 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/widgets.py                                                                      #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Définit les widgets PySide sur mesure pour pneus, listes et séparateurs.                       #
+################################################################################################################
+
 from PySide6.QtCore import QSize, Qt, QRect, QRectF
 from PySide6.QtGui import QFont, QColor, QPalette, QPixmap, QPainter
 from PySide6.QtWidgets import (

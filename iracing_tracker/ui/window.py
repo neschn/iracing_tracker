@@ -1,7 +1,10 @@
-# ui/window.py — Windows only
-# QMainWindow frameless avec redimensionnement aux bords/cornes, coins arrondis,
-# double-clic titre pour max/restore, et "drag depuis maximisé".
-# Comportement identique à la version multi‑OS précédente, mais sans branches non‑Windows.
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/window.py                                                                       #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Fournit la QMainWindow sans cadre avec gestion Windows avancée.                                #
+################################################################################################################
 
 import ctypes
 from ctypes import wintypes

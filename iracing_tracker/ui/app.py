@@ -1,3 +1,11 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/app.py                                                                          #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Construit l'interface PySide6 complète du tracker et orchestre les interactions UI.            #
+################################################################################################################
+
 import os
 import sys,ctypes
 from datetime import datetime
@@ -1050,4 +1058,3 @@ class TrackerUI:
                     self._title_bar.set_icon(icon) # icône barre de titre custom
         except Exception:
             pass
-

@@ -1,3 +1,11 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/irsdk_client.py                                                                    #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Encapsule le client iRSDK et sécurise la lecture des données télémétriques.                    #
+################################################################################################################
+
 import irsdk
 
 class IRClient:

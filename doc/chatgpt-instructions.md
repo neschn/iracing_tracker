@@ -92,7 +92,7 @@ Créer un **tableau de suivi des performances locales** sur iRacing, capable de 
 
 ## 🧠 Directives importantes pour ChatGPT
 
-Quand tu m’aides dans le développement :
+Directives A NE SURTOUT JAMAIS JAMAIS JAMAIS OUBLIER  tu m’aides dans le développement :
 
 - **Ne modifie jamais** le comportement global ou d’autres parties du code que celles que je te demande explicitement.  
 - Si tu penses qu’une logique semble inutile ou pourrait être simplifiée, **réfléchis d’abord à sa raison d’être** : certains comportements sont spécifiques à iRacing et ne sont pas toujours logiques à première vue.  
@@ -101,10 +101,11 @@ Quand tu m’aides dans le développement :
 - Préfère toujours le code **clair, concis et commenté** (en français).  
 - **Si un correctif ne fonctionne pas**, cherche le problème ailleurs ou aborde-le **sous un autre angle** avant de tout remettre en cause.  
 - **“Less is more”** : évite la complexité inutile, favorise la lisibilité et la robustesse.  
-- Garde la structure actuelle (encapsulation, séparation logique, queue UI) si tu penses que c'est bien et utile
 - Les commentaires doivent **expliquer la logique métier** et non juste paraphraser le code.
 - Renseigne toi sur IRSDK et son comportement si tu n'est pas certains de ce que tu proposes, tu es autorisé à consulter sur le web et Github si nécessaire
 - Tu as le droit de remettre en question ce qui a été fait, tout peut toujours être améioré.
+- Toujours garder le format d'ent-ête (exemple plus bas dans ce fichier) et mettre à jour la date de modification dans cet en-tête
+- Toujours intégrer un petit descriptif devant une classe / méthode / section / fonction, selon le même format (exemple plus bas dans ce fichier)
 - Tu peux t'aider sur le GitHub de pyirsdk si besoin : https://github.com/kutu/pyirsdk.git
 
 ---
@@ -117,3 +118,20 @@ Quand tu m’aides dans le développement :
 - **Objectif final :** un tracker iRacing local, stable, simple, fluide et fiable.
 
 ---
+## 📄 Commmentaire d'ent-ête des fichiers python :
+
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : dossier/fichier.py                                                                                 #
+# Date de modification : JJ.MM.AAAA                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : description de l'utilité du fichier                                                            #
+################################################################################################################
+
+## 📄 Commmentaire juste au-dessus toutes les classes / méthodes / sections / fonctions :
+
+################################################################################################################
+# Description de la classe / méthode / section / fonction                                                      #
+################################################################################################################                                       
+
+

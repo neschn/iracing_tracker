@@ -1,4 +1,11 @@
-# lap_validator.py — ne PAS ignorer aveuglément le 1er tour
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/lap_validator.py                                                                   #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Valide les tours en suivant incidents et horodatages iRacing.                                  #
+################################################################################################################
+
 import time
 
 class LapValidator:

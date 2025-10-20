@@ -1,4 +1,12 @@
-﻿import time
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/main.py                                                                            #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Coordonne la collecte iRacing, la validation des tours et l'interface graphique.               #
+################################################################################################################
+
+import time
 import queue
 import threading
 from datetime import datetime

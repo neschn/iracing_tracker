@@ -1,3 +1,11 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/theme.py                                                                        #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Gère les palettes de couleurs et bascules de thème clair/sombre.                               #
+################################################################################################################
+
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QGuiApplication
 

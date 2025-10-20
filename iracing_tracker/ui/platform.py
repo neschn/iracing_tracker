@@ -1,4 +1,11 @@
-# ui/platform.py — Windows only
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/platform.py                                                                     #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Déclare les constantes Win32 utilisées par la fenêtre personnalisée.                           #
+################################################################################################################
+
 import ctypes
 from ctypes import wintypes
 

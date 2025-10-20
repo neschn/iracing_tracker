@@ -1,4 +1,11 @@
-# data_store.py (simplifié, sans fallback)
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/data_store.py                                                                      #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Gère la persistance locale des joueurs et meilleurs tours.                                     #
+################################################################################################################
+
 import os
 import sys
 import json
