@@ -76,12 +76,6 @@ class DataStore:
         return [str(x) for x in data]
 
     @staticmethod
-    def save_players(players_list):
-        if not isinstance(players_list, list):
-            raise TypeError("players_list must be a list")
-        _atomic_write_json(PLAYERS_PATH, list(players_list))
-
-    @staticmethod
     def load_best_laps():
         data = _safe_load_json(BEST_LAPS_PATH, default={})
         if not isinstance(data, dict):

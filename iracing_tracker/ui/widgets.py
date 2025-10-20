@@ -118,12 +118,6 @@ class TireInfoWidget(QWidget):
         # Valeurs par défaut avant application du thème.
         self.apply_palette("", "", "#000000")
 
-    def set_value_text(self, text: str):
-        self.value_label.setText(text)
-
-    def set_position_text(self, text: str):
-        self.position_label.setText(text.upper())
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_icon_pixmap()

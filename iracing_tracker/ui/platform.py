@@ -17,7 +17,6 @@ HTBOTTOMLEFT = 16
 HTBOTTOMRIGHT = 17
 
 # Windows messages & divers
-WM_SETICON         = 0x0080
 WM_NCHITTEST = 0x0084
 WM_GETMINMAXINFO = 0x0024
 WM_NCLBUTTONDOWN  = 0x00A1
@@ -28,7 +27,6 @@ WM_LBUTTONDOWN     = 0x0201
 WM_NCMOUSEMOVE     = 0x00A0
 WM_SYSCOMMAND      = 0x0112
 WM_SETCURSOR       = 0x0020
-MK_LBUTTON         = 0x0001
 SC_SIZE            = 0xF000
 
 # Directions de redimensionnement (WMSZ_*)
@@ -52,13 +50,6 @@ IDC_SIZENWSE = 32642
 IDC_SIZENESW = 32643
 IDC_SIZEWE   = 32644
 IDC_SIZENS   = 32645
-
-# --- Constantes d’icônes ---
-ICON_SMALL = 0                   
-ICON_BIG   = 1                   
-IMAGE_ICON = 1                   
-LR_DEFAULTSIZE  = 0x0040         
-LR_LOADFROMFILE = 0x0010         
 
 # Structures Win32 utilisées par window.py
 class MINMAXINFO(ctypes.Structure):

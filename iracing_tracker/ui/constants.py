@@ -4,7 +4,6 @@ import os
 # Paramètres visuels et ressources (depuis ton ui.py)
 # --------------------------------------------------------------------
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "assets"))
-ICON_PATH = os.path.join(ASSETS_DIR, "icon.png")
 WINDOWS_ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
 EDIT_ICON_PATH = os.path.join(ASSETS_DIR, "edit.svg")
 HIDE_ICON_PATH = os.path.join(ASSETS_DIR, "hide.svg")

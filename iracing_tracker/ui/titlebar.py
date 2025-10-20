@@ -1,9 +1,8 @@
 from PySide6.QtCore import Qt, QPoint, QSize
 from PySide6.QtGui import QIcon, QFont, QFontDatabase
 from PySide6.QtWidgets import (
-    QWidget, QMenuBar, QSizePolicy, QLabel, QHBoxLayout, QToolButton, QStyle, QMenu, QStyleFactory
+    QWidget, QMenuBar, QSizePolicy, QLabel, QHBoxLayout, QToolButton, QStyle, QStyleFactory
 )
-from PySide6.QtGui import QAction, QActionGroup
 
 from .platform import IS_WINDOWS, HTCLIENT, HTCAPTION
 from .constants import (

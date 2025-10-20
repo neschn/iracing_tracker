@@ -145,6 +145,6 @@ class ThemeManager:
         except Exception:
             return "light"
 
-    def _on_system_scheme_changed(self, *args):
+    def _on_system_scheme_changed(self, *_):
         # Le TrackerUI réapplique le thème si mode == "system"
         pass

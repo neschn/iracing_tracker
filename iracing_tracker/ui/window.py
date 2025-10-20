@@ -23,8 +23,6 @@ from .platform import (
     SM_CXDRAG, SM_CYDRAG, MONITOR_DEFAULTTONEAREST,
     # Cursors
     IDC_ARROW, IDC_SIZENWSE, IDC_SIZENESW, IDC_SIZEWE, IDC_SIZENS,
-    
-    WM_SETICON, ICON_SMALL, ICON_BIG, IMAGE_ICON, LR_DEFAULTSIZE, LR_LOADFROMFILE,
     # Structures Win32
     MINMAXINFO, MONITORINFO,
     
@@ -133,20 +131,6 @@ class TrackerMainWindow(QMainWindow):
             self._last_window_state = new_state
 
         super().changeEvent(event)
-
-    def set_taskbar_icon(self, ico_path: str):
-        """Force l'icône de la taskbar (petite + grande) via Win32."""
-        try:
-            hwnd = int(self.winId())
-            # Charge l'icône depuis le fichier .ico (Windows gère les tailles internes)
-            hicon = ctypes.windll.user32.LoadImageW(
-                0, ico_path, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE
-            )
-            if hicon:
-                ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG,   hicon)
-                ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, hicon)
-        except Exception:
-            pass
 
         # -------------- Helpers --------------
     def _is_geometry_maximized_like(self, g) -> bool:

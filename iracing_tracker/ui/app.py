@@ -8,22 +8,22 @@ from PySide6.QtGui import QIcon, QFont, QTextOption, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QComboBox,
-    QSizePolicy, QSpacerItem, QMenu
+    QSizePolicy, QMenu
 )
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtGui import QAction, QActionGroup
 
 from .constants import (
-    ICON_PATH, WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH, LIST_ICON_PATH,
+    WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH, LIST_ICON_PATH,
     MEDAL_GOLD_ICON_PATH, MEDAL_SILVER_ICON_PATH, MEDAL_BRONZE_ICON_PATH,
     WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
     FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
-    FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_LAST_LAPTIMES, FONT_SIZE_DEBUG,
+    FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_DEBUG,
     FONT_SIZE_LOG, FONT_SIZE_BUTTON, FONT_SIZE_RANKING_PLAYER, FONT_WEIGHT_RANKING_PLAYER,
     BANNER_HEIGHT,
     SECTION_MARGIN, SECTION_TITLE_GAP, SECTION_SEPARATOR_SPACING,
-    TIME_COL_PX, MEDAL_ICON_SIZE,
+    MEDAL_ICON_SIZE,
     DEBUG_INITIAL_VISIBLE,
     TIRE_TEMP_PLACEHOLDER,
     TIRE_WEAR_PLACEHOLDER,
@@ -510,7 +510,7 @@ class TrackerUI:
         self._build_menubar()
 
         # Visibilité initiale Debug
-        self._apply_debug_visibility(initial=True)
+        self._apply_debug_visibility()
 
         # Timer pour pomper la queue (≈ .after(16, ...))
         self._event_queue = None
@@ -568,19 +568,6 @@ class TrackerUI:
     def add_log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{ts}] {message}")
-
-    def update_players(self, players: list, current: str):
-        self._players_list = list(players) if players else ["---"]
-        self.player_combo.blockSignals(True)
-        self.player_combo.clear()
-        self.player_combo.addItems(self._players_list)
-        if current and players and current in players:
-            self.player_combo.setCurrentText(current)
-        elif players:
-            self.player_combo.setCurrentIndex(0)
-        else:
-            self.player_combo.setCurrentText("---")
-        self.player_combo.blockSignals(False)
 
     @staticmethod
     def _align_top(layout, widget):
@@ -794,9 +781,6 @@ class TrackerUI:
                 f"{scroll_css}"
             )
 
-    def get_selected_player(self) -> str:
-        return self.player_combo.currentText() or "---"
-
     def set_banner(self, text: str = ""):
         self.banner_label.setText(text or "")
 
@@ -964,7 +948,7 @@ class TrackerUI:
         for tire_widget in self._tire_widgets:
             tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
 
-    def _on_window_state_for_chrome(self, *args):
+    def _on_window_state_for_chrome(self, *_):
         self._apply_theme(self._colors or self._theme.colors())
 
     def _on_system_color_scheme_changed(self):
@@ -992,7 +976,7 @@ class TrackerUI:
             except Exception:
                 pass
 
-    def _apply_debug_visibility(self, initial: bool=False):
+    def _apply_debug_visibility(self):
         vis = self.debug_visible.get()
         self.debug_col.setVisible(vis)
         self._sep_debug.setVisible(vis)
