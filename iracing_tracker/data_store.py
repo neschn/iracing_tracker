@@ -1,4 +1,4 @@
-################################################################################################################
+﻿################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/data_store.py                                                                      #
 # Date de modification : 20.10.2025                                                                            #
@@ -6,12 +6,16 @@
 # Description : Gère la persistance locale des joueurs et meilleurs tours.                                     #
 ################################################################################################################
 
+
 import os
 import sys
 import json
 import tempfile
 from datetime import datetime
 
+#--------------------------------------------------------------------------------------------------------------#
+# Détermine le répertoire de stockage des données utilisateur.                                                 #
+#--------------------------------------------------------------------------------------------------------------#
 def _user_data_dir() -> str:
     env_override = os.getenv("IRTRACKER_DATA_DIR")
     if env_override:
@@ -31,11 +35,17 @@ os.makedirs(DATA_DIR, exist_ok=True)
 PLAYERS_PATH   = os.path.join(DATA_DIR, "players.json")
 BEST_LAPS_PATH = os.path.join(DATA_DIR, "best_laps.json")
 
+#--------------------------------------------------------------------------------------------------------------#
+# Crée le dossier parent d'un chemin si nécessaire.                                                            #
+#--------------------------------------------------------------------------------------------------------------#
 def _ensure_parent_dir(path: str) -> None:
     parent = os.path.dirname(os.path.abspath(path))
     if parent and not os.path.exists(parent):
         os.makedirs(parent, exist_ok=True)
 
+#--------------------------------------------------------------------------------------------------------------#
+# Écrit un fichier JSON via un remplacement atomique.                                                          #
+#--------------------------------------------------------------------------------------------------------------#
 def _atomic_write_json(path: str, data) -> None:
     _ensure_parent_dir(path)
     dirpath  = os.path.dirname(os.path.abspath(path))
@@ -54,6 +64,9 @@ def _atomic_write_json(path: str, data) -> None:
         finally:
             raise
 
+#--------------------------------------------------------------------------------------------------------------#
+# Charge un JSON en gérant les erreurs courantes.                                                              #
+#--------------------------------------------------------------------------------------------------------------#
 def _safe_load_json(path: str, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -74,8 +87,14 @@ def _safe_load_json(path: str, default):
     except Exception:
         raise
 
+#--------------------------------------------------------------------------------------------------------------#
+# Centralise la lecture et l'écriture des données persistantes.                                                #
+#--------------------------------------------------------------------------------------------------------------#
 class DataStore:
     @staticmethod
+    #--------------------------------------------------------------------------------------------------------------#
+    # Charge la liste des joueurs sauvegardée.                                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def load_players():
         data = _safe_load_json(PLAYERS_PATH, default=[])
         if not isinstance(data, list):
@@ -83,6 +102,9 @@ class DataStore:
         return [str(x) for x in data]
 
     @staticmethod
+    #--------------------------------------------------------------------------------------------------------------#
+    # Récupère le dictionnaire des meilleurs tours.                                                                #
+    #--------------------------------------------------------------------------------------------------------------#
     def load_best_laps():
         data = _safe_load_json(BEST_LAPS_PATH, default={})
         if not isinstance(data, dict):
@@ -90,6 +112,9 @@ class DataStore:
         return data
 
     @staticmethod
+    #--------------------------------------------------------------------------------------------------------------#
+    # Normalise et sauvegarde les meilleurs tours fournis.                                                         #
+    #--------------------------------------------------------------------------------------------------------------#
     def save_best_laps(best_laps_dict):
         if not isinstance(best_laps_dict, dict):
             raise TypeError("best_laps_dict must be a dict")

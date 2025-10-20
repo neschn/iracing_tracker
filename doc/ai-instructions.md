@@ -1,4 +1,4 @@
-# 🧠 Fichier d’instructions et de mise en contexte pour ChatGPT  
+# 🧠 Fichier d’instructions et de mise en contexte pour IA  
 *(Projet : iRacing Tracker)*
 
 ---
@@ -21,7 +21,7 @@ La **météo** n’est pas prise en compte pour l’instant.
 
 ---
 
-## 🎯 Objectif principal
+## 🎯 Objectif principal (non exhaustif et évolutif)
 
 Créer un **tableau de suivi des performances locales** sur iRacing, capable de :
 - Enregistrer automatiquement les **meilleurs tours personnels** pour chaque joueur, circuit et voiture.  
@@ -106,6 +106,7 @@ Directives A NE SURTOUT JAMAIS JAMAIS JAMAIS OUBLIER  tu m’aides dans le déve
 - Tu as le droit de remettre en question ce qui a été fait, tout peut toujours être améioré.
 - Toujours garder le format d'ent-ête (exemple plus bas dans ce fichier) et mettre à jour la date de modification dans cet en-tête
 - Toujours intégrer un petit descriptif devant une classe / méthode / section / fonction, selon le même format (exemple plus bas dans ce fichier)
+- Toujours utiliser le "#" pour faire des commentaires, même si ils sont sur plusieures lignes (on met un # à chaque ligne). Jamais utiliser les commentaires de type avec les "
 - Tu peux t'aider sur le GitHub de pyirsdk si besoin : https://github.com/kutu/pyirsdk.git
 
 ---
@@ -128,10 +129,10 @@ Directives A NE SURTOUT JAMAIS JAMAIS JAMAIS OUBLIER  tu m’aides dans le déve
 # Description : description de l'utilité du fichier                                                            #
 ################################################################################################################
 
-## 📄 Commmentaire juste au-dessus toutes les classes / méthodes / sections / fonctions :
+## 📄 Commmentaire d'une ligne juste au-dessus toutes les classes / méthodes / sections / fonctions :
 
-################################################################################################################
+#--------------------------------------------------------------------------------------------------------------#
 # Description de la classe / méthode / section / fonction                                                      #
-################################################################################################################                                       
+#--------------------------------------------------------------------------------------------------------------#                                       
 
 
