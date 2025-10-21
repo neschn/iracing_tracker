@@ -9,286 +9,230 @@
 import time
 import queue
 import threading
-from datetime import datetime
 
 from iracing_tracker.irsdk_client import IRClient
 from iracing_tracker.lap_validator import LapValidator
 from iracing_tracker.data_store import DataStore
 from iracing_tracker.ui import TrackerUI
 
-
-def fmt_lap(t: float) -> str:
-    """Format commun: M:SS.mmm ; '---' si invalide."""
-    if not t or t <= 0:
-        return "---"
-    m, s = divmod(float(t), 60.0)
-    return f"{int(m)}:{s:06.3f}"
+from iracing_tracker.session_manager import SessionManager
+from iracing_tracker.telemetry_reader import TelemetryReader
+from iracing_tracker.record_manager import RecordManager, format_lap_time
+from iracing_tracker.ui_bridge import UIBridge
 
 
-def loop(ir_client, ui_q, validator, best_laps, selected_player_ref, sel_lock, runtime_flags, flags_lock):
-    # ---- Flags d'état généraux ----
-    is_waiting_session_msg_sent = False    
-    session_start_msg_sent = False
-    context_ready = False
-
-
-    # ---- Contexte courant ----
-    track_id = None
-    track_name = "---"
-    car_id = None
-    car_name = "---"
-
-    cached_track_id   = None
-    cached_track_name = "---"
-    cached_car_id     = None
-    cached_car_name   = "---"
-
-    # Coalescing UI
-    last_best_text = None
-
-    # --- Télémetrie: listes de variables ---
-    CORE_VARS = [
-        # nécessaires au fonctionnement toujours
-        "LapCompleted",
-        "LapLastLapTime",
-        "PlayerTrackSurface",
-        "PlayerCarMyIncidentCount",
-    ]
-
-    DEBUG_VARS_VERBOSE = [
-        # variables “bonus” pour debug (coûteuses / arrays)
-        "SessionTime", "SessionNum", "SessionTimeRemain",
-        "CarIdxLapCompleted", "CarIdxLastLapTime",
-        "CarIdxLapDistPct", "CarIdxTrackSurface",
-        "CarIdxOnPitRoad", "CarIdxPosition", "CarIdxSpeed", "CarIdxRPM",
-    ]
-
-    # YAML lourd ponctuel
-    context_vars_heavy = ["WeekendInfo", "DriverInfo", "PlayerCarIdx"]
-
-    # Throttles
-    CTX_READ_PERIOD   = 2.0
-    DEBUG_PUSH_PERIOD = 0.3
-
-    last_ctx_read_ts   = 0.0
-    last_debug_push_ts = 0.0
-
-    # ---- Helpers internes ----
-
-    def _reset_context_and_ui():
-        nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name
-        nonlocal context_ready, last_best_text
-        cached_track_id, cached_track_name = None, "---"
-        cached_car_id,   cached_car_name   = None, "---"
-        context_ready = False
-        last_best_text = None
-        ui_q.put(("context", {"track": "---", "car": "---"}))
-        ui_q.put(("player_best", {"text": "-:--.---"}))
-
-    def _handle_session_not_active():
-        nonlocal is_waiting_session_msg_sent, session_start_msg_sent
-        if not is_waiting_session_msg_sent:
-            ui_q.put(("log", {"message": "En attente du démarrage d’une session…"}))
-            is_waiting_session_msg_sent = True
-            session_start_msg_sent = False
-            ui_q.put(("debug", {}))     # vider la zone Debug
-            validator.reset()           # repartir proprement côté tours
-            _reset_context_and_ui()
-            try:
-                ir_client.ir.shutdown()
-            except Exception:
-                pass
-        # Hors session: autoriser le changement de joueur
-        ui_q.put(("player_menu_state", {"enabled": True}))
-
-
-    def _maybe_update_context(now_ts):
-        nonlocal last_ctx_read_ts, track_id, track_name, car_id, car_name
-        nonlocal cached_track_id, cached_track_name, cached_car_id, cached_car_name, context_ready, last_best_text
-        nonlocal session_start_msg_sent
-
-        if now_ts - last_ctx_read_ts < CTX_READ_PERIOD:
-            return
-
-        ctx = ir_client.freeze_and_read(context_vars_heavy) or {}
-        weekend = ctx.get("WeekendInfo") or {}
-        track_id = weekend.get("TrackID")
-        base_track_name = weekend.get("TrackDisplayName", "---")
-        track_cfg = (weekend.get("TrackConfigName") or "").strip()
-        track_name = f"{base_track_name} ({track_cfg})" if track_cfg else base_track_name
-
-        drivers = ctx.get("DriverInfo", {}).get("Drivers", [])
-        idx = int(ctx.get("PlayerCarIdx") or 0)
-        if 0 <= idx < len(drivers):
-            car_info = drivers[idx]
-            car_id = car_info.get("CarID")
-            car_name = car_info.get("CarScreenName", "---")
-        else:
-            car_id, car_name = None, "---"
-
-        last_ctx_read_ts = now_ts
-
-        if (track_id != cached_track_id) or (car_id != cached_car_id) \
-        or (track_name != cached_track_name) or (car_name != cached_car_name):
-            cached_track_id, cached_track_name = track_id, track_name
-            cached_car_id,   cached_car_name   = car_id, car_name
-            context_ready = (track_id is not None) and (car_id is not None)
-            ui_q.put(("context", {"track": track_name, "car": car_name}))
-            last_best_text = None  # force une MAJ du label
-
-            # Message unique de démarrage de session
-            if context_ready and not session_start_msg_sent:
-                ui_q.put(("log", {"message": f"Nouvelle session démarrée : {track_name} - {car_name}"}))
-                session_start_msg_sent = True
-
-
-    def _update_best_label_if_changed():
-        nonlocal last_best_text
-        with sel_lock:
-            player_curr = selected_player_ref["name"]
-        if not context_ready or not player_curr or player_curr == "---":
-            best_text = "---"
-        else:
-            key = f"{track_id}|{car_id}"
-            entry = best_laps.get(key, {}).get(player_curr)
-            best_text = fmt_lap(entry["time"]) if entry else "---"
-        if best_text != last_best_text:
-            ui_q.put(("player_best", {"text": best_text}))
-            last_best_text = best_text
-
-    # ---- Boucle principale ----
+#--------------------------------------------------------------------------------------------------------------#
+# Boucle principale de collecte télémétrie et validation des tours.                                            #
+#--------------------------------------------------------------------------------------------------------------#
+def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader, 
+         record_manager, selected_player_ref, sel_lock, runtime_flags, flags_lock):
+    """
+    Boucle principale refactorisée avec managers.
+    Orchestration légère : lecture -> validation -> mise à jour UI.
+    """
+    
     while True:
-        now = time.time()
-
-        # lecture “core” à 10 Hz env
+        # ---- 1) LECTURE CORE EN PREMIER (nécessaire pour connexion iRSDK) ----
+        # CRITIQUE : Cette lecture DOIT être faite avant is_session_active()
+        # car c'est elle qui initialise la connexion iRSDK !
         try:
-            state_core = ir_client.freeze_and_read(CORE_VARS) or {}
+            state_core = telemetry_reader.read_core(force=True) or {}
         except Exception:
             state_core = {}
-
-        # session inactive -> attente
-        if not ir_client.is_session_active():
-            _handle_session_not_active()
+        
+        # ---- 2) Vérifier si session active (APRÈS la lecture) ----
+        if not session_manager.is_active():
+            _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, telemetry_reader)
             time.sleep(0.1)
             continue
-
-        # Reset du flag informant qu'on attend le démarrage d'une session
-        if is_waiting_session_msg_sent:
-            is_waiting_session_msg_sent = False
-
-        # contexte YAML ponctuel
+        
+        # ---- 3) Session active : reset flag d'attente ----
+        if session_manager.is_waiting_session_msg_sent:
+            session_manager.is_waiting_session_msg_sent = False
+        
+        # ---- 4) Lecture et mise à jour du contexte ----
+        # Forcer la lecture tant qu'on n'a pas de contexte valide
         try:
-            _maybe_update_context(now)
+            force_context_read = not session_manager.context.is_ready
+            context_data = telemetry_reader.read_context(force=force_context_read)
+            
+            if context_data:
+                context_changed = session_manager.update_context(context_data)
+                
+                # Envoyer à l'UI si changement
+                if context_changed:
+                    ui_bridge.update_context(
+                        session_manager.context.track_name,
+                        session_manager.context.car_name
+                    )
+                    # Force mise à jour du best label après changement de contexte
+                    ui_bridge.reset_coalescing()
+                
+                # Message "session démarrée" (une seule fois)
+                if session_manager.should_send_session_started_message():
+                    track = session_manager.context.track_name
+                    car = session_manager.context.car_name
+                    ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")
+                    session_manager.mark_session_started_message_sent()
+                
         except Exception as e:
-            ui_q.put(("log", {"message": f"Erreur lecture contexte : {e}"}))
-
-        # lecture / push DEBUG uniquement si visible
+            ui_bridge.log(f"Erreur lecture contexte : {e}")
+        
+        # ---- 5) Lecture debug (si activé) ----
         with flags_lock:
             debug_enabled = bool(runtime_flags.get("debug_enabled", False))
-
-        if debug_enabled and (now - last_debug_push_ts) >= DEBUG_PUSH_PERIOD:
-            try:
-                dbg = ir_client.freeze_and_read(DEBUG_VARS_VERBOSE) or {}
-            except Exception:
-                dbg = {}
-            payload = {
-                **state_core,
-                **dbg,
-                "is_waiting_session_msg_sent": is_waiting_session_msg_sent,
-                "session_start_msg_sent": session_start_msg_sent,
-            }
-            ui_q.put(("debug", payload))
-            last_debug_push_ts = now
-
-        # gestion pit/garage (surface: -1=au démarrage, avant d'aller au garage 0=hors des track limit, 1=pitstall/garage, 2= dans la pitlane, 3=sur la piste)
+        
+        if debug_enabled:
+            debug_data = telemetry_reader.read_debug()
+            if debug_data:
+                # Fusionner avec les données core
+                merged_debug = {**state_core, **debug_data}
+                # Ajouter les flags de session
+                merged_debug["is_waiting_session_msg_sent"] = session_manager.is_waiting_session_msg_sent
+                merged_debug["session_start_msg_sent"] = session_manager.session_start_msg_sent
+                ui_bridge.update_debug(merged_debug)
+        
+        # ---- 6) Gestion pit/garage : activer/désactiver menu joueur ----
         surface = int(state_core.get("PlayerTrackSurface") or 0)
-        ui_q.put(("player_menu_state", {"enabled": surface in (1, -1)}))
-
-
-        # coalescing du label “record personnel”
-        _update_best_label_if_changed()
-
-        # joueur courant
+        ui_bridge.set_player_menu_state(surface in (1, -1))
+        
+        # ---- 7) Mise à jour du record personnel du joueur sélectionné ----
         with sel_lock:
             player = selected_player_ref["name"]
+        
+        if player and player != "---" and session_manager.context.is_ready:
+            best_text = record_manager.get_personal_best_formatted(
+                player,
+                session_manager.context.track_id,
+                session_manager.context.car_id
+            )
+            ui_bridge.update_player_best(best_text)
+        else:
+            ui_bridge.update_player_best("---")
+        
+        # ---- 8) Validation des tours ----
         if not player or player == "---":
             time.sleep(0.1)
             continue
-
-        # validator
+        
         lap_state = {
             "LapCompleted": state_core.get("LapCompleted"),
             "PlayerTrackSurface": state_core.get("PlayerTrackSurface"),
             "LapLastLapTime": state_core.get("LapLastLapTime"),
             "PlayerCarMyIncidentCount": state_core.get("PlayerCarMyIncidentCount"),
         }
-
+        
         status, lap_time = validator.update(lap_state)
-
-        if status == "valid" and context_ready:
-            best_laps = DataStore.load_best_laps()
-            key = f"{track_id}|{car_id}"
-            times = best_laps.setdefault(key, {})
-            prev = times.get(player)
-            record_beaten = (prev is None) or (lap_time < prev["time"])
-            if record_beaten:
-                times[player] = {"time": lap_time, "date": datetime.now().isoformat()}
-                DataStore.save_best_laps(best_laps)
-                _update_best_label_if_changed()
-
-            suffix = " (record personnel battu)" if record_beaten else ""
-            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : {fmt_lap(lap_time)}{suffix}"}))
-
+        
+        # ---- 9) Sauvegarde si tour valide ----
+        if status == "valid" and session_manager.context.is_ready:
+            is_record = record_manager.save_lap(
+                player,
+                session_manager.context.track_id,
+                session_manager.context.car_id,
+                lap_time
+            )
+            suffix = " (record personnel battu)" if is_record else ""
+            ui_bridge.log(f"Nouveau tour pour {player} : {format_lap_time(lap_time)}{suffix}")
+        
         elif status == "invalid":
-            ui_q.put(("log", {"message": f"Nouveau tour pour {player} : Temps invalide"}))
-
+            ui_bridge.log(f"Nouveau tour pour {player} : Temps invalide")
+        
         time.sleep(0.1)
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Gère le cas où la session iRacing est inactive (attente, reset).                                             #
+#--------------------------------------------------------------------------------------------------------------#
+def _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, telemetry_reader):
+    """
+    Appelé quand aucune session iRacing n'est active.
+    - Envoie message "attente session" (une seule fois)
+    - Reset validator et télémétrie
+    - Reset contexte session ET UI
+    - Shutdown ir_client
+    - Active menu joueur
+    """
+    if session_manager.should_send_waiting_message():
+        ui_bridge.log("En attente du démarrage d'une session…")
+        session_manager.mark_waiting_message_sent()
+        
+        # Reset état
+        validator.reset()
+        telemetry_reader.reset_throttling()
+        ui_bridge.reset_coalescing()
+        session_manager.reset_context()  # ← AJOUT : Reset le contexte interne
+        
+        # Reset contexte UI
+        ui_bridge.update_context("---", "---")
+        ui_bridge.update_player_best("-:--.---")
+        ui_bridge.update_debug({})
+        
+        # Shutdown iRSDK
+        try:
+            ir_client.ir.shutdown()
+        except Exception:
+            pass
+    
+    # Hors session : autoriser le changement de joueur
+    ui_bridge.set_player_menu_state(True)
 
+
+#--------------------------------------------------------------------------------------------------------------#
+# Point d'entrée principal : initialise les managers et lance la boucle.                                       #
+#--------------------------------------------------------------------------------------------------------------#
 def main():
-    ir_client  = IRClient()
-    validator  = LapValidator()
-    best_laps  = DataStore.load_best_laps()
-    players    = DataStore.load_players()
-
-    # 1) Crée l'UI sans callback (temporaire)
+    # ---- Initialisation des composants ----
+    ir_client = IRClient()
+    validator = LapValidator()
+    players = DataStore.load_players()
+    
+    # ---- Initialisation des managers ----
+    session_manager = SessionManager(ir_client)
+    telemetry_reader = TelemetryReader(ir_client)
+    record_manager = RecordManager()
+    
+    # ---- Création de l'UI ----
     ui = TrackerUI(players, lambda p: None)
-
+    
+    # ---- Bridge UI ----
+    ui_event_queue = queue.Queue()
+    ui_bridge = UIBridge(ui_event_queue)
+    ui.bind_event_queue(ui_event_queue)
+    
+    # ---- Configuration debug ----
     runtime_flags = {"debug_enabled": ui.debug_visible.get()}
     flags_lock = threading.Lock()
-
+    
     def on_debug_toggle(visible: bool):
         with flags_lock:
             runtime_flags["debug_enabled"] = bool(visible)
-
+    
     ui.set_on_debug_toggle(on_debug_toggle)
-
-    # ---- ÉTAT JOUEUR SÉLECTIONNÉ (thread-safe) ----
+    
+    # ---- État joueur sélectionné (thread-safe) ----
     selected_player = {"name": players[0] if players else "---"}
     sel_lock = threading.Lock()
-
+    
     def on_player_change(p):
         with sel_lock:
             selected_player["name"] = p
         ui.add_log(f"Joueur sélectionné : {p}")
-
+    
     ui.set_on_player_change(on_player_change)
-
-    # 3) Queue d’événements UI + pompe .after()
-    ui_event_queue = queue.Queue()
-    ui.bind_event_queue(ui_event_queue)
-
-    # 4) Lance le worker
+    
+    # ---- Lancement du worker ----
     t = threading.Thread(
         target=loop,
-        args=(ir_client, ui_event_queue, validator, best_laps, selected_player, sel_lock, runtime_flags, flags_lock),
+        args=(
+            ir_client, ui_bridge, validator, session_manager, telemetry_reader,
+            record_manager, selected_player, sel_lock, runtime_flags, flags_lock
+        ),
         daemon=True
     )
-
     t.start()
-
-    # 5) Boucle Tk
+    
+    # ---- Boucle Tk ----
     ui.mainloop()
 
 

@@ -1,0 +1,97 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui_bridge.py                                                                       #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Gère la communication avec l'UI via queue, avec coalescing automatique.                        #
+################################################################################################################
+
+import queue
+from typing import Optional
+
+
+#--------------------------------------------------------------------------------------------------------------#
+# Pont entre la boucle télémétrie et l'UI, avec coalescing pour éviter les updates inutiles.                   #
+#--------------------------------------------------------------------------------------------------------------#
+class UIBridge:
+    """
+    Responsabilités :
+    - Envoyer des messages à la queue UI
+    - Coalescing automatique (évite d'envoyer la même valeur 2 fois)
+    - Méthodes pratiques pour chaque type de message
+    
+    Types de messages UI gérés :
+    - context : mise à jour circuit/voiture
+    - player_best : record personnel du joueur
+    - player_menu_state : activer/désactiver le sélecteur de joueur
+    - log : message de log
+    - debug : données de debug
+    """
+    
+    def __init__(self, ui_queue: queue.Queue):
+        self.ui_queue = ui_queue
+        
+        # Cache pour coalescing (évite d'envoyer la même valeur)
+        self._last_context: Optional[tuple] = None
+        self._last_player_best: Optional[str] = None
+        self._last_player_menu_state: Optional[bool] = None
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le contexte (circuit + voiture) dans l'UI, avec coalescing.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_context(self, track: str, car: str):
+        """
+        Envoie le contexte (circuit, voiture) à l'UI.
+        Coalescing : n'envoie que si différent de la dernière valeur.
+        """
+        new_value = (track, car)
+        if new_value != self._last_context:
+            self.ui_queue.put(("context", {"track": track, "car": car}))
+            self._last_context = new_value
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le record personnel du joueur sélectionné, avec coalescing.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_player_best(self, best_time_text: str):
+        """
+        Envoie le meilleur temps du joueur sélectionné à l'UI.
+        Coalescing : n'envoie que si différent de la dernière valeur.
+        """
+        if best_time_text != self._last_player_best:
+            self.ui_queue.put(("player_best", {"text": best_time_text}))
+            self._last_player_best = best_time_text
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Active/désactive le sélecteur de joueur selon la position (garage/piste).                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_player_menu_state(self, enabled: bool):
+        """
+        Active/désactive le menu de sélection des joueurs.
+        Coalescing : n'envoie que si l'état change.
+        """
+        if enabled != self._last_player_menu_state:
+            self.ui_queue.put(("player_menu_state", {"enabled": enabled}))
+            self._last_player_menu_state = enabled
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Envoie un message de log (toujours envoyé, pas de coalescing).                                              #
+    #--------------------------------------------------------------------------------------------------------------#
+    def log(self, message: str):
+        """Envoie un message de log à l'UI (pas de coalescing)."""
+        self.ui_queue.put(("log", {"message": message}))
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Envoie les données de debug à l'UI (pas de coalescing, si zone visible).                                    #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_debug(self, debug_data: dict):
+        """Envoie les données de debug à l'UI (pas de coalescing)."""
+        self.ui_queue.put(("debug", debug_data))
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Réinitialise le cache de coalescing (utile lors d'un changement de session).                                #
+    #--------------------------------------------------------------------------------------------------------------#
+    def reset_coalescing(self):
+        """Réinitialise le cache de coalescing (force prochaine mise à jour)."""
+        self._last_context = None
+        self._last_player_best = None
+        self._last_player_menu_state = None

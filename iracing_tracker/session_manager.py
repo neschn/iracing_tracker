@@ -1,0 +1,144 @@
+################################################################################################################
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/session_manager.py                                                                 #
+# Date de modification : 20.10.2025                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Gère l'état de la session iRacing (détection changements, contexte track/car).                 #
+################################################################################################################
+
+from typing import Optional
+
+
+#--------------------------------------------------------------------------------------------------------------#
+# Encapsule l'état complet d'une session iRacing (circuit + voiture).                                          #
+#--------------------------------------------------------------------------------------------------------------#
+class SessionContext:
+    """Représente le contexte d'une session : circuit et voiture."""
+    
+    def __init__(self):
+        self.track_id: Optional[int] = None
+        self.track_name: str = "---"
+        self.car_id: Optional[int] = None
+        self.car_name: str = "---"
+        self.is_ready: bool = False  # True si track_id et car_id sont définis
+    
+    def update(self, track_id: Optional[int], track_name: str, car_id: Optional[int], car_name: str):
+        """Met à jour le contexte et détermine s'il a changé."""
+        changed = (
+            self.track_id != track_id or
+            self.track_name != track_name or
+            self.car_id != car_id or
+            self.car_name != car_name
+        )
+        
+        self.track_id = track_id
+        self.track_name = track_name
+        self.car_id = car_id
+        self.car_name = car_name
+        self.is_ready = (track_id is not None) and (car_id is not None)
+        
+        return changed
+    
+    def get_key(self) -> Optional[str]:
+        """Retourne la clé unique du combo track|car, ou None si pas prêt."""
+        if not self.is_ready:
+            return None
+        return f"{self.track_id}|{self.car_id}"
+
+
+#--------------------------------------------------------------------------------------------------------------#
+# Gère l'état de la session iRacing : détection active/inactive, changements de contexte.                      #
+#--------------------------------------------------------------------------------------------------------------#
+class SessionManager:
+    """
+    Responsabilités :
+    - Détecter si une session est active (via IRClient)
+    - Détecter les changements de contexte (track/car)
+    - Gérer les flags de messages de log (attente session, session démarrée)
+    - Fournir le contexte actuel
+    """
+    
+    def __init__(self, ir_client):
+        self.ir_client = ir_client
+        self.context = SessionContext()
+        
+        # Flags pour messages de log (évite les spams)
+        self.is_waiting_session_msg_sent = False
+        self.session_start_msg_sent = False
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Vérifie si une session iRacing est active.                                                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def is_active(self) -> bool:
+        """Retourne True si une session iRacing est active."""
+        return self.ir_client.is_session_active()
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le contexte depuis les données iRSDK brutes (WeekendInfo, DriverInfo, etc.).                     #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_context(self, context_data: dict) -> bool:
+        """
+        Met à jour le contexte de session depuis les données iRSDK.
+        Retourne True si le contexte a changé.
+        """
+        weekend = context_data.get("WeekendInfo") or {}
+        track_id = weekend.get("TrackID")
+        base_track_name = weekend.get("TrackDisplayName", "---")
+        track_cfg = (weekend.get("TrackConfigName") or "").strip()
+        track_name = f"{base_track_name} ({track_cfg})" if track_cfg else base_track_name
+        
+        drivers = context_data.get("DriverInfo", {}).get("Drivers", [])
+        idx = int(context_data.get("PlayerCarIdx") or 0)
+        if 0 <= idx < len(drivers):
+            car_info = drivers[idx]
+            car_id = car_info.get("CarID")
+            car_name = car_info.get("CarScreenName", "---")
+        else:
+            car_id, car_name = None, "---"
+        
+        changed = self.context.update(track_id, track_name, car_id, car_name)
+        return changed
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Réinitialise les flags de messages (appelé quand session devient inactive).                                 #
+    #--------------------------------------------------------------------------------------------------------------#
+    def reset_message_flags(self):
+        """Réinitialise les flags de log pour permettre les prochains messages."""
+        self.is_waiting_session_msg_sent = False
+        self.session_start_msg_sent = False
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Marque qu'on a envoyé le message "en attente de session".                                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def mark_waiting_message_sent(self):
+        """Marque que le message 'attente de session' a été envoyé."""
+        self.is_waiting_session_msg_sent = True
+        self.session_start_msg_sent = False
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Marque qu'on a envoyé le message "session démarrée".                                                        #
+    #--------------------------------------------------------------------------------------------------------------#
+    def mark_session_started_message_sent(self):
+        """Marque que le message 'session démarrée' a été envoyé."""
+        self.session_start_msg_sent = True
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Indique si on doit envoyer le message "en attente de session".                                              #
+    #--------------------------------------------------------------------------------------------------------------#
+    def should_send_waiting_message(self) -> bool:
+        """Retourne True si on doit envoyer le message 'attente de session'."""
+        return not self.is_waiting_session_msg_sent
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Indique si on doit envoyer le message "session démarrée".                                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def should_send_session_started_message(self) -> bool:
+        """Retourne True si on doit envoyer le message 'session démarrée'."""
+        return self.context.is_ready and not self.session_start_msg_sent
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Réinitialise complètement le contexte (appelé quand session devient inactive).                              #
+    #--------------------------------------------------------------------------------------------------------------#
+    def reset_context(self):
+        """Réinitialise le contexte à son état initial (---/None)."""
+        self.context = SessionContext()
