@@ -49,6 +49,7 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
         # ---- 3) Session active : reset flag d'attente ----
         if session_manager.is_waiting_session_msg_sent:
             session_manager.is_waiting_session_msg_sent = False
+            ui_bridge.show_banner_message("clear")
         
         # ---- 4) Lecture et mise à jour du contexte ----
         # Forcer la lecture tant qu'on n'a pas de contexte valide
@@ -141,11 +142,13 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 lap_time
             )
             
-            # Message de log selon le type de record
+            # Message de log et bannière selon le type de record
             if is_absolute:
                 suffix = " (record absolu battu)"
+                ui_bridge.show_banner_message("absolute_record")
             elif is_personal:
                 suffix = " (record personnel battu)"
+                ui_bridge.show_banner_message("personal_record")
             else:
                 suffix = ""
             ui_bridge.log(f"Nouveau tour pour {player} : {format_lap_time(lap_time)}{suffix}")
@@ -178,6 +181,7 @@ def _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, t
     """
     if session_manager.should_send_waiting_message():
         ui_bridge.log("En attente du démarrage d'une session…")
+        ui_bridge.show_banner_message("waiting")
         session_manager.mark_waiting_message_sent()
         
         # Reset état

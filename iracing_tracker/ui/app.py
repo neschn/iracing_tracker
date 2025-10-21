@@ -42,6 +42,7 @@ from .constants import (
 from .window import TrackerMainWindow
 from .titlebar import CustomTitleBar
 from .theme import ThemeManager
+from .banner_manager import BannerManager, BannerMessageType
 from .widgets import (
     BoolVarCompat as _BoolVarCompat,
     hsep as _hsep,
@@ -131,6 +132,7 @@ class TrackerUI:
         self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
         banner_lay.addWidget(self.banner_label)
         root.addWidget(banner)
+        self._banner_manager = None
 
         self._sep_banner = _hsep(central)
         self._seps.append(self._sep_banner)
@@ -587,7 +589,22 @@ class TrackerUI:
             # Mettre à jour les labels
             row_data["time"].setText(time_text)
             row_data["player"].setText(player_name)
+
+    def _handle_banner_message(self, message_type: str):
+            """Traite un message de bannière."""
+            if not self._banner_manager:
+                return
             
+            type_map = {
+                "waiting": BannerMessageType.WAITING_SESSION,
+                "personal_record": BannerMessageType.PERSONAL_RECORD,
+                "absolute_record": BannerMessageType.ABSOLUTE_RECORD,
+                "clear": BannerMessageType.NONE,
+            }
+            
+            banner_type = type_map.get(message_type, BannerMessageType.NONE)
+            self._banner_manager.show_message(banner_type)
+
     def update_current_lap_time(self, text: str):
         self.current_lap_label.setText(text or "---")
 
@@ -905,6 +922,12 @@ class TrackerUI:
         self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}")
         self.banner_label.setStyleSheet(f"QLabel{{color:{c['banner_text']};}}")
 
+        # Initialiser ou mettre à jour le banner manager
+        if self._banner_manager is None:
+            self._banner_manager = BannerManager(self._banner, self.banner_label, c)
+        else:
+            self._banner_manager.update_theme(c)
+
         btn_ss = (
             "QPushButton{"
             f"background:{c['button_bg']};"
@@ -1044,9 +1067,12 @@ class TrackerUI:
                     self.add_log(payload.get("message", ""))
                 elif name == "player_best":
                     self.update_player_personal_record(payload.get("text", "---"))
-                elif name == "ranking":  # ← AJOUTE CES 3 LIGNES
+                elif name == "ranking":  
                     ranking = payload.get("ranking", [])
                     self._update_ranking_display(ranking)
+                elif name == "banner":  # ← AJOUTE CES LIGNES
+                    msg_type = payload.get("type", "")
+                    self._handle_banner_message(msg_type)
                 elif name == "current_lap":
                     self.update_current_lap_time(payload.get("text", "---"))
                 elif name == "last_laps":

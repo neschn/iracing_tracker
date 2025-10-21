@@ -105,3 +105,13 @@ class UIBridge:
         Format attendu : [{"player": "Nico", "time": 65.123}, ...]
         """
         self.ui_queue.put(("ranking", {"ranking": ranking}))
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Envoie un message à afficher dans la bannière.                                                              #
+    #--------------------------------------------------------------------------------------------------------------#
+    def show_banner_message(self, message_type: str):
+        """
+        Affiche un message dans la bannière.
+        message_type: "waiting" | "personal_record" | "absolute_record" | "clear"
+        """
+        self.ui_queue.put(("banner", {"type": message_type}))

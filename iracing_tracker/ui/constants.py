@@ -56,7 +56,7 @@ LIGHT_SCROLLBAR_HANDLE_HOVER_END   = "#6f6f6f"
 LIGHT_INTERACTIVE_HOVER_BG = "#dcdcdc"
 LIGHT_LAST_LAPS_HOVER_BG = "#d8d8d8"
 LIGHT_BANNER_BG       = "#f0f0f0"
-LIGHT_BANNER_TEXT     = "#0d47a1"
+LIGHT_BANNER_TEXT     = "#000000"
 LIGHT_DEBUG_BG        = "#f0f0f0"
 LIGHT_LOG_BG          = "#f0f0f0"
 LIGHT_SEPARATOR       = "#cccccc"
@@ -139,3 +139,17 @@ SEPARATOR_THICKNESS = 1
 DEBUG_INITIAL_VISIBLE = True
 TIME_COL_PX = 120
 MEDAL_ICON_SIZE = 48
+
+# Bannière - Messages et animations
+BANNER_WAITING_TEXT = "EN ATTENTE DE DÉMARRAGE D'UNE SESSION"
+BANNER_PERSONAL_RECORD_TEXT = "RECORD PERSONNEL BATTU"
+BANNER_ABSOLUTE_RECORD_TEXT = "RECORD ABSOLU BATTU"
+
+# Bannière - Couleurs (peuvent être overridées par le thème)
+BANNER_PERSONAL_RECORD_COLOR = "#FFBE25"  # Jaune/Orange
+BANNER_ABSOLUTE_RECORD_COLOR = "#580068"  # Violet
+
+# Bannière - Paramètres d'animation
+BANNER_BLINK_COUNT = 3              # Nombre de clignotements
+BANNER_BLINK_DURATION_MS = 600      # Durée d'un clignotement (ms)
+BANNER_FADE_DURATION_MS = 2000      # Durée du fade in/out pour "attente" (ms)
