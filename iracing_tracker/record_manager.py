@@ -65,23 +65,26 @@ class RecordManager:
         return None
     
     #--------------------------------------------------------------------------------------------------------------#
-    # Sauvegarde un tour et détermine s'il bat le record personnel du joueur.                                     #
+    # Sauvegarde un tour et détermine s'il bat le record personnel et/ou absolu.                                  #
     #--------------------------------------------------------------------------------------------------------------#
-    def save_lap(self, player: str, track_id: int, car_id: int, lap_time: float) -> bool:
+    def save_lap(self, player: str, track_id: int, car_id: int, lap_time: float) -> tuple[bool, bool]:
         """
         Sauvegarde un tour valide pour un joueur.
-        Retourne True si ce temps bat le record personnel, False sinon.
+        Retourne (is_personal_record, is_absolute_record).
         """
         if not player or player == "---":
-            return False
+            return False, False
+        
+        # Vérifier si record absolu AVANT sauvegarde
+        is_absolute = self.is_absolute_record(track_id, car_id, lap_time)
         
         key = f"{track_id}|{car_id}"
         times = self._best_laps.setdefault(key, {})
         
         prev = times.get(player)
-        is_record = (prev is None) or (lap_time < prev["time"])
+        is_personal = (prev is None) or (lap_time < prev["time"])
         
-        if is_record:
+        if is_personal:
             times[player] = {
                 "time": lap_time,
                 "date": datetime.now().isoformat()
@@ -90,7 +93,7 @@ class RecordManager:
             # Recharger après sauvegarde pour cohérence
             self.reload()
         
-        return is_record
+        return is_personal, is_absolute
     
     #--------------------------------------------------------------------------------------------------------------#
     # Retourne le meilleur temps formaté pour l'affichage UI.                                                     #
@@ -105,3 +108,44 @@ class RecordManager:
         
         best = self.get_personal_best(player, track_id, car_id)
         return format_lap_time(best) if best else "---"
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne le classement des N meilleurs temps pour un combo track|car.                                        #
+    #--------------------------------------------------------------------------------------------------------------#
+    def get_ranking(self, track_id: int, car_id: int, limit: int = 3) -> list[dict]:
+        """
+        Retourne le top N des temps pour un combo track|car.
+        Format : [{"player": "Nico", "time": 65.123}, ...]
+        Trié du meilleur au moins bon.
+        """
+        if track_id is None or car_id is None:
+            return []
+        
+        key = f"{track_id}|{car_id}"
+        times = self._best_laps.get(key, {})
+        
+        # Construire liste [(player, time), ...] et trier
+        ranking = []
+        for player, entry in times.items():
+            if entry and isinstance(entry, dict):
+                lap_time = entry.get("time")
+                if lap_time and lap_time > 0:
+                    ranking.append({"player": player, "time": lap_time})
+        
+        # Trier par temps croissant
+        ranking.sort(key=lambda x: x["time"])
+        
+        # Retourner les N premiers
+        return ranking[:limit]
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Vérifie si un temps est le record absolu (meilleur parmi TOUS les joueurs).                                 #
+    #--------------------------------------------------------------------------------------------------------------#
+    def is_absolute_record(self, track_id: int, car_id: int, lap_time: float) -> bool:
+        """
+        Retourne True si ce temps est le meilleur absolu pour ce combo track|car.
+        """
+        ranking = self.get_ranking(track_id, car_id, limit=1)
+        if not ranking:
+            return True  # Premier temps enregistré = record absolu
+        return lap_time <= ranking[0]["time"]

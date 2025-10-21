@@ -74,6 +74,14 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                     car = session_manager.context.car_name
                     ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")
                     session_manager.mark_session_started_message_sent()
+                    
+                    # Charger le classement initial
+                    ranking = record_manager.get_ranking(
+                        session_manager.context.track_id,
+                        session_manager.context.car_id,
+                        limit=3
+                    )
+                    ui_bridge.update_ranking(ranking)
                 
         except Exception as e:
             ui_bridge.log(f"Erreur lecture contexte : {e}")
@@ -126,14 +134,29 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
         
         # ---- 9) Sauvegarde si tour valide ----
         if status == "valid" and session_manager.context.is_ready:
-            is_record = record_manager.save_lap(
+            is_personal, is_absolute = record_manager.save_lap(
                 player,
                 session_manager.context.track_id,
                 session_manager.context.car_id,
                 lap_time
             )
-            suffix = " (record personnel battu)" if is_record else ""
+            
+            # Message de log selon le type de record
+            if is_absolute:
+                suffix = " (record absolu battu)"
+            elif is_personal:
+                suffix = " (record personnel battu)"
+            else:
+                suffix = ""
             ui_bridge.log(f"Nouveau tour pour {player} : {format_lap_time(lap_time)}{suffix}")
+            
+            # Mise à jour du classement en temps réel
+            ranking = record_manager.get_ranking(
+                session_manager.context.track_id,
+                session_manager.context.car_id,
+                limit=3
+            )
+            ui_bridge.update_ranking(ranking)
         
         elif status == "invalid":
             ui_bridge.log(f"Nouveau tour pour {player} : Temps invalide")
@@ -164,6 +187,7 @@ def _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, t
         session_manager.reset_context()  # ← AJOUT : Reset le contexte interne
         
         # Reset contexte UI
+        ui_bridge.update_ranking([])
         ui_bridge.update_context("---", "---")
         ui_bridge.update_player_best("-:--.---")
         ui_bridge.update_debug({})

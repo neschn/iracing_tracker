@@ -95,3 +95,13 @@ class UIBridge:
         self._last_context = None
         self._last_player_best = None
         self._last_player_menu_state = None
+    
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le classement (top 3) affiché dans l'UI.                                                         #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_ranking(self, ranking: list[dict]):
+        """
+        Envoie le classement à l'UI.
+        Format attendu : [{"player": "Nico", "time": 65.123}, ...]
+        """
+        self.ui_queue.put(("ranking", {"ranking": ranking}))

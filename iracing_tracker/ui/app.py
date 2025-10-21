@@ -559,6 +559,35 @@ class TrackerUI:
     def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.setText(best_time_str or "---")
 
+    def _update_ranking_display(self, ranking: list):
+        """
+        Met à jour l'affichage du top 3 dans la section SESSION.
+        ranking : [{"player": "Nico", "time": 65.123}, ...]
+        """
+        from .constants import FONT_FAMILY, FONT_SIZE_LAPTIME
+        from PySide6.QtGui import QFont
+        
+        # Compléter avec des entrées vides si moins de 3 temps
+        while len(ranking) < 3:
+            ranking.append({"player": "", "time": 0.0})
+        
+        # Mettre à jour les 3 lignes du classement
+        for i, row_data in enumerate(self.absolute_rank_rows[:3]):
+            entry = ranking[i]
+            player_name = entry.get("player", "")
+            lap_time = entry.get("time", 0.0)
+            
+            # Formater le temps
+            if lap_time > 0:
+                from iracing_tracker.record_manager import format_lap_time
+                time_text = format_lap_time(lap_time)
+            else:
+                time_text = "-:--.---"
+            
+            # Mettre à jour les labels
+            row_data["time"].setText(time_text)
+            row_data["player"].setText(player_name)
+            
     def update_current_lap_time(self, text: str):
         self.current_lap_label.setText(text or "---")
 
@@ -1015,6 +1044,9 @@ class TrackerUI:
                     self.add_log(payload.get("message", ""))
                 elif name == "player_best":
                     self.update_player_personal_record(payload.get("text", "---"))
+                elif name == "ranking":  # ← AJOUTE CES 3 LIGNES
+                    ranking = payload.get("ranking", [])
+                    self._update_ranking_display(ranking)
                 elif name == "current_lap":
                     self.update_current_lap_time(payload.get("text", "---"))
                 elif name == "last_laps":
