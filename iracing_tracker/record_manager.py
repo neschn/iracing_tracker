@@ -101,13 +101,13 @@ class RecordManager:
     def get_personal_best_formatted(self, player: str, track_id: Optional[int], car_id: Optional[int]) -> str:
         """
         Retourne le meilleur temps du joueur formaté (M:SS.mmm).
-        Retourne '---' si aucun temps ou contexte invalide.
+        Retourne toujours '-:--.---' si pas de record (peu importe si session active ou non).
         """
         if track_id is None or car_id is None:
-            return "---"
+            return "-:--.---"
         
         best = self.get_personal_best(player, track_id, car_id)
-        return format_lap_time(best) if best else "---"
+        return format_lap_time(best) if best else "-:--.---"
     
     #--------------------------------------------------------------------------------------------------------------#
     # Retourne le classement des N meilleurs temps pour un combo track|car.                                        #
