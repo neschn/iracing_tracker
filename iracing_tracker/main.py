@@ -68,7 +68,9 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                     )
                     # Force mise à jour du best label après changement de contexte
                     ui_bridge.reset_coalescing()
-                
+                    # Recharger les records depuis le disque (au cas où modifiés)
+                    record_manager.reload()
+                                    
                 # Message "session démarrée" (une seule fois)
                 if session_manager.should_send_session_started_message():
                     track = session_manager.context.track_name
