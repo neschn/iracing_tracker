@@ -57,11 +57,27 @@ class BannerManager:
         # Animation fade pour texte (utilisée pour "attente session")
         self.text_opacity_effect = QGraphicsOpacityEffect(self.label)
         self.label.setGraphicsEffect(self.text_opacity_effect)
-        self.text_fade_animation = QPropertyAnimation(self.text_opacity_effect, b"opacity")
-        self.text_fade_animation.setDuration(BANNER_FADE_DURATION_MS)
-        self.text_fade_animation.setStartValue(0.3)
-        self.text_fade_animation.setEndValue(1.0)
-        self.text_fade_animation.setEasingCurve(QEasingCurve.InOutSine)
+        
+        from PySide6.QtCore import QSequentialAnimationGroup
+        
+        # Animation aller (fade in)
+        self.text_fade_in = QPropertyAnimation(self.text_opacity_effect, b"opacity")
+        self.text_fade_in.setDuration(BANNER_FADE_DURATION_MS)
+        self.text_fade_in.setStartValue(0.1)
+        self.text_fade_in.setEndValue(1.0)
+        self.text_fade_in.setEasingCurve(QEasingCurve.InOutSine)
+        
+        # Animation retour (fade out)
+        self.text_fade_out = QPropertyAnimation(self.text_opacity_effect, b"opacity")
+        self.text_fade_out.setDuration(BANNER_FADE_DURATION_MS)
+        self.text_fade_out.setStartValue(1.0)
+        self.text_fade_out.setEndValue(0.1)
+        self.text_fade_out.setEasingCurve(QEasingCurve.InOutSine)
+        
+        # Groupe séquentiel pour enchaîner aller-retour
+        self.text_fade_animation = QSequentialAnimationGroup()
+        self.text_fade_animation.addAnimation(self.text_fade_in)
+        self.text_fade_animation.addAnimation(self.text_fade_out)
         self.text_fade_animation.setLoopCount(-1)  # Infini
         
         # Timer pour clignotements

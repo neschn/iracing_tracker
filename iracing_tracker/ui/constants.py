@@ -150,6 +150,6 @@ BANNER_PERSONAL_RECORD_COLOR = "#FFBE25"  # Jaune/Orange
 BANNER_ABSOLUTE_RECORD_COLOR = "#580068"  # Violet
 
 # Bannière - Paramètres d'animation
-BANNER_BLINK_COUNT = 3              # Nombre de clignotements
-BANNER_BLINK_DURATION_MS = 600      # Durée d'un clignotement (ms)
+BANNER_BLINK_COUNT = 5              # Nombre de clignotements
+BANNER_BLINK_DURATION_MS = 400      # Durée d'un clignotement (ms)
 BANNER_FADE_DURATION_MS = 2000      # Durée du fade in/out pour "attente" (ms)
