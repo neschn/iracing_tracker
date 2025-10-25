@@ -12,7 +12,7 @@ from datetime import datetime
 import queue as _q
 
 from PySide6.QtCore import Qt, QTimer, QSize, QRectF
-from PySide6.QtGui import QIcon, QFont, QTextOption, QColor, QPainter, QPixmap
+from PySide6.QtGui import QIcon, QFont, QTextOption, QColor, QPainter, QPixmap, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPlainTextEdit, QTextEdit, QComboBox,
@@ -179,7 +179,10 @@ class TrackerUI:
 
         self.track_value = QLabel("---")
         self.track_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.track_value.setWordWrap(True)
+        self.track_value.setWordWrap(False)
+        self.track_value.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        fm = QFontMetrics(self.track_value.font())
+        self.track_value.setMinimumWidth(fm.horizontalAdvance("W" * 28))
         ir_lay.addWidget(self.track_value, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
 
         self.car_label = QLabel("Voiture :")
@@ -555,8 +558,12 @@ class TrackerUI:
         self._queue_timer.start()
 
     def update_context(self, track: str, car: str):
-        self.track_value.setText(track or "---")
-        self.car_value.setText(car or "---")
+        track_text = track or "---"
+        car_text = car or "---"
+        self.track_value.setText(track_text)
+        self.track_value.setToolTip(track_text)
+        self.car_value.setText(car_text)
+        self.car_value.setToolTip(car_text)
 
     def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.setText(best_time_str or "---")
