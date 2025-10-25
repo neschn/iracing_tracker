@@ -191,7 +191,10 @@ class TrackerUI:
 
         self.car_value = QLabel("---")
         self.car_value.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.car_value.setWordWrap(True)
+        self.car_value.setWordWrap(False)
+        self.car_value.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        fm_car = QFontMetrics(self.car_value.font())
+        self.car_value.setMinimumWidth(fm_car.horizontalAdvance("W" * 28))
         ir_lay.addWidget(self.car_value, 2, 1, Qt.AlignLeft | Qt.AlignVCenter)
 
         ir_lay.setColumnStretch(0, 0)
