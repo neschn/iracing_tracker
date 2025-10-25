@@ -133,7 +133,7 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
             "PlayerCarMyIncidentCount": state_core.get("PlayerCarMyIncidentCount"),
         }
         
-        status, lap_time = validator.update(lap_state)
+        status, lap_time, reason = validator.update(lap_state)
         
         # ---- 9) Sauvegarde si tour valide ----
         if status == "valid" and session_manager.context.is_ready:
@@ -164,7 +164,18 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
             ui_bridge.update_ranking(ranking)
         
         elif status == "invalid":
-            ui_bridge.log(f"Nouveau tour pour {player} : Temps invalide")
+            # Messages simplifiés
+            if reason == "out_lap":
+                ui_bridge.log(f"Nouveau tour pour {player} : tour sortie des stands")
+            elif reason and reason.startswith("flag_and_incidents:"):
+                x_count = reason.split(":")[1]
+                ui_bridge.log(f"Nouveau tour pour {player} : tour invalide (drapeau - {x_count}x)")
+            elif reason and reason.startswith("incidents:"):
+                x_count = reason.split(":")[1]
+                ui_bridge.log(f"Nouveau tour pour {player} : tour invalide ({x_count}x)")
+            else:
+                # Catch-all pour tous les autres cas
+                ui_bridge.log(f"Nouveau tour pour {player} : tour invalide")
         
         time.sleep(0.1)
 
