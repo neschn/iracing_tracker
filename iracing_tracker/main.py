@@ -66,6 +66,7 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                         session_manager.context.track_name,
                         session_manager.context.car_name,
                         session_manager.context.track_id,
+                        session_manager.context.car_id,
                     )
                     # Force mise à jour du best label après changement de contexte
                     ui_bridge.reset_coalescing()
@@ -77,8 +78,13 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                     track = session_manager.context.track_name
                     track_id = session_manager.context.track_id
                     car = session_manager.context.car_name
-                    if track_id is not None:
+                    car_id = session_manager.context.car_id
+                    if track_id is not None and car_id is not None:
+                        ui_bridge.log(f"Nouvelle session démarrée : {track} - N° {track_id} - {car} - N° {car_id}")
+                    elif track_id is not None:
                         ui_bridge.log(f"Nouvelle session démarrée : {track} - N° {track_id} - {car}")
+                    elif car_id is not None:
+                        ui_bridge.log(f"Nouvelle session démarrée : {track} - {car} - N° {car_id}")
                     else:
                         ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")
                     session_manager.mark_session_started_message_sent()

@@ -165,7 +165,7 @@ class TrackerUI:
     def bind_event_queue(self, q): self._event_queue = q; self._queue_timer.start()
 
     # --- Méthodes d'update ---
-    def update_context(self, track: str, car: str, track_id=None):
+    def update_context(self, track: str, car: str, track_id=None, car_id=None):
         track_text = track or "---"; car_text = car or "---"
         display_track = track_text
         try:
@@ -173,8 +173,14 @@ class TrackerUI:
                 display_track = f"{track_text} - N° {int(track_id)}"
         except Exception:
             display_track = track_text
+        display_car = car_text
+        try:
+            if car_text != "---" and car_id is not None:
+                display_car = f"{car_text} - N° {int(car_id)}"
+        except Exception:
+            display_car = car_text
         self.track_value.setText(display_track); self.track_value.setToolTip(display_track)
-        self.car_value.setText(car_text); self.car_value.setToolTip(car_text)
+        self.car_value.setText(display_car); self.car_value.setToolTip(display_car)
 
     def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.setText(best_time_str or "---")
@@ -536,7 +542,12 @@ class TrackerUI:
             while True:
                 name, payload = self._event_queue.get_nowait(); payload = payload or {}
                 if name == "debug": self.update_debug(payload)
-                elif name == "context": self.update_context(payload.get("track","---"), payload.get("car","---"), payload.get("track_id"))
+                elif name == "context": self.update_context(
+                    payload.get("track","---"),
+                    payload.get("car","---"),
+                    payload.get("track_id"),
+                    payload.get("car_id"),
+                )
                 elif name == "player_menu_state": self.set_player_menu_state(payload.get("enabled", False))
                 elif name == "log": self.add_log(payload.get("message",""))
                 elif name == "player_best": self.update_player_personal_record(payload.get("text","---"))

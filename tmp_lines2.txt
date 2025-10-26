@@ -1,3 +1,0 @@
-                        session_manager.context.car_name
-                    )
-                    # Force mise à jour du best label après changement de contexte

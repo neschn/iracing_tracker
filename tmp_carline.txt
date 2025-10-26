@@ -1,1 +1,0 @@
-                    car = session_manager.context.car_name

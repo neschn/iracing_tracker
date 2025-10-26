@@ -1,5 +1,0 @@
-                                    
-                # Message "session démarrée" (une seule fois)
-                if session_manager.should_send_session_started_message():
-                    track = session_manager.context.track_name
-                    car = session_manager.context.car_name
