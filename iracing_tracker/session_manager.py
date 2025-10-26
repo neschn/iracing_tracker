@@ -6,7 +6,9 @@
 # Description : Gère l'état de la session iRacing (détection changements, contexte track/car).                 #
 ################################################################################################################
 
+import time
 from typing import Optional
+from iracing_tracker.ui.constants import SESSION_INACTIVE_GRACE_SECONDS
 
 
 #--------------------------------------------------------------------------------------------------------------#
@@ -61,17 +63,38 @@ class SessionManager:
     def __init__(self, ir_client):
         self.ir_client = ir_client
         self.context = SessionContext()
-        
+
         # Flags pour messages de log (évite les spams)
         self.is_waiting_session_msg_sent = False
         self.session_start_msg_sent = False
+        # Dernière fois où l'on a observé la session active (pour anti-rebond)
+        self._last_active_ts: Optional[float] = None
     
     #--------------------------------------------------------------------------------------------------------------#
     # Vérifie si une session iRacing est active.                                                                   #
     #--------------------------------------------------------------------------------------------------------------#
     def is_active(self) -> bool:
-        """Retourne True si une session iRacing est active."""
-        return self.ir_client.is_session_active()
+        """Retourne True si une session iRacing est active, avec une grâce anti-rebond.
+
+        Si la session vient de devenir inactive, on attend
+        SESSION_INACTIVE_GRACE_SECONDS avant de la considérer réellement inactive,
+        afin d'absorber les micro-coupures (garage, menu, etc.).
+        """
+        active_now = self.ir_client.is_session_active()
+        now = time.time()
+
+        if active_now:
+            self._last_active_ts = now
+            return True
+
+        # Si jamais active n'a encore été vue, on considère l'état tel quel
+        if self._last_active_ts is None:
+            return False
+
+        # Anti-rebond: considérer actif tant que la grâce n'est pas écoulée
+        if (now - self._last_active_ts) < float(SESSION_INACTIVE_GRACE_SECONDS):
+            return True
+        return False
     
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le contexte depuis les données iRSDK brutes (WeekendInfo, DriverInfo, etc.).                     #
@@ -142,3 +165,5 @@ class SessionManager:
     def reset_context(self):
         """Réinitialise le contexte à son état initial (---/None)."""
         self.context = SessionContext()
+        # On "oublie" l'état d'activité précédent
+        self._last_active_ts = None

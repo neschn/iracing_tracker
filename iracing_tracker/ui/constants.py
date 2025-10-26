@@ -153,3 +153,7 @@ BANNER_ABSOLUTE_RECORD_COLOR = "#580068"  # Violet
 BANNER_BLINK_COUNT = 5              # Nombre de clignotements
 BANNER_BLINK_DURATION_MS = 400      # Durée d'un clignotement (ms)
 BANNER_FADE_DURATION_MS = 2000      # Durée du fade in/out pour "attente" (ms)
+# Session/Managers - Anti-rebond session inactive (garage/piste)
+# Délai de grâce avant de considérer une session comme réellement inactive.
+SESSION_INACTIVE_GRACE_SECONDS = 0.5
+
