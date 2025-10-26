@@ -16,11 +16,20 @@ from iracing_tracker.data_store import DataStore
 # Formate un temps de tour au format M:SS.mmm, ou '---' si invalide.                                           #
 #--------------------------------------------------------------------------------------------------------------#
 def format_lap_time(lap_time: float) -> str:
-    """Formate un temps en M:SS.mmm. Retourne '---' si temps invalide."""
+    """Formate un temps en M:SS.mmm en TRONQUANT aux millièmes (pas d'arrondi)."""
     if not lap_time or lap_time <= 0:
         return "---"
-    minutes, seconds = divmod(float(lap_time), 60.0)
-    return f"{int(minutes)}:{seconds:06.3f}"
+    # Convertir en millisecondes et tronquer pour éviter tout arrondi vers le haut
+    try:
+        total_ms = int(float(lap_time) * 1000.0)
+    except Exception:
+        return "---"
+    if total_ms < 0:
+        return "---"
+    minutes = total_ms // 60000
+    seconds = (total_ms % 60000) // 1000
+    millis = total_ms % 1000
+    return f"{minutes}:{seconds:02d}.{millis:03d}"
 
 
 #--------------------------------------------------------------------------------------------------------------#
