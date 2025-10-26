@@ -205,7 +205,7 @@ class TireInfoWidget(QWidget):
 
 
 
-class LastLapsList(QListWidget):
+class SessionTimesList(QListWidget):
     """
     Liste spécialisée pour afficher les derniers tours avec le temps à gauche
     et le pilote aligné à droite.
@@ -235,7 +235,7 @@ class LastLapsList(QListWidget):
         except Exception:
             pass
 
-        self._delegate = _LastLapsDelegate(self._lap_width, self._time_width, parent=self)
+        self._delegate = _SessionTimesDelegate(self._lap_width, self._time_width, parent=self)
         self._delegate.set_text_color(self._text_color)
         self._delegate.set_hovered_row(self._hover_row)
         self.setItemDelegate(self._delegate)
@@ -333,7 +333,7 @@ class LastLapsList(QListWidget):
         super().leaveEvent(event)
 
 
-class _LastLapsDelegate(QStyledItemDelegate):
+class _SessionTimesDelegate(QStyledItemDelegate):
     """
     Délégué pour dessiner proprement un temps (colonne fixe) et un pilote
     aligné à droite avec ellipsis automatique.
@@ -440,3 +440,6 @@ class _LastLapsDelegate(QStyledItemDelegate):
         height = fm.height() + 4
         width = self._lap_width + self._spacing + self._time_width + self._spacing + fm.horizontalAdvance(player)
         return QSize(width, height)
+
+# Backward compatibility alias
+LastLapsList = SessionTimesList

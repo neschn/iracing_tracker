@@ -17,7 +17,7 @@ from .constants import (
 from .widgets import LastLapsList as _LastLapsList
 
 
-class LastLapsPanel(QWidget):
+class SessionTimesPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -26,7 +26,7 @@ class LastLapsPanel(QWidget):
         lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
         lay.setSpacing(6)
 
-        cap = QLabel("DERNIERS TOURS")
+        cap = QLabel("TEMPS DE LA SESSION")
         cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lay.addWidget(cap)
         self._align_top(lay, cap)
@@ -43,4 +43,3 @@ class LastLapsPanel(QWidget):
             layout.setAlignment(widget, Qt.AlignTop)
         except Exception:
             pass
-

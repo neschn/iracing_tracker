@@ -184,7 +184,7 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 limit=3
             )
             ui_bridge.update_ranking(ranking)
-            # Alimenter derniers tours (ordre chronologique: plus récent en bas)
+            # Alimenter temps de la session (ordre chronologique: plus récent en bas)
             try:
                 lap_no = int(state_core.get("LapCompleted") or 0)
             except Exception:
@@ -193,7 +193,7 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
             ui_bridge.update_last_laps(last_laps_feed)
         
         elif status == "invalid":
-            # Messages simplifiés
+            # Messages pour tours non valides
             if reason == "out_lap":
                 ui_bridge.log(f"Nouveau tour pour {player} : tour sortie des stands")
                 try:

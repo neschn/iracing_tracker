@@ -38,7 +38,7 @@ from .widgets import (
 
 from .session_panel import SessionPanel
 from .player_panel import PlayerPanel
-from .last_laps_panel import LastLapsPanel
+from .session_times_panel import SessionTimesPanel
 from .debug_panel import DebugPanel
 from .logs_panel import LogsPanel
 
@@ -108,14 +108,14 @@ class TrackerUI:
 
         self.session_panel = SessionPanel(center)
         self.player_panel = PlayerPanel(players, self._on_player_changed, action_icon_px=self._action_icon_px, parent=center)
-        self.last_laps_panel = LastLapsPanel(center)
+        self.session_times_panel = SessionTimesPanel(center)
         self.debug_panel = DebugPanel(self._set_debug_visible, action_icon_px=self._action_icon_px, parent=center)
 
         self.center_lay.addWidget(self.session_panel, 0, 0)
         self._sep_1 = _vsep(center); self._seps.append(self._sep_1); self.center_lay.addWidget(self._sep_1, 0, 1)
         self.center_lay.addWidget(self.player_panel, 0, 2)
         self._sep_2 = _vsep(center); self._seps.append(self._sep_2); self.center_lay.addWidget(self._sep_2, 0, 3)
-        self.center_lay.addWidget(self.last_laps_panel, 0, 4)
+        self.center_lay.addWidget(self.session_times_panel, 0, 4)
         self._sep_debug = _vsep(center); self._seps.append(self._sep_debug); self.center_lay.addWidget(self._sep_debug, 0, 5)
         self.center_lay.addWidget(self.debug_panel, 0, 6)
         for col in (0,2,4,6): self.center_lay.setColumnStretch(col, 1)
@@ -133,7 +133,8 @@ class TrackerUI:
         self.player_combo = self.player_panel.player_combo
         self.best_time_label = self.player_panel.best_time_label
         self.current_lap_label = self.player_panel.current_lap_label
-        self.laps_list = self.last_laps_panel.laps_list
+        self.session_times_list = self.session_times_panel.laps_list
+        self.laps_list = self.session_times_list
         self.debug_toggle_btn = self.debug_panel.debug_toggle_btn
         self.debug_text = self.debug_panel.debug_text
         self.debug_col = self.debug_panel
@@ -229,8 +230,11 @@ class TrackerUI:
         sec = s % 60
         self.session_time_value.setText(f"{h}:{m:02d}:{sec:02d}")
 
+    def update_session_times(self, entries):
+        self.session_times_list.set_items(entries)
+
     def update_last_laps(self, entries):
-        self.laps_list.set_items(entries)
+        self.update_session_times(entries)
 
     def update_debug(self, data: dict):
         sb = self.debug_text.verticalScrollBar()
@@ -511,7 +515,7 @@ class TrackerUI:
         plain_scroll_css = self._scrollbar_css("QPlainTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
         list_scroll_css = self._scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
         text_scroll_css = self._scrollbar_css("QTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        try: self.laps_list.apply_palette(c['text'], c['bg_main'], c.get('last_laps_hover', c.get('interactive_hover')), list_scroll_css)
+        try: self.session_times_list.apply_palette(c['text'], c['bg_main'], c.get('last_laps_hover', c.get('interactive_hover')), list_scroll_css)
         except Exception: pass
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
         self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
@@ -573,9 +577,12 @@ class TrackerUI:
                     else:
                         self.set_banner(payload.get("text", ""))
                 elif name == "current_lap": self.update_current_lap_time(payload.get("text","---"))
+                elif name == "session_times":
+                    entries = payload.get("entries") or payload.get("lines") or payload.get("text")
+                    self.update_session_times(entries or [])
                 elif name == "last_laps":
                     entries = payload.get("entries") or payload.get("lines") or payload.get("text")
-                    self.update_last_laps(entries or [])
+                    self.update_session_times(entries or [])
         except _q.Empty: pass
         except Exception as e:
             try: self.add_log(f"UI error: {e}")
