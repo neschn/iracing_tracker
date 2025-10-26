@@ -15,7 +15,6 @@ from .constants import (
     SECTION_MARGIN,
     SECTION_TITLE_GAP,
 )
-from .widgets import hsep as _hsep
 
 
 class LogsPanel(QWidget):
@@ -47,4 +46,3 @@ class LogsPanel(QWidget):
             layout.setAlignment(widget, Qt.AlignTop)
         except Exception:
             pass
-

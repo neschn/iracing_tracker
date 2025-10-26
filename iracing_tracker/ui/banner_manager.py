@@ -7,8 +7,7 @@
 ################################################################################################################
 
 from enum import Enum
-from PySide6.QtCore import QTimer, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import QGraphicsOpacityEffect
 
 from .constants import (

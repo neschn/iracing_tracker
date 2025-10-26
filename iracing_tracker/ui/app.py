@@ -10,10 +10,9 @@ from datetime import datetime
 import queue as _q
 
 from PySide6.QtCore import Qt, QTimer, QSize, QRectF
-from PySide6.QtGui import QIcon, QFont, QTextOption, QColor, QPainter, QPixmap
+from PySide6.QtGui import QIcon, QFont, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QLabel, QVBoxLayout, QGridLayout, QFrame, QTextEdit,
-    QSizePolicy, QMenu
+    QApplication, QWidget, QLabel, QVBoxLayout, QGridLayout, QMenu
 )
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtGui import QAction, QActionGroup
@@ -22,11 +21,9 @@ from .constants import (
     WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH, LIST_ICON_PATH,
     WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
-    FONT_FAMILY, FONT_SIZE_SECTION_TITLE, FONT_SIZE_BANNER, FONT_SIZE_LABELS,
-    FONT_SIZE_PLAYER, FONT_SIZE_LAPTIME, FONT_SIZE_DEBUG,
-    FONT_SIZE_LOG, FONT_SIZE_BUTTON, FONT_SIZE_RANKING_PLAYER, FONT_WEIGHT_RANKING_PLAYER,
+    FONT_FAMILY, FONT_SIZE_BANNER, FONT_SIZE_PLAYER,
     BANNER_HEIGHT,
-    SECTION_MARGIN, SECTION_TITLE_GAP,
+    SECTION_MARGIN,
     BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow

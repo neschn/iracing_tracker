@@ -4,7 +4,7 @@
 # Description : Panneau "SESSION" (infos session, top 3, pneus)
 ################################################################################################################
 
-from PySide6.QtCore import Qt, QSize, QRectF
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QFont, QPixmap, QPainter
 from PySide6.QtWidgets import (
     QWidget,
