@@ -35,6 +35,7 @@ class UIBridge:
         self._last_context: Optional[tuple] = None
         self._last_player_best: Optional[str] = None
         self._last_player_menu_state: Optional[bool] = None
+        self._last_session_time_sec: Optional[int] = None
     
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le contexte (circuit + voiture) dans l'UI, avec coalescing.                                      #
@@ -53,6 +54,31 @@ class UIBridge:
                 payload["car_id"] = car_id
             self.ui_queue.put(("context", payload))
             self._last_context = new_value
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le temps de session affiché (coalescé à la seconde).                                             #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_session_time(self, seconds: float | int | None):
+        """Envoie le temps de session (en secondes), coalescé à l'entier.
+        S'il est None, on force toujours un envoi (reset d'affichage).
+        """
+        if seconds is None:
+            self.ui_queue.put(("session_time", {"seconds": None}))
+            self._last_session_time_sec = None
+            return
+        try:
+            secs = max(0, int(float(seconds)))
+        except Exception:
+            secs = None
+        if secs is None:
+            # Valeur invalide -> reset
+            self.ui_queue.put(("session_time", {"seconds": None}))
+            self._last_session_time_sec = None
+            return
+        if secs == self._last_session_time_sec:
+            return
+        self.ui_queue.put(("session_time", {"seconds": secs}))
+        self._last_session_time_sec = secs
     
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le record personnel du joueur sélectionné, avec coalescing.                                      #
@@ -100,6 +126,7 @@ class UIBridge:
         self._last_context = None
         self._last_player_best = None
         self._last_player_menu_state = None
+        self._last_session_time_sec = None
     
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le classement (top 3) affiché dans l'UI.                                                         #

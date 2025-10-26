@@ -1,0 +1,25 @@
+            debug_data = telemetry_reader.read_debug()
+            if debug_data:
+                # Fusionner avec les données core
+                merged_debug = {**state_core, **debug_data}
+                # Ajouter les flags de session
+                merged_debug["is_waiting_session_msg_sent"] = session_manager.is_waiting_session_msg_sent
+                merged_debug["session_start_msg_sent"] = session_manager.session_start_msg_sent
+                ui_bridge.update_debug(merged_debug)
+        
+        # ---- 6) Gestion pit/garage : activer/désactiver menu joueur ----
+        surface = int(state_core.get("PlayerTrackSurface") or 0)
+        ui_bridge.set_player_menu_state(surface in (1, -1))
+        
+        # ---- 7) Mise à jour du record personnel du joueur sélectionné ----
+        with sel_lock:
+            player = selected_player_ref["name"]
+        
+        if player and player != "---" and session_manager.context.is_ready:
+            best_text = record_manager.get_personal_best_formatted(
+                player,
+                session_manager.context.track_id,
+                session_manager.context.car_id
+            )
+            ui_bridge.update_player_best(best_text)
+        else:

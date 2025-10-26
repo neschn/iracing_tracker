@@ -215,6 +215,20 @@ class TrackerUI:
     def update_current_lap_time(self, text: str):
         self.current_lap_label.setText(text or "---")
 
+    def update_session_time(self, seconds: int | float | None):
+        if seconds is None:
+            self.session_time_value.setText("-:--:--")
+            return
+        try:
+            s = int(max(0, float(seconds)))
+        except Exception:
+            self.session_time_value.setText("-:--:--")
+            return
+        h = s // 3600
+        m = (s % 3600) // 60
+        sec = s % 60
+        self.session_time_value.setText(f"{h}:{m:02d}:{sec:02d}")
+
     def update_last_laps(self, entries):
         self.laps_list.set_items(entries)
 
@@ -542,6 +556,7 @@ class TrackerUI:
             while True:
                 name, payload = self._event_queue.get_nowait(); payload = payload or {}
                 if name == "debug": self.update_debug(payload)
+                elif name == "session_time": self.update_session_time(payload.get("seconds"))
                 elif name == "context": self.update_context(
                     payload.get("track","---"),
                     payload.get("car","---"),

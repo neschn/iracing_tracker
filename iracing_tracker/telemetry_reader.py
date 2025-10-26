@@ -1,4 +1,4 @@
-################################################################################################################
+﻿################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/telemetry_reader.py                                                                #
 # Date de modification : 20.10.2025                                                                            #
@@ -11,28 +11,23 @@ from typing import Optional
 
 
 #--------------------------------------------------------------------------------------------------------------#
-# Gère la lecture des variables iRSDK avec throttling automatique selon le type de données.                    #
+# GÃ¨re la lecture des variables iRSDK avec throttling automatique selon le type de donnÃ©es.                    #
 #--------------------------------------------------------------------------------------------------------------#
 class TelemetryReader:
     """
-    Responsabilités :
+    ResponsabilitÃ©s :
     - Lire les variables iRSDK via IRClient
-    - Appliquer un throttling automatique selon le type de données
-    - Fournir des méthodes spécialisées : read_core(), read_context(), read_debug()
+    - Appliquer un throttling automatique selon le type de donnÃ©es
+    - Fournir des mÃ©thodes spÃ©cialisÃ©es : read_core(), read_context(), read_debug()
     
     Intervalles de throttling :
-    - Core (état tour, incidents) : 0.1s (10 Hz)
+    - Core (Ã©tat tour, incidents) : 0.1s (10 Hz)
     - Context (track, car) : 2.0s
-    - Debug (variables détaillées) : 0.3s
+    - Debug (variables dÃ©taillÃ©es) : 0.3s
     """
     
-    # Définition des variables par catégorie
-    CORE_VARS = [
-        "LapCompleted",
-        "LapLastLapTime",
-        "PlayerTrackSurface",
-        "PlayerCarMyIncidentCount",
-    ]
+    # DÃ©finition des variables par catÃ©gorie
+    CORE_VARS = ["LapCompleted","LapLastLapTime","PlayerTrackSurface","PlayerCarMyIncidentCount","SessionTime",]
     
     CONTEXT_VARS = [
         "WeekendInfo",
@@ -41,7 +36,6 @@ class TelemetryReader:
     ]
     
     DEBUG_VARS = [
-        "SessionTime",
         "SessionNum",
         "SessionTimeRemain",
         "CarIdxLapCompleted",
@@ -53,22 +47,21 @@ class TelemetryReader:
         "CarIdxSpeed",
         "CarIdxRPM",
     ]
-    
+
     # Intervalles de throttling (secondes)
     CORE_INTERVAL = 0.1
     CONTEXT_INTERVAL = 2.0
     DEBUG_INTERVAL = 0.3
-    
+    # Lire un peu plus souvent que 1 Hz pour Ã©viter de sauter une seconde
     def __init__(self, ir_client):
         self.ir_client = ir_client
         
-        # Timestamps de dernière lecture
+        # Timestamps de derniÃ¨re lecture
         self._last_core_read = 0.0
         self._last_context_read = 0.0
         self._last_debug_read = 0.0
-    
-    #--------------------------------------------------------------------------------------------------------------#
-    # Lit les variables "core" nécessaires à la validation des tours (avec throttling 0.1s).                      #
+
+    # Lit les variables "core" nÃ©cessaires Ã  la validation des tours (avec throttling 0.1s).                      #
     #--------------------------------------------------------------------------------------------------------------#
     def read_core(self, force: bool = False) -> Optional[dict]:
         """
@@ -100,7 +93,7 @@ class TelemetryReader:
         return self.ir_client.freeze_and_read(self.CONTEXT_VARS)
     
     #--------------------------------------------------------------------------------------------------------------#
-    # Lit les variables "debug" détaillées avec throttling 0.3s.                                                  #
+    # Lit les variables "debug" dÃ©taillÃ©es avec throttling 0.3s.                                                  #
     #--------------------------------------------------------------------------------------------------------------#
     def read_debug(self, force: bool = False) -> Optional[dict]:
         """
@@ -114,12 +107,15 @@ class TelemetryReader:
         
         self._last_debug_read = now
         return self.ir_client.freeze_and_read(self.DEBUG_VARS)
-    
+
     #--------------------------------------------------------------------------------------------------------------#
-    # Force la réinitialisation des timestamps (utile lors d'un changement de session).                           #
+    # Lit l'horloge de session (SessionTime) avec throttling 1.0s.                                                #
+    #--------------------------------------------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------------------------------------------#
+    # Force la rÃ©initialisation des timestamps (utile lors d'un changement de session).                           #
     #--------------------------------------------------------------------------------------------------------------#
     def reset_throttling(self):
-        """Réinitialise tous les timestamps de throttling (force prochaine lecture)."""
+        """RÃ©initialise tous les timestamps de throttling (force prochaine lecture)."""
         self._last_core_read = 0.0
         self._last_context_read = 0.0
         self._last_debug_read = 0.0

@@ -113,6 +113,12 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 merged_debug["is_waiting_session_msg_sent"] = session_manager.is_waiting_session_msg_sent
                 merged_debug["session_start_msg_sent"] = session_manager.session_start_msg_sent
                 ui_bridge.update_debug(merged_debug)
+
+        # ---- 5bis) Horloge de session -> UI, via valeurs 'core' (10 Hz, coalescées à 1s côté UI)
+        try:
+            ui_bridge.update_session_time(state_core.get("SessionTime"))
+        except Exception:
+            pass
         
         # ---- 6) Gestion pit/garage : activer/désactiver menu joueur ----
         surface = int(state_core.get("PlayerTrackSurface") or 0)
@@ -217,6 +223,7 @@ def _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, t
         # Reset contexte UI
         ui_bridge.update_ranking([])
         ui_bridge.update_context("---", "---")
+        ui_bridge.update_session_time(None)
         ui_bridge.update_player_best("-:--.---")
         ui_bridge.update_debug({})
         
