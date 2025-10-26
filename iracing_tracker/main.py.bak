@@ -184,47 +184,27 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 limit=3
             )
             ui_bridge.update_ranking(ranking)
-            # Alimenter derniers tours (ordre chronologique: plus récent en bas)
-            try:
-                lap_no = int(state_core.get("LapCompleted") or 0)
-            except Exception:
-                lap_no = 0
-            last_laps_feed.append(f"{lap_no}\t{format_lap_time(lap_time)}\t{player}")
+            # Alimenter derniers tours
+            last_laps_feed.insert(0, f"{format_lap_time(lap_time)}\t{player}")
             ui_bridge.update_last_laps(last_laps_feed)
         
         elif status == "invalid":
             # Messages simplifiés
             if reason == "out_lap":
                 ui_bridge.log(f"Nouveau tour pour {player} : tour sortie des stands")
-                try:
-                    lap_no = int(state_core.get("LapCompleted") or 0)
-                except Exception:
-                    lap_no = 0
-                last_laps_feed.append(f"{lap_no}\tTour sortie des stands\t{player}")
+                last_laps_feed.insert(0, f"OUT\t{player}")
             elif reason and reason.startswith("flag_and_incidents:"):
                 x_count = reason.split(":")[1]
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide (drapeau - {x_count}x)")
-                try:
-                    lap_no = int(state_core.get("LapCompleted") or 0)
-                except Exception:
-                    lap_no = 0
-                last_laps_feed.append(f"{lap_no}\tTour invalide ({x_count}x)\t{player}")
+                last_laps_feed.insert(0, f"INVALIDE ({x_count}x)\t{player}")
             elif reason and reason.startswith("incidents:"):
                 x_count = reason.split(":")[1]
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide ({x_count}x)")
-                try:
-                    lap_no = int(state_core.get("LapCompleted") or 0)
-                except Exception:
-                    lap_no = 0
-                last_laps_feed.append(f"{lap_no}\tTour invalide ({x_count}x)\t{player}")
+                last_laps_feed.insert(0, f"INVALIDE ({x_count}x)\t{player}")
             else:
                 # Catch-all pour tous les autres cas
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide")
-                try:
-                    lap_no = int(state_core.get("LapCompleted") or 0)
-                except Exception:
-                    lap_no = 0
-                last_laps_feed.append(f"{lap_no}\tTour invalide\t{player}")
+                last_laps_feed.insert(0, f"INVALIDE\t{player}")
             ui_bridge.update_last_laps(last_laps_feed)
         
         time.sleep(0.1)
@@ -330,3 +310,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

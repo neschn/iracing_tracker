@@ -33,6 +33,7 @@ from .constants import (
     TIRE_ICON_MAX_SCALE,
     FONT_SIZE_LAST_LAPTIMES,
     TIME_COL_PX,
+    LAP_NUM_COL_PX,
 )
 
 
@@ -223,6 +224,7 @@ class LastLapsList(QListWidget):
         self.setResizeMode(QListView.Adjust)
         self.setWrapping(False)
         self._font = QFont(FONT_FAMILY, FONT_SIZE_LAST_LAPTIMES)
+        self._lap_width = LAP_NUM_COL_PX
         self._time_width = TIME_COL_PX
         self._text_color = "#000000"
         self._hover_row = -1
@@ -233,7 +235,7 @@ class LastLapsList(QListWidget):
         except Exception:
             pass
 
-        self._delegate = _LastLapsDelegate(self._time_width, parent=self)
+        self._delegate = _LastLapsDelegate(self._lap_width, self._time_width, parent=self)
         self._delegate.set_text_color(self._text_color)
         self._delegate.set_hovered_row(self._hover_row)
         self.setItemDelegate(self._delegate)
@@ -260,33 +262,46 @@ class LastLapsList(QListWidget):
 
         normalized = []
         for entry in entries or []:
+            lap = ""
             time_str = ""
             player = ""
             if isinstance(entry, str):
-                parts = entry.split("\t", 1)
-                time_str = parts[0].strip()
-                player = parts[1].strip() if len(parts) > 1 else ""
+                parts = entry.split("\t")
+                if len(parts) >= 3:
+                    lap = parts[0].strip()
+                    time_str = parts[1].strip()
+                    player = parts[2].strip()
+                elif len(parts) == 2:
+                    time_str = parts[0].strip()
+                    player = parts[1].strip()
             elif isinstance(entry, dict):
+                lap = str(entry.get("lap", "")).strip()
                 time_str = str(entry.get("time", "")).strip()
                 player = str(entry.get("player", "")).strip()
             elif isinstance(entry, (list, tuple)) and entry:
-                time_str = str(entry[0]).strip()
-                if len(entry) > 1:
-                    player = str(entry[1]).strip()
+                if len(entry) >= 3:
+                    lap = str(entry[0]).strip()
+                    time_str = str(entry[1]).strip()
+                    player = str(entry[2]).strip()
+                else:
+                    time_str = str(entry[0]).strip()
+                    if len(entry) > 1:
+                        player = str(entry[1]).strip()
             if not time_str and not player:
                 continue
-            normalized.append((time_str, player))
+            normalized.append((lap, time_str, player))
 
-        for time_str, player in normalized:
+        for lap, time_str, player in normalized:
             item = QListWidgetItem("")
             item.setFlags(Qt.ItemIsEnabled)
-            item.setData(Qt.UserRole, (time_str, player))
+            item.setData(Qt.UserRole, (lap, time_str, player))
             self.addItem(item)
 
     def apply_palette(self, text_color, background, hover_color, extra_css=""):
         if text_color:
             self._text_color = text_color
             self._delegate.set_text_color(text_color)
+        self._delegate.set_lap_width(self._lap_width)
         self._delegate.set_time_width(self._time_width)
         self._delegate.set_hover_color(hover_color)
         base = "QListWidget{border:none;"
@@ -324,13 +339,17 @@ class _LastLapsDelegate(QStyledItemDelegate):
     aligné à droite avec ellipsis automatique.
     """
 
-    def __init__(self, time_width: int, spacing: int = 12, parent=None):
+    def __init__(self, lap_width: int, time_width: int, spacing: int = 12, parent=None):
         super().__init__(parent)
+        self._lap_width = int(lap_width or 0)
         self._time_width = int(time_width or 0)
         self._spacing = int(spacing or 0)
         self._text_color = QColor("#000000")
         self._hover_bg = QColor(0, 0, 0, 0)
         self._hover_row = -1
+
+    def set_lap_width(self, width: int):
+        self._lap_width = int(width or 0)
 
     def set_time_width(self, width: int):
         self._time_width = int(width or 0)
@@ -360,7 +379,11 @@ class _LastLapsDelegate(QStyledItemDelegate):
             super().paint(painter, option, index)
             return
 
-        time_str, player = data
+        if len(data) >= 3:
+            lap, time_str, player = data
+        else:
+            lap = ""
+            time_str, player = data
 
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -377,7 +400,13 @@ class _LastLapsDelegate(QStyledItemDelegate):
 
         rect = QRect(opt.rect)
 
+        # Lap column
+        lap_rect = QRect(rect)
+        lap_rect.setWidth(max(0, self._lap_width))
+
+        # Time column
         time_rect = QRect(rect)
+        time_rect.setLeft(lap_rect.right() + self._spacing)
         time_rect.setWidth(max(0, self._time_width))
 
         fm = painter.fontMetrics()
@@ -391,6 +420,10 @@ class _LastLapsDelegate(QStyledItemDelegate):
         player_text = fm.elidedText(str(player), Qt.ElideRight, player_width)
         painter.drawText(player_rect, Qt.AlignRight | Qt.AlignVCenter, player_text)
 
+        # Lap number text
+        lap_text = fm.elidedText(str(lap), Qt.ElideRight, lap_rect.width())
+        painter.drawText(lap_rect, Qt.AlignLeft | Qt.AlignVCenter, lap_text)
+
         painter.restore()
 
     def sizeHint(self, option, index):
@@ -398,9 +431,12 @@ class _LastLapsDelegate(QStyledItemDelegate):
         self.initStyleOption(opt, index)
         data = index.data(Qt.UserRole)
         player = ""
-        if data and isinstance(data, (tuple, list)) and len(data) >= 2:
-            player = str(data[1])
+        if data and isinstance(data, (tuple, list)):
+            if len(data) >= 3:
+                player = str(data[2])
+            elif len(data) >= 2:
+                player = str(data[1])
         fm = opt.fontMetrics
         height = fm.height() + 4
-        width = self._time_width + self._spacing + fm.horizontalAdvance(player)
+        width = self._lap_width + self._spacing + self._time_width + self._spacing + fm.horizontalAdvance(player)
         return QSize(width, height)
