@@ -39,14 +39,17 @@ class UIBridge:
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le contexte (circuit + voiture) dans l'UI, avec coalescing.                                      #
     #--------------------------------------------------------------------------------------------------------------#
-    def update_context(self, track: str, car: str):
+    def update_context(self, track: str, car: str, track_id: int | None = None):
         """
         Envoie le contexte (circuit, voiture) à l'UI.
         Coalescing : n'envoie que si différent de la dernière valeur.
         """
-        new_value = (track, car)
+        new_value = (track, car, track_id)
         if new_value != self._last_context:
-            self.ui_queue.put(("context", {"track": track, "car": car}))
+            payload = {"track": track, "car": car}
+            if track_id is not None:
+                payload["track_id"] = track_id
+            self.ui_queue.put(("context", payload))
             self._last_context = new_value
     
     #--------------------------------------------------------------------------------------------------------------#

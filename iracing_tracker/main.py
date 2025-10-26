@@ -64,7 +64,8 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 if context_changed:
                     ui_bridge.update_context(
                         session_manager.context.track_name,
-                        session_manager.context.car_name
+                        session_manager.context.car_name,
+                        session_manager.context.track_id,
                     )
                     # Force mise à jour du best label après changement de contexte
                     ui_bridge.reset_coalescing()
@@ -74,8 +75,12 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 # Message "session démarrée" (une seule fois)
                 if session_manager.should_send_session_started_message():
                     track = session_manager.context.track_name
+                    track_id = session_manager.context.track_id
                     car = session_manager.context.car_name
-                    ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")
+                    if track_id is not None:
+                        ui_bridge.log(f"Nouvelle session démarrée : {track} - N° {track_id} - {car}")
+                    else:
+                        ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")
                     session_manager.mark_session_started_message_sent()
                     
                     # Charger le classement initial

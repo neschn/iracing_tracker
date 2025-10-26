@@ -1,0 +1,1 @@
+                    ui_bridge.log(f"Nouvelle session démarrée : {track} - {car}")

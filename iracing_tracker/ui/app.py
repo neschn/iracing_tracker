@@ -165,9 +165,15 @@ class TrackerUI:
     def bind_event_queue(self, q): self._event_queue = q; self._queue_timer.start()
 
     # --- Méthodes d'update ---
-    def update_context(self, track: str, car: str):
+    def update_context(self, track: str, car: str, track_id=None):
         track_text = track or "---"; car_text = car or "---"
-        self.track_value.setText(track_text); self.track_value.setToolTip(track_text)
+        display_track = track_text
+        try:
+            if track_text != "---" and track_id is not None:
+                display_track = f"{track_text} - N° {int(track_id)}"
+        except Exception:
+            display_track = track_text
+        self.track_value.setText(display_track); self.track_value.setToolTip(display_track)
         self.car_value.setText(car_text); self.car_value.setToolTip(car_text)
 
     def update_player_personal_record(self, best_time_str: str):
@@ -530,7 +536,7 @@ class TrackerUI:
             while True:
                 name, payload = self._event_queue.get_nowait(); payload = payload or {}
                 if name == "debug": self.update_debug(payload)
-                elif name == "context": self.update_context(payload.get("track","---"), payload.get("car","---"))
+                elif name == "context": self.update_context(payload.get("track","---"), payload.get("car","---"), payload.get("track_id"))
                 elif name == "player_menu_state": self.set_player_menu_state(payload.get("enabled", False))
                 elif name == "log": self.add_log(payload.get("message",""))
                 elif name == "player_best": self.update_player_personal_record(payload.get("text","---"))
