@@ -154,7 +154,7 @@ class TrackerUI:
         self._apply_theme(self._theme.colors())
         try: self._app.styleHints().colorSchemeChanged.connect(self._on_system_color_scheme_changed)
         except Exception: pass
-        self._populate_laps_placeholder()
+        # Liste des derniers tours vierge au démarrage
 
     # API publique (compat)
     def mainloop(self):
@@ -581,13 +581,7 @@ class TrackerUI:
             try: self.add_log(f"UI error: {e}")
             except Exception: pass
 
-    def _populate_laps_placeholder(self):
-        lines = [
-            "0:34.678\tNico", "0:36.878\tNico", "0:35.679\tNico", "0:34.678\tBooki",
-            "0:36.878\tNico", "0:35.679\tJacques", "0:34.678\tNico", "0:34.132\tNico", "0:34.678\tNico",
-        ]
-        try: self.laps_list.set_items(lines)
-        except Exception: pass
+    # plus de placeholder
 
     def _apply_window_icon(self):
         try:

@@ -137,6 +137,13 @@ class UIBridge:
         Format attendu : [{"player": "Nico", "time": 65.123}, ...]
         """
         self.ui_queue.put(("ranking", {"ranking": ranking}))
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour la liste des derniers tours (texte ou couples (time, player)).                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_last_laps(self, entries):
+        """Envoie la liste des derniers tours à afficher (ordre: plus récent en haut)."""
+        self.ui_queue.put(("last_laps", {"entries": entries}))
     
     #--------------------------------------------------------------------------------------------------------------#
     # Envoie un message à afficher dans la bannière.                                                              #

@@ -31,6 +31,8 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
     Orchestration légère : lecture -> validation -> mise à jour UI.
     """
     
+    last_laps_feed = []
+
     while True:
         # ---- 1) LECTURE CORE EN PREMIER (nécessaire pour connexion iRSDK) ----
         # CRITIQUE : Cette lecture DOIT être faite avant is_session_active()
@@ -43,6 +45,9 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
         # ---- 2) Vérifier si session active (APRÈS la lecture) ----
         if not session_manager.is_active():
             _handle_session_inactive(ir_client, ui_bridge, validator, session_manager, telemetry_reader)
+            if last_laps_feed:
+                last_laps_feed.clear()
+                ui_bridge.update_last_laps([])
             time.sleep(0.1)
             continue
         
@@ -179,20 +184,28 @@ def loop(ir_client, ui_bridge, validator, session_manager, telemetry_reader,
                 limit=3
             )
             ui_bridge.update_ranking(ranking)
+            # Alimenter derniers tours
+            last_laps_feed.insert(0, f"{format_lap_time(lap_time)}\t{player}")
+            ui_bridge.update_last_laps(last_laps_feed)
         
         elif status == "invalid":
             # Messages simplifiés
             if reason == "out_lap":
                 ui_bridge.log(f"Nouveau tour pour {player} : tour sortie des stands")
+                last_laps_feed.insert(0, f"OUT\t{player}")
             elif reason and reason.startswith("flag_and_incidents:"):
                 x_count = reason.split(":")[1]
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide (drapeau - {x_count}x)")
+                last_laps_feed.insert(0, f"INVALIDE ({x_count}x)\t{player}")
             elif reason and reason.startswith("incidents:"):
                 x_count = reason.split(":")[1]
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide ({x_count}x)")
+                last_laps_feed.insert(0, f"INVALIDE ({x_count}x)\t{player}")
             else:
                 # Catch-all pour tous les autres cas
                 ui_bridge.log(f"Nouveau tour pour {player} : tour invalide")
+                last_laps_feed.insert(0, f"INVALIDE\t{player}")
+            ui_bridge.update_last_laps(last_laps_feed)
         
         time.sleep(0.1)
 
