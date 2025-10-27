@@ -103,6 +103,29 @@ class DataStore:
 
     @staticmethod
     #--------------------------------------------------------------------------------------------------------------#
+    # Sauvegarde la liste des joueurs fournie.                                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
+    def save_players(players: list[str]):
+        if players is None:
+            players = []
+        if not isinstance(players, list):
+            raise TypeError("players must be a list[str]")
+        # Normaliser en liste de chaînes uniques en préservant l'ordre d'apparition (insensible à la casse)
+        seen_lower = set()
+        normalized = []
+        for p in players:
+            name = str(p).strip()
+            if not name:
+                continue
+            key = name.lower()
+            if key in seen_lower:
+                continue
+            seen_lower.add(key)
+            normalized.append(name)
+        _atomic_write_json(PLAYERS_PATH, normalized)
+
+    @staticmethod
+    #--------------------------------------------------------------------------------------------------------------#
     # Récupère le dictionnaire des meilleurs tours.                                                                #
     #--------------------------------------------------------------------------------------------------------------#
     def load_best_laps():
@@ -131,3 +154,31 @@ class DataStore:
             else:
                 normalized[k_str] = v
         _atomic_write_json(BEST_LAPS_PATH, normalized)
+
+    @staticmethod
+    #--------------------------------------------------------------------------------------------------------------#
+    # Supprime un joueur et purge ses entrées dans les meilleurs tours.                                            #
+    #--------------------------------------------------------------------------------------------------------------#
+    def delete_player(name: str):
+        if not name:
+            return
+        # Supprimer du fichier players.json (insensible à la casse)
+        current = DataStore.load_players()
+        target = str(name).strip().lower()
+        kept = []
+        for p in current:
+            if str(p).strip().lower() != target:
+                kept.append(p)
+        if len(kept) != len(current):
+            _atomic_write_json(PLAYERS_PATH, kept)
+        # Purger best_laps.json pour ce joueur (insensible à la casse sur la clé joueur)
+        bl = DataStore.load_best_laps()
+        changed = False
+        for combo_key, players_map in list(bl.items()):
+            if isinstance(players_map, dict):
+                new_map = {k: v for k, v in players_map.items() if str(k).strip().lower() != target}
+                if len(new_map) != len(players_map):
+                    bl[combo_key] = new_map
+                    changed = True
+        if changed:
+            DataStore.save_best_laps(bl)

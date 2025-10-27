@@ -121,6 +121,10 @@ FONT_SIZE_BUTTON = 9
 FONT_SIZE_RANKING_PLAYER = 20
 FONT_WEIGHT_RANKING_PLAYER = "Light"
 
+# Joueurs
+# Longueur maximale d'un nom de joueur (paramétrable)
+PLAYER_NAME_MAX_LENGTH = 30
+
 # Pneus
 TIRE_TEMP_PLACEHOLDER = "--°C"
 TIRE_WEAR_PLACEHOLDER = "--%"

@@ -41,6 +41,7 @@ from .player_panel import PlayerPanel
 from .session_times_panel import SessionTimesPanel
 from .debug_panel import DebugPanel
 from .logs_panel import LogsPanel
+from .players_dialog import PlayersDialog
 
 
 if os.name == "nt":
@@ -130,6 +131,11 @@ class TrackerUI:
         self._tire_widgets = list(self.session_panel.tire_widgets)
         self._tires_map = self.session_panel.tires_map
         self.edit_players_btn = self.player_panel.edit_players_btn
+        try:
+            self.edit_players_btn.setEnabled(True)
+            self.edit_players_btn.clicked.connect(self._on_edit_players_clicked)
+        except Exception:
+            pass
         self.player_combo = self.player_panel.player_combo
         self.best_time_label = self.player_panel.best_time_label
         self.current_lap_label = self.player_panel.current_lap_label
@@ -472,6 +478,41 @@ class TrackerUI:
         if callable(self.on_player_change):
             try:
                 self.on_player_change(name)
+            except Exception:
+                pass
+
+    def _on_edit_players_clicked(self):
+        try:
+            dlg = PlayersDialog(self._win)
+            res = dlg.exec()
+            # Rafraîchir la liste des joueurs à la fermeture (peu importe res) si modifié
+            if res is not None:
+                from iracing_tracker.data_store import DataStore
+                players = DataStore.load_players()
+                # Conserver la sélection si encore présente, sinon 1er ou '---'
+                current = self.player_combo.currentText()
+                self.player_combo.blockSignals(True)
+                self.player_combo.clear()
+                if players:
+                    self.player_combo.addItems(players)
+                else:
+                    self.player_combo.addItem("---")
+                # Restaurer sélection
+                idx = -1
+                if players:
+                    try:
+                        idx = next((i for i, p in enumerate(players) if str(p) == current), -1)
+                    except Exception:
+                        idx = -1
+                self.player_combo.setCurrentIndex(0 if idx < 0 else idx)
+                self.player_combo.blockSignals(False)
+                # Si la sélection a changé, propager
+                new_cur = self.player_combo.currentText()
+                if new_cur != current:
+                    self._on_player_changed(new_cur)
+        except Exception as e:
+            try:
+                self.add_log(f"Erreur édition joueurs: {e}")
             except Exception:
                 pass
 
