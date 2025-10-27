@@ -57,6 +57,7 @@ class AddPlayerDialog(QDialog):
         lay.addWidget(self.name_edit)
 
         self.error_lbl = QLabel("")
+        self.error_lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.error_lbl.setStyleSheet("color:#c0392b;")
         self.error_lbl.setVisible(False)
         lay.addWidget(self.error_lbl)
@@ -243,15 +244,43 @@ class PlayersDialog(QDialog):
             "QDialog{" + (f"background:{bg};" if bg else "") + (f"color:{fg};" if fg else "") + "}"
             + (f"QLabel{{color:{fg};}}" if fg else "")
         )
-        # List widget style (selection visible)
+        # List widget style (selection visible, sans bordure de focus)
         list_text = c.get("text", fg or "#000000")
         hover_bg = c.get("interactive_hover", "#dcdcdc")
         list_bg = c.get("bg_secondary", bg) or "#f0f0f0"
         list_style = (
-            f"QListWidget{{background:{list_bg}; color:{list_text}; border:1px solid transparent;}}"
-            f"QListWidget::item:selected{{background:{hover_bg}; color:{list_text};}}"
-            f"QListWidget::item:hover{{background:{hover_bg};}}"
+            f"QListWidget{{background:{list_bg}; color:{list_text}; border:1px solid transparent; outline:0;}}"
+            f"QListWidget::item{{border:none; outline:0;}}"
+            f"QListWidget::item:selected{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
+            f"QListWidget::item:hover{{background:{hover_bg}; border:none; outline:0;}}"
+            f"QListView::item:selected{{border:none; outline:0;}}"
+            f"QListView::item:focus{{border:none; outline:0;}}"
         )
+        # Scrollbar CSS (aligné avec la fenêtre principale)
+        def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
+                           hover_start: str, hover_end: str) -> str:
+            return (
+                f"{selector} QScrollBar:vertical{{background:{track}; width:12px; margin:4px 2px; "
+                f"border:1px solid {border}; border-radius:6px;}}"
+                f"{selector} QScrollBar::groove:vertical{{border:none; margin:2px;}}"
+                f"{selector} QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+                f"stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {border}; "
+                f"border-radius:4px; min-height:18px; margin:1px;}}"
+                f"{selector} QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+                f"stop:0 {hover_start}, stop:1 {hover_end});}}"
+                f"{selector} QScrollBar::add-line:vertical,{selector} QScrollBar::sub-line:vertical"
+                f"{{height:0; width:0; background:none; border:none;}}"
+                f"{selector} QScrollBar::add-page:vertical,{selector} QScrollBar::sub-page:vertical"
+                f"{{background:transparent;}}"
+            )
+        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", list_bg))
+        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
+        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
+        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
+        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
+        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
+        list_scroll_css = _scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end,
+                                         handle_hover_start, handle_hover_end)
         # Button style
         btn_style = (
             "QPushButton{"
@@ -271,7 +300,7 @@ class PlayersDialog(QDialog):
             f"background:{c.get('button_bg', '#e5e5e5')}; color:#888888;"
             "}"
         )
-        self.setStyleSheet(base_style + list_style + btn_style)
+        self.setStyleSheet(base_style + list_style + btn_style + list_scroll_css)
         # Fonts
         self.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.list_widget.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
