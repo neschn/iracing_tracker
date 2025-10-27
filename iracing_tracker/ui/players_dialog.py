@@ -138,7 +138,6 @@ class PlayersDialog(QDialog):
         h.setContentsMargins(0, 0, 0, 0)
         # Pas d'espace entre Ajouter/Supprimer
         h.setSpacing(0)
-        h.addStretch(1)
         self.add_btn = QPushButton("", self)
         self.add_btn.setProperty("variant", "icon")
         self.add_btn.setCursor(Qt.PointingHandCursor)
@@ -153,7 +152,16 @@ class PlayersDialog(QDialog):
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn.setEnabled(False)
         h.addWidget(self.add_btn)
+        h.addSpacing(6)
         h.addWidget(self.del_btn)
+        h.addStretch(1)
+        # Bouton Fermer à droite (style bouton standard)
+        self.close_btn = QPushButton("Fermer", self)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
+        self.close_btn.setFixedHeight(32)
+        self.close_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
+        self.close_btn.clicked.connect(self.reject)
+        h.addWidget(self.close_btn)
         lay.addWidget(btn_row)
 
         # Chargement initial
