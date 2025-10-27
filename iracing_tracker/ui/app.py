@@ -484,6 +484,12 @@ class TrackerUI:
     def _on_edit_players_clicked(self):
         try:
             dlg = PlayersDialog(self._win)
+            # Appliquer le même thème + police que la fenêtre principale
+            try:
+                colors = self._colors or self._theme.colors()
+                dlg.apply_palette(colors)
+            except Exception:
+                pass
             res = dlg.exec()
             # Rafraîchir la liste des joueurs à la fermeture (peu importe res) si modifié
             if res is not None:
