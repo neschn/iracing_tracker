@@ -12,7 +12,7 @@ from .constants import (
     FONT_FAMILY,
     FONT_SIZE_SECTION_TITLE,
     FONT_SIZE_LOG,
-    SECTION_MARGIN,
+    BASE_MARGIN,
     SECTION_TITLE_GAP,
 )
 
@@ -23,8 +23,8 @@ class LogsPanel(QWidget):
         self.separators = []
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
-        lay.setSpacing(6)
+        lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
+        lay.setSpacing(BASE_MARGIN)
 
         title = QLabel("MESSAGES / LOGS")
         title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))

@@ -34,6 +34,7 @@ from .constants import (
     ICON_BUTTON_PADDING,
     ADD_ICON_PATH,
     DELETE_ICON_PATH,
+    BASE_MARGIN,
 )
 from iracing_tracker.data_store import DataStore
 from PySide6.QtSvg import QSvgRenderer
@@ -52,6 +53,12 @@ class AddPlayerDialog(QDialog):
         self.result_name: str | None = None
 
         lay = QVBoxLayout(self)
+        try:
+            m = int(BASE_MARGIN)
+        except Exception:
+            m = 12
+        lay.setContentsMargins(m, m, m, m)
+        lay.setSpacing(m)
         lbl = QLabel(f"Nom du joueur (max {PLAYER_NAME_MAX_LENGTH} caractères) :")
         lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         lay.addWidget(lbl)
@@ -110,6 +117,12 @@ class PlayersDialog(QDialog):
         self.modified = False  # Passe à True si ajout/suppression
 
         lay = QVBoxLayout(self)
+        try:
+            m = int(BASE_MARGIN)
+        except Exception:
+            m = 12
+        lay.setContentsMargins(m, m, m, m)
+        lay.setSpacing(m)
 
         title = QLabel("Liste des joueurs")
         title.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS, QFont.Bold))
@@ -123,6 +136,8 @@ class PlayersDialog(QDialog):
         btn_row = QWidget(self)
         h = QHBoxLayout(btn_row)
         h.setContentsMargins(0, 0, 0, 0)
+        # Pas d'espace entre Ajouter/Supprimer
+        h.setSpacing(0)
         h.addStretch(1)
         self.add_btn = QPushButton("", self)
         self.add_btn.setProperty("variant", "icon")
@@ -209,6 +224,18 @@ class PlayersDialog(QDialog):
         msg.setInformativeText("Cette action supprimera aussi tous ses meilleurs tours.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
+        # Marges et espacement cohérents
+        try:
+            m = int(BASE_MARGIN)
+        except Exception:
+            m = 12
+        try:
+            lay = msg.layout()
+            if lay is not None:
+                lay.setContentsMargins(m, m, m, m)
+                lay.setSpacing(m)
+        except Exception:
+            pass
         # Thème pour la boîte de confirmation
         try:
             c = getattr(self, "_colors", {}) or {}

@@ -24,7 +24,7 @@ from .constants import (
     FONT_SIZE_LAPTIME,
     FONT_SIZE_RANKING_PLAYER,
     FONT_WEIGHT_RANKING_PLAYER,
-    SECTION_MARGIN,
+    BASE_MARGIN,
     SECTION_TITLE_GAP,
     SECTION_SEPARATOR_SPACING,
     MEDAL_GOLD_ICON_PATH,
@@ -53,8 +53,8 @@ class SessionPanel(QWidget):
         self._medal_icon_px = MEDAL_ICON_SIZE
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
-        lay.setSpacing(6)
+        lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
+        lay.setSpacing(BASE_MARGIN)
 
         # Titre
         title = QLabel("SESSION")

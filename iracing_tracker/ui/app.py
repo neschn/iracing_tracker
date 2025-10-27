@@ -23,7 +23,7 @@ from .constants import (
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
     FONT_FAMILY, FONT_SIZE_BANNER, FONT_SIZE_PLAYER,
     BANNER_HEIGHT,
-    SECTION_MARGIN,
+    BASE_MARGIN,
     BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow
@@ -96,7 +96,7 @@ class TrackerUI:
         # Bannière + séparateur
         banner = QWidget(); self._banner = banner
         if BANNER_HEIGHT is not None: banner.setFixedHeight(BANNER_HEIGHT)
-        b_lay = QVBoxLayout(banner); b_lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
+        b_lay = QVBoxLayout(banner); b_lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
         self.banner_label = QLabel(""); self.banner_label.setAlignment(Qt.AlignCenter)
         self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
         b_lay.addWidget(self.banner_label); root.addWidget(banner)

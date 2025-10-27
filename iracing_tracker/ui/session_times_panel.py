@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy
 from .constants import (
     FONT_FAMILY,
     FONT_SIZE_SECTION_TITLE,
-    SECTION_MARGIN,
+    BASE_MARGIN,
     SECTION_TITLE_GAP,
 )
 from .widgets import LastLapsList as _LastLapsList
@@ -23,8 +23,8 @@ class SessionTimesPanel(QWidget):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
-        lay.setSpacing(6)
+        lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
+        lay.setSpacing(BASE_MARGIN)
 
         cap = QLabel("TEMPS DE LA SESSION")
         cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))

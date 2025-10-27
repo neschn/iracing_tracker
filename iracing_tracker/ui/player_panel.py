@@ -23,7 +23,7 @@ from .constants import (
     FONT_SIZE_PLAYER,
     FONT_SIZE_LAPTIME,
     FONT_SIZE_BUTTON,
-    SECTION_MARGIN,
+    BASE_MARGIN,
     SECTION_TITLE_GAP,
     SECTION_SEPARATOR_SPACING,
 )
@@ -41,8 +41,8 @@ class PlayerPanel(QWidget):
         self._action_icon_px = int(action_icon_px or 18)
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN, SECTION_MARGIN)
-        lay.setSpacing(6)
+        lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
+        lay.setSpacing(BASE_MARGIN)
 
         header = QWidget()
         h_lay = QHBoxLayout(header)
@@ -110,4 +110,3 @@ class PlayerPanel(QWidget):
             layout.setAlignment(widget, Qt.AlignTop)
         except Exception:
             pass
-
