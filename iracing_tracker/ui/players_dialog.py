@@ -1,7 +1,7 @@
-################################################################################################################
+﻿################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/players_dialog.py                                                               #
-# Description : Boîtes de dialogue pour gérer les joueurs (liste, ajout, suppression).                         #
+# Description : BoÃ®tes de dialogue pour gÃ©rer les joueurs (liste, ajout, suppression).                         #
 ################################################################################################################
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ from PySide6.QtCore import QSize, QRectF
 
 
 class AddPlayerDialog(QDialog):
-    """Boîte simple pour saisir un nouveau nom de joueur avec validation."""
+    """BoÃ®te simple pour saisir un nouveau nom de joueur avec validation."""
 
     def __init__(self, existing: Iterable[str] | None = None, parent: QWidget | None = None):
         super().__init__(parent)
@@ -59,7 +59,7 @@ class AddPlayerDialog(QDialog):
             m = 12
         lay.setContentsMargins(m, m, m, m)
         lay.setSpacing(m)
-        lbl = QLabel(f"Nom du joueur (max {PLAYER_NAME_MAX_LENGTH} caractères) :")
+        lbl = QLabel(f"Nom du joueur (max {PLAYER_NAME_MAX_LENGTH} caractÃ¨res) :")
         lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         lay.addWidget(lbl)
 
@@ -68,7 +68,7 @@ class AddPlayerDialog(QDialog):
         self.name_edit.textChanged.connect(self._validate)
         lay.addWidget(self.name_edit)
 
-        # Alerte visuelle supprimée: le bouton OK est simplement désactivé
+        # Alerte visuelle supprimÃ©e: le bouton OK est simplement dÃ©sactivÃ©
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
         for b in btns.buttons():
@@ -83,13 +83,13 @@ class AddPlayerDialog(QDialog):
         text = (self.name_edit.text() or "").strip()
         error = None
         if not text:
-            error = "Le nom ne peut pas être vide."
+            error = "Le nom ne peut pas Ãªtre vide."
         elif len(text) > int(PLAYER_NAME_MAX_LENGTH):
-            error = f"Maximum {PLAYER_NAME_MAX_LENGTH} caractères."
+            error = f"Maximum {PLAYER_NAME_MAX_LENGTH} caractÃ¨res."
         elif text.lower() in self._existing_lower:
-            error = "Ce joueur existe déjà."
+            error = "Ce joueur existe dÃ©jÃ ."
 
-        # Pas de message d'erreur visible; uniquement le bouton OK désactivé
+        # Pas de message d'erreur visible; uniquement le bouton OK dÃ©sactivÃ©
         # Safer: disable via button box lookup
         for b in self.findChildren(QDialogButtonBox):
             try:
@@ -108,13 +108,13 @@ class AddPlayerDialog(QDialog):
 
 
 class PlayersDialog(QDialog):
-    """Fenêtre modale simple pour lister, ajouter et supprimer des joueurs."""
+    """FenÃªtre modale simple pour lister, ajouter et supprimer des joueurs."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Joueurs")
         self.setModal(True)
-        self.modified = False  # Passe à True si ajout/suppression
+        self.modified = False  # Passe Ã  True si ajout/suppression
 
         lay = QVBoxLayout(self)
         try:
@@ -129,7 +129,7 @@ class PlayersDialog(QDialog):
         lay.addWidget(title)
 
         self.list_widget = QListWidget(self)
-        # Pas de sélection par défaut à l'ouverture
+        # Pas de sÃ©lection par dÃ©faut Ã  l'ouverture
         self.list_widget.setSelectionMode(QListWidget.SingleSelection)
         lay.addWidget(self.list_widget)
 
@@ -146,16 +146,21 @@ class PlayersDialog(QDialog):
         self.add_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn = QPushButton("", self)
         self.del_btn.setProperty("variant", "icon")
+        # Bouton de suppression marquÃ© comme 'danger' pour style rouge
+        try:
+            self.del_btn.setProperty("danger", True)
+        except Exception:
+            pass
         self.del_btn.setCursor(Qt.PointingHandCursor)
         self.del_btn.setFixedSize(32, 32)
         self.del_btn.setIconSize(QSize(18, 18))
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
-        self.del_btn.setEnabled(False)
+        self.del_btn.setEnabled(True)
         h.addWidget(self.add_btn)
         h.addSpacing(6)
         h.addWidget(self.del_btn)
         h.addStretch(1)
-        # Bouton Fermer à droite (style bouton standard)
+        # Bouton Fermer Ã  droite (style bouton standard)
         self.close_btn = QPushButton("Fermer", self)
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.setFixedHeight(32)
@@ -194,11 +199,17 @@ class PlayersDialog(QDialog):
         return item.text() if item else None
 
     def _update_buttons_state(self, *_):
-        self.del_btn.setEnabled(self.list_widget.currentRow() >= 0)
+        selected = self.list_widget.currentRow() >= 0
+        # Le bouton disparaÃ®t s'il n'y a pas de sÃ©lection
+        try:
+            self.del_btn.setVisible(selected)
+        except Exception:
+            # fallback: dÃ©sactivation si visibilitÃ© impossible
+            self.del_btn.setEnabled(selected)
 
     def showEvent(self, event):
         try:
-            # Aucune sélection au premier affichage
+            # Aucune sÃ©lection au premier affichage
             self.list_widget.clearSelection()
             # Effacer l'index courant
             try:
@@ -218,7 +229,7 @@ class PlayersDialog(QDialog):
     def _on_add(self):
         existing = [self.list_widget.item(i).text() for i in range(self.list_widget.count())]
         dlg = AddPlayerDialog(existing, self)
-        # Appliquer le même thème à la boîte d'ajout si fourni via apply_palette()
+        # Appliquer le mÃªme thÃ¨me Ã  la boÃ®te d'ajout si fourni via apply_palette()
         try:
             colors = getattr(self, "_colors", {})
             if hasattr(dlg, "apply_palette"):
@@ -230,7 +241,7 @@ class PlayersDialog(QDialog):
         except Exception:
             pass
         if dlg.exec() == QDialog.Accepted and dlg.result_name:
-            # Persiste et met à jour la liste
+            # Persiste et met Ã  jour la liste
             players = DataStore.load_players()
             new_name = dlg.result_name
             if new_name.strip().lower() not in {p.strip().lower() for p in players}:
@@ -250,7 +261,7 @@ class PlayersDialog(QDialog):
         msg.setInformativeText("Cette action supprimera aussi tous ses meilleurs tours.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
-        # Marges et espacement cohérents
+        # Marges et espacement cohÃ©rents
         try:
             m = int(BASE_MARGIN)
         except Exception:
@@ -262,7 +273,7 @@ class PlayersDialog(QDialog):
                 lay.setSpacing(m)
         except Exception:
             pass
-        # Thème pour la boîte de confirmation
+        # ThÃ¨me pour la boÃ®te de confirmation
         try:
             c = getattr(self, "_colors", {}) or {}
             bg = c.get("bg_main"); fg = c.get("text")
@@ -273,7 +284,7 @@ class PlayersDialog(QDialog):
                 f"color:{c.get('control_fg', fg or '#000')};"
                 f"border:{BUTTON_BORDER_WIDTH}px solid {c.get('button_border_color', '#d0d0d0')};"
                 f"border-radius:{BUTTON_BORDER_RADIUS}px;"
-                f"padding:{BUTTON_PADDING};"
+                f""
                 "}"
                 "QPushButton:hover{"
                 f"background:{c.get('interactive_hover', '#dcdcdc')};"
@@ -298,7 +309,7 @@ class PlayersDialog(QDialog):
             self.modified = True
             self._reload_players()
 
-    # --- Thème ---
+    # --- ThÃ¨me ---
     def apply_palette(self, colors: dict | None):
         self._colors = colors or {}
         c = self._colors
@@ -320,7 +331,7 @@ class PlayersDialog(QDialog):
             f"QListView::item:selected{{border:none; outline:0;}}"
             f"QListView::item:focus{{border:none; outline:0;}}"
         )
-        # Scrollbar CSS (aligné avec la fenêtre principale)
+        # Scrollbar CSS (alignÃ© avec la fenÃªtre principale)
         def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
                            hover_start: str, hover_end: str) -> str:
             return (
@@ -352,7 +363,7 @@ class PlayersDialog(QDialog):
             f"color:{c.get('control_fg', list_text)};"
             f"border:{BUTTON_BORDER_WIDTH}px solid {c.get('button_border_color', '#d0d0d0')};"
             f"border-radius:{BUTTON_BORDER_RADIUS}px;"
-            f"padding:{BUTTON_PADDING};"
+            f""
             "}"
             "QPushButton:hover{"
             f"background:{c.get('interactive_hover', '#dcdcdc')};"
@@ -365,13 +376,23 @@ class PlayersDialog(QDialog):
             "}"
         )
         icon_override = ("QPushButton[variant=\"icon\"]{" f"padding:{ICON_BUTTON_PADDING};" "min-width:28px;" "min-height:28px;" "}")
-        self.setStyleSheet(base_style + list_style + btn_style + icon_override + list_scroll_css)
+        danger_style = (
+            "QPushButton[variant=\"icon\"][danger=\"true\"]{"
+            "background:#cc4b48; color:#ffffff;"
+            f"border:{BUTTON_BORDER_WIDTH}px solid #8f2f2d;"
+            f"border-radius:{BUTTON_BORDER_RADIUS}px;"
+            f""
+            "}"
+            "QPushButton[danger=\"true\"]:hover{" "background:#b13f3c;" "}"
+            "QPushButton[danger=\"true\"]:pressed{" "background:#963533;" "}"
+        )
+        self.setStyleSheet(base_style + list_style + btn_style + icon_override + danger_style + list_scroll_css)
         # Fonts
         self.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.list_widget.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.add_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
-        # Icônes add/delete avec couleur du thème
+        # IcÃ´nes add/delete avec couleur du thÃ¨me
         try:
             size = 18
             color = c.get('action_icon_color', c.get('control_fg', '#000000'))
@@ -415,11 +436,29 @@ class PlayersDialog(QDialog):
 def _addplayer_apply_palette(self, colors: dict | None):
     c = colors or {}
     bg = c.get("bg_main"); fg = c.get("text")
-    if bg or fg:
-        self.setStyleSheet(
-            "QDialog{" + (f"background:{bg};" if bg else "") + (f"color:{fg};" if fg else "") + "}"
-            + (f"QLabel{{color:{fg};}}" if fg else "")
-        )
+    # Base + boutons comme le bouton "Fermer"
+    btn_bg = c.get('button_bg', '#e5e5e5')
+    btn_fg = c.get('control_fg', fg or '#000000')
+    btn_border = c.get('button_border_color', '#d0d0d0')
+    hover_bg = c.get('interactive_hover', '#dcdcdc')
+    btn_style = (
+        "QPushButton{"
+        f"background:{btn_bg};"
+        f"color:{btn_fg};"
+        f"border:{BUTTON_BORDER_WIDTH}px solid {btn_border};"
+        f"border-radius:{BUTTON_BORDER_RADIUS}px;"
+        f"padding:{BUTTON_PADDING};"
+        "}"
+        "QPushButton:hover{" f"background:{hover_bg};" "}"
+        "QPushButton:pressed{" f"background:{hover_bg};" "}"
+        "QPushButton:disabled{" f"background:{btn_bg}; color:#888888;" "}"
+    )
+    base_style = (
+        "QDialog{" + (f"background:{bg};" if bg else "") + (f"color:{fg};" if fg else "") + "}"
+        + (f"QLabel{{color:{fg};}}" if fg else "")
+        + btn_style
+    )
+    self.setStyleSheet(base_style)
     # Line edit style
     base_bg = c.get("bg_secondary", bg)
     ctrl_fg = c.get("control_fg", fg)
@@ -435,3 +474,6 @@ def _addplayer_apply_palette(self, colors: dict | None):
 
 # Bind method dynamically to class
 setattr(AddPlayerDialog, 'apply_palette', _addplayer_apply_palette)
+
+
+
