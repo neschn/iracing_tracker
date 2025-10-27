@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import Iterable
+from html import escape
 
 from PySide6.QtCore import Qt, QSize, QRectF, QTimer, QModelIndex
 from PySide6.QtGui import QFont, QIcon, QColor, QPainter, QPixmap
@@ -146,7 +147,7 @@ class PlayersDialog(QDialog):
         lay.setContentsMargins(m, m, m, m)
         lay.setSpacing(m)
 
-        title = QLabel("Liste des joueurs")
+        title = QLabel("Liste des joueurs :")
         title.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS, QFont.Weight.Bold))
         lay.addWidget(title)
 
@@ -257,7 +258,10 @@ class PlayersDialog(QDialog):
         msg = QMessageBox(self)
         msg.setWindowTitle("Confirmer la suppression")
         msg.setIcon(QMessageBox.Warning)
-        msg.setText(f"Supprimer le joueur « {name} » ?")
+        # Nom en gras (rich text) avec échappement HTML
+        safe_name = escape(name or "")
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(f"Supprimer le joueur « <b>{safe_name}</b> » ?")
         msg.setInformativeText("Cette action supprimera aussi tous ses meilleurs tours.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
