@@ -196,6 +196,24 @@ class PlayersDialog(QDialog):
     def _update_buttons_state(self, *_):
         self.del_btn.setEnabled(self.list_widget.currentRow() >= 0)
 
+    def showEvent(self, event):
+        try:
+            # Aucune sélection au premier affichage
+            self.list_widget.clearSelection()
+            # Effacer l'index courant
+            try:
+                from PySide6.QtCore import QModelIndex
+                self.list_widget.setCurrentIndex(QModelIndex())
+            except Exception:
+                pass
+            self._update_buttons_state()
+        except Exception:
+            pass
+        try:
+            super().showEvent(event)
+        except Exception:
+            pass
+
     # --- Actions ---
     def _on_add(self):
         existing = [self.list_widget.item(i).text() for i in range(self.list_widget.count())]
