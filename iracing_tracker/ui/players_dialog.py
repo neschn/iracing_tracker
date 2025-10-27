@@ -1,7 +1,7 @@
 ################################################################################################################
 # Projet : iRacing Tracker
 # Fichier : iracing_tracker/ui/players_dialog.py
-# Description : BoÃ®tes de dialogue pour gÃ©rer les joueurs (liste, ajout, suppression).
+# Description : Boîtes de dialogue pour gérer les joueurs (liste, ajout, suppression).
 ################################################################################################################
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from iracing_tracker.data_store import DataStore
 
 
 class AddPlayerDialog(QDialog):
-    """BoÃ®te simple pour saisir un nouveau nom de joueur avec validation."""
+    """Boîte simple pour saisir un nouveau nom de joueur avec validation."""
 
     def __init__(self, existing: Iterable[str] | None = None, parent: QWidget | None = None):
         super().__init__(parent)
@@ -58,7 +58,7 @@ class AddPlayerDialog(QDialog):
         lay.setContentsMargins(m, m, m, m)
         lay.setSpacing(m)
 
-        lbl = QLabel(f"Nom du joueur (max {PLAYER_NAME_MAX_LENGTH} caractÃ¨res) :")
+        lbl = QLabel(f"Nom du joueur (max {PLAYER_NAME_MAX_LENGTH} caractères) :")
         lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         lay.addWidget(lbl)
 
@@ -67,7 +67,7 @@ class AddPlayerDialog(QDialog):
         self.name_edit.textChanged.connect(self._validate)
         lay.addWidget(self.name_edit)
 
-        # Alerte visuelle supprimÃ©e: le bouton OK est simplement dÃ©sactivÃ©
+        # Alerte visuelle supprimée: le bouton OK est simplement désactivé
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
         for b in btns.buttons():
             b.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
@@ -81,13 +81,13 @@ class AddPlayerDialog(QDialog):
         text = (self.name_edit.text() or "").strip()
         error = None
         if not text:
-            error = "Le nom ne peut pas Ãªtre vide."
+            error = "Le nom ne peut pas être vide."
         elif len(text) > int(PLAYER_NAME_MAX_LENGTH):
-            error = f"Maximum {PLAYER_NAME_MAX_LENGTH} caractÃ¨res."
+            error = f"Maximum {PLAYER_NAME_MAX_LENGTH} caractères."
         elif text.lower() in self._existing_lower:
-            error = "Ce joueur existe dÃ©jÃ ."
+            error = "Ce joueur existe déjà."
 
-        # DÃ©sactive/active le bouton OK
+        # Désactive/active le bouton OK
         for b in self.findChildren(QDialogButtonBox):
             try:
                 b.button(QDialogButtonBox.Ok).setEnabled(error is None)
@@ -149,7 +149,7 @@ class AddPlayerDialog(QDialog):
 
 
 class PlayersDialog(QDialog):
-    """FenÃªtre modale simple pour lister, ajouter et supprimer des joueurs."""
+    """Fenêtre modale simple pour lister, ajouter et supprimer des joueurs."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -168,7 +168,7 @@ class PlayersDialog(QDialog):
         lay.addWidget(title)
 
         self.list_widget = QListWidget(self)
-        # DÃ©sactiver la sÃ©lection initiale, on la rÃ©active aprÃ¨s affichage
+        # Désactiver la sélection initiale, on la réactive après affichage
         self.list_widget.setSelectionMode(QAbstractItemView.NoSelection)
         lay.addWidget(self.list_widget)
 
@@ -211,13 +211,13 @@ class PlayersDialog(QDialog):
         self.del_btn.clicked.connect(self._on_delete)
         self.list_widget.currentRowChanged.connect(self._update_buttons_state)
         self.list_widget.itemSelectionChanged.connect(self._update_buttons_state)
-        # RÃ©tablir la sÃ©lection simple aprÃ¨s le premier affichage (sans sÃ©lectionner d'item)
+        # Rétablir la sélection simple après le premier affichage (sans sélectionner d'item)
         QTimer.singleShot(0, lambda: self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection))
 
     def showEvent(self, event):
         try:
             self.list_widget.clearSelection()
-            # Efface l'index courant de maniÃ¨re fiable
+            # Efface l'index courant de manière fiable
             self.list_widget.setCurrentIndex(QModelIndex())
             self._update_buttons_state()
         except Exception:
@@ -253,7 +253,7 @@ class PlayersDialog(QDialog):
         dlg = AddPlayerDialog(existing, self)
         if self._colors:
             dlg.apply_palette(self._colors)
-        # Police champ texte cohÃ©rente
+        # Police champ texte cohérente
         try:
             dlg.name_edit.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         except Exception:
@@ -274,14 +274,14 @@ class PlayersDialog(QDialog):
         msg = QMessageBox(self)
         msg.setWindowTitle("Confirmer la suppression")
         msg.setIcon(QMessageBox.Warning)
-        # Nom en gras (rich text) avec Ã©chappement HTML
+        # Nom en gras (rich text) avec échappement HTML
         safe_name = escape(name or "")
         msg.setTextFormat(Qt.RichText)
-        msg.setText(f"Supprimer le joueur Â« <b>{safe_name}</b> Â» ?")
+        msg.setText(f"Supprimer le joueur « <b>{safe_name}</b> » ?")
         msg.setInformativeText("Cette action supprimera aussi tous ses meilleurs tours.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
-        # Boutons franÃ§ais + police cohÃ©rente
+        # Boutons français + police cohérente
         try:
             yes_b = msg.button(QMessageBox.Yes)
             cancel_b = msg.button(QMessageBox.Cancel)
@@ -299,7 +299,7 @@ class PlayersDialog(QDialog):
         if lay is not None:
             lay.setContentsMargins(m, m, m, m)
             lay.setSpacing(m)
-        # ThÃ¨me boutons
+        # Thème boutons
         try:
             c = self._colors or {}
             bg = c.get("bg_main"); fg = c.get("text")
@@ -328,7 +328,7 @@ class PlayersDialog(QDialog):
             self.modified = True
             self._reload_players()
 
-    # --- ThÃ¨me ---
+    # --- Thème ---
     def apply_palette(self, colors: dict | None):
         self._colors = colors or {}
         c = self._colors
@@ -373,7 +373,7 @@ class PlayersDialog(QDialog):
         handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
         list_scroll_css = _scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end,
                                          handle_hover_start, handle_hover_end)
-        # Boutons standards + icÃ´nes
+        # Boutons standards + icônes
         btn_style = (
             "QPushButton{"
             f"background:{c.get('button_bg', '#e5e5e5')};"
@@ -387,7 +387,7 @@ class PlayersDialog(QDialog):
             "QPushButton:disabled{" f"background:{c.get('button_bg', '#e5e5e5')}; color:#888888;" "}"
         )
         icon_override = ("QPushButton[variant=\"icon\"]{" f"padding:{ICON_BUTTON_PADDING};" "min-width:28px;" "min-height:28px;" "}")
-        # Danger (supprimer) â€” rouge adouci
+        # Danger (supprimer) — rouge adouci
         danger_style = (
             "QPushButton[variant=\"icon\"][danger=\"true\"]{"
             "background:#cc4b48; color:#ffffff;"
@@ -403,7 +403,7 @@ class PlayersDialog(QDialog):
         self.add_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
 
-        # IcÃ´nes
+        # Icônes
         try:
             size = 18
             color = c.get('action_icon_color', c.get('control_fg', '#000000'))
@@ -443,4 +443,3 @@ class PlayersDialog(QDialog):
             return QIcon(pixmap)
         except Exception:
             return QIcon()
-
