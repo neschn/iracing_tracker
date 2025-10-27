@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from PySide6.QtCore import Qt, QSize, QRectF
+from PySide6.QtCore import Qt, QSize, QRectF, QTimer, QModelIndex
 from PySide6.QtGui import QFont, QIcon, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QMessageBox,
     QWidget,
+    QAbstractItemView,
 )
 from PySide6.QtSvg import QSvgRenderer
 
@@ -150,7 +151,8 @@ class PlayersDialog(QDialog):
         lay.addWidget(title)
 
         self.list_widget = QListWidget(self)
-        self.list_widget.setSelectionMode(QListWidget.SingleSelection)
+        # Désactiver la sélection initiale, on la réactive après affichage
+        self.list_widget.setSelectionMode(QAbstractItemView.NoSelection)
         lay.addWidget(self.list_widget)
 
         btn_row = QWidget(self)
@@ -192,11 +194,14 @@ class PlayersDialog(QDialog):
         self.del_btn.clicked.connect(self._on_delete)
         self.list_widget.currentRowChanged.connect(self._update_buttons_state)
         self.list_widget.itemSelectionChanged.connect(self._update_buttons_state)
+        # Rétablir la sélection simple après le premier affichage (sans sélectionner d'item)
+        QTimer.singleShot(0, lambda: self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection))
 
     def showEvent(self, event):
         try:
             self.list_widget.clearSelection()
-            self.list_widget.setCurrentRow(-1)
+            # Efface l'index courant de manière fiable
+            self.list_widget.setCurrentIndex(QModelIndex())
             self._update_buttons_state()
         except Exception:
             pass
