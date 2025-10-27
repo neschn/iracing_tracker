@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon, QPainter, QPixmap, QColor
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -31,8 +31,13 @@ from .constants import (
     BUTTON_BORDER_WIDTH,
     BUTTON_BORDER_RADIUS,
     BUTTON_PADDING,
+    ICON_BUTTON_PADDING,
+    ADD_ICON_PATH,
+    DELETE_ICON_PATH,
 )
 from iracing_tracker.data_store import DataStore
+from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import QSize, QRectF
 
 
 class AddPlayerDialog(QDialog):
@@ -125,9 +130,17 @@ class PlayersDialog(QDialog):
         h = QHBoxLayout(btn_row)
         h.setContentsMargins(0, 0, 0, 0)
         h.addStretch(1)
-        self.add_btn = QPushButton("Ajouter", self)
+        self.add_btn = QPushButton("", self)
+        self.add_btn.setProperty("variant", "icon")
+        self.add_btn.setCursor(Qt.PointingHandCursor)
+        self.add_btn.setFixedSize(32, 32)
+        self.add_btn.setIconSize(QSize(18, 18))
         self.add_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
-        self.del_btn = QPushButton("Supprimer", self)
+        self.del_btn = QPushButton("", self)
+        self.del_btn.setProperty("variant", "icon")
+        self.del_btn.setCursor(Qt.PointingHandCursor)
+        self.del_btn.setFixedSize(32, 32)
+        self.del_btn.setIconSize(QSize(18, 18))
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn.setEnabled(False)
         h.addWidget(self.add_btn)
@@ -175,6 +188,10 @@ class PlayersDialog(QDialog):
             colors = getattr(self, "_colors", {})
             if hasattr(dlg, "apply_palette"):
                 dlg.apply_palette(colors)
+            try:
+                dlg.name_edit.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
+            except Exception:
+                pass
         except Exception:
             pass
         if dlg.exec() == QDialog.Accepted and dlg.result_name:
@@ -300,12 +317,52 @@ class PlayersDialog(QDialog):
             f"background:{c.get('button_bg', '#e5e5e5')}; color:#888888;"
             "}"
         )
-        self.setStyleSheet(base_style + list_style + btn_style + list_scroll_css)
+        icon_override = ("QPushButton[variant=\"icon\"]{" f"padding:{ICON_BUTTON_PADDING};" "min-width:28px;" "min-height:28px;" "}")
+        self.setStyleSheet(base_style + list_style + btn_style + icon_override + list_scroll_css)
         # Fonts
         self.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.list_widget.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.add_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.del_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
+        # Icônes add/delete avec couleur du thème
+        try:
+            size = 18
+            color = c.get('action_icon_color', c.get('control_fg', '#000000'))
+            add_icon = self._load_svg_icon(ADD_ICON_PATH, color, size)
+            del_icon = self._load_svg_icon(DELETE_ICON_PATH, color, size)
+            if not add_icon.isNull():
+                self.add_btn.setIcon(add_icon)
+                self.add_btn.setIconSize(QSize(size, size))
+            if not del_icon.isNull():
+                self.del_btn.setIcon(del_icon)
+                self.del_btn.setIconSize(QSize(size, size))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _load_svg_icon(path: str, color: str, size: int) -> QIcon:
+        try:
+            if not path:
+                return QIcon()
+            renderer = QSvgRenderer(path)
+            if not renderer.isValid():
+                return QIcon()
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            renderer.render(painter, QRectF(0, 0, size, size))
+            painter.end()
+            fg = QColor(color)
+            if not fg.isValid():
+                fg = QColor("#000000")
+            painter = QPainter(pixmap)
+            painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+            painter.fillRect(pixmap.rect(), fg)
+            painter.end()
+            return QIcon(pixmap)
+        except Exception:
+            return QIcon()
 
 # Extend AddPlayerDialog with theming support without changing constructor
 def _addplayer_apply_palette(self, colors: dict | None):
@@ -323,6 +380,7 @@ def _addplayer_apply_palette(self, colors: dict | None):
         self.name_edit.setStyleSheet(
             f"QLineEdit{{background:{base_bg or '#ffffff'}; color:{ctrl_fg or '#000000'};}}"
         )
+        self.name_edit.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
     except Exception:
         pass
     # Fonts
