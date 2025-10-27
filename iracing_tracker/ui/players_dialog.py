@@ -61,11 +61,7 @@ class AddPlayerDialog(QDialog):
         self.name_edit.textChanged.connect(self._validate)
         lay.addWidget(self.name_edit)
 
-        self.error_lbl = QLabel("")
-        self.error_lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        self.error_lbl.setStyleSheet("color:#c0392b;")
-        self.error_lbl.setVisible(False)
-        lay.addWidget(self.error_lbl)
+        # Alerte visuelle supprimée: le bouton OK est simplement désactivé
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
         for b in btns.buttons():
@@ -86,9 +82,7 @@ class AddPlayerDialog(QDialog):
         elif text.lower() in self._existing_lower:
             error = "Ce joueur existe déjà."
 
-        self.error_lbl.setVisible(bool(error))
-        if error:
-            self.error_lbl.setText(error)
+        # Pas de message d'erreur visible; uniquement le bouton OK désactivé
         # Safer: disable via button box lookup
         for b in self.findChildren(QDialogButtonBox):
             try:
