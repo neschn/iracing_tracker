@@ -8,16 +8,11 @@
 Je développe un **logiciel personnel** permettant d’enregistrer et d’afficher en temps réel les temps et records réalisés sur **iRacing** avec mes amis.  
 iRacing ne proposant pas nativement l’enregistrement local des temps, j’utilise le **SDK officiel d’iRacing (`irsdk`)** pour récupérer la télémétrie en direct.
 
-Le programme est destiné à être lancé **en même temps qu’iRacing**, sur un **écran secondaire**, et détecte automatiquement :
+Le programme est destiné à être lancé **en même temps qu’iRacing**, et détecte automatiquement :
 - le **circuit actuel** (et son identifiant unique),
 - la **voiture utilisée**,
 - les **joueurs enregistrés** dans le fichier `players.json`.
-
-Les données sont stockées dans deux fichiers JSON :
-- `players.json` → liste des joueurs enregistrés,  
-- `best_laps.json` → meilleurs temps pour chaque joueur, par circuit et par voiture.
-
-La **météo** n’est pas prise en compte pour l’instant.
+- La **météo** n’est pas prise en compte pour l’instant.
 
 ---
 
@@ -25,7 +20,7 @@ La **météo** n’est pas prise en compte pour l’instant.
 
 Créer un **tableau de suivi des performances locales** sur iRacing, capable de :
 - Enregistrer automatiquement les **meilleurs tours personnels** pour chaque joueur, circuit et voiture.  
-  > Exemple : le temps de “Nico” sur un circuit en F3 ne doit pas écraser son record avec une F1.
+  > Exemple : le temps de “Nico” sur un circuit en F1 ne doit pas écraser son record avec une F3.
 - Afficher en temps réel (pour le combo *circuit + voiture*):
   - le **temps du tour actuel**,  
   - le **meilleur temps personnel**,  
@@ -45,7 +40,7 @@ Créer un **tableau de suivi des performances locales** sur iRacing, capable de 
 ## ⚙️ Aspects techniques clés
 
 - Le logiciel est écrit en **Python**.  
-- L’interface graphique utilise **Tkinter**, avec une architecture thread-safe :
+- L’interface graphique utilise **Qt**, avec une architecture thread-safe :
   - le **thread principal** gère exclusivement l’UI,  
   - la **boucle de télémétrie** tourne dans un **thread secondaire**,  
   - la communication entre les deux passe par une **`queue.Queue()`** et des appels **`.after()`** côté UI.  
@@ -90,7 +85,7 @@ Créer un **tableau de suivi des performances locales** sur iRacing, capable de 
 
 ---
 
-## 🧠 Directives importantes pour ChatGPT
+## 🧠 Directives importantes pour l'IA
 
 Directives A NE SURTOUT JAMAIS JAMAIS JAMAIS OUBLIER  tu m’aides dans le développement :
 
