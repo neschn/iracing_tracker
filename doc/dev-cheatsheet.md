@@ -7,8 +7,8 @@ Ce document sert d’aide-mémoire pour utiliser **Git**, **GitHub** et **les co
 ## ⚙️ Commandes Bash utiles pour ton projet
 
 ```bash
-cd C:\iracing_tracker                                   # Accède au dossier principal du projet sur ton disque
-.venv310\Scripts\python.exe -m iracing_tracker.main     # Lance ton application avec l'environnement virtuel Python (interpréteur du venv)
+cd C:\iracing_tracker                                   
+.venv310\Scripts\python.exe -m iracing_tracker.main     
 ```
 ## ⚙️ Dossiers
 %LOCALAPPDATA%\iRacingTracker                           # Données
