@@ -1,1 +1,2 @@
 pyirsdk
+PySide6
