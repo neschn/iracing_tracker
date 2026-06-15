@@ -1,4 +1,66 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # CLAUDE.md — Instructions projet iRacing Tracker
+
+## Commandes
+
+Toutes les commandes s'exécutent depuis `C:\iracing_tracker` avec l'environnement virtuel `.venv310` (Python 3.10, Windows uniquement).
+
+```bash
+# Installer les dépendances (PySide6 est requis en plus de pyirsdk)
+.venv310\Scripts\python.exe -m pip install -r requirements.txt
+
+# Lancer l'application (iRacing doit tourner pour avoir de la télémétrie réelle)
+.venv310\Scripts\python.exe -m iracing_tracker.main
+
+# Vérification syntaxe / imports d'un fichier modifié (pas de tests automatisés)
+.venv310\Scripts\python.exe -m py_compile iracing_tracker\<fichier>.py
+```
+
+Il n'existe **aucun test automatisé** ni linter configuré. La validation des tours dépend d'une session iRacing réelle : le comportement métier ne peut pas être confirmé sans iRacing lancé (le signaler clairement, cf. règles plus bas). Hors iRacing, `freeze_and_read()` renvoie des `None` et la boucle reste en attente de session.
+
+`requirements.txt` ne liste que `pyirsdk` ; **PySide6 doit aussi être présent** dans l'environnement (déjà installé dans `.venv310`).
+
+## Architecture du code (vue d'ensemble)
+
+> Note : le `README.md` est partiellement obsolète (il mentionne Tkinter, `ui.py` et un dossier `data/`). La réalité du code : **PySide6**, un package `ui/`, et les données stockées dans `%LOCALAPPDATA%\iRacingTracker` (configurable via `IRTRACKER_DATA_DIR`).
+
+### Modèle de threads
+
+Deux threads, comme exigé par les règles projet :
+
+* **Thread principal** : la boucle Qt (`TrackerUI.mainloop()` dans [iracing_tracker/ui/app.py](iracing_tracker/ui/app.py)). Toute mutation de l'UI doit rester ici.
+* **Thread worker (daemon)** : `loop()` dans [iracing_tracker/main.py](iracing_tracker/main.py) — lecture télémétrie, détection/validation des tours, sauvegarde des records.
+
+Communication **uniquement** via une `queue.Queue` thread-safe :
+
+* worker → UI : le worker appelle `UIBridge` ([iracing_tracker/ui_bridge.py](iracing_tracker/ui_bridge.py)), qui pousse des tuples `(name, payload)` dans la queue (avec coalescing pour éviter les updates redondants). L'UI vide la queue toutes les 16 ms via un `QTimer` (`_pump_event_queue`).
+* UI → worker : l'état partagé (`selected_player`, `runtime_flags`) est protégé par des `threading.Lock` créés dans `main()`.
+
+Ne jamais toucher l'UI depuis le worker autrement que par `UIBridge`.
+
+### Chaîne de traitement (un tour de boucle)
+
+`main.py loop()` orchestre, de façon volontairement légère, des *managers* spécialisés :
+
+1. **`IRClient`** ([irsdk_client.py](iracing_tracker/irsdk_client.py)) — encapsule `irsdk.IRSDK`. `freeze_and_read(vars)` fige le buffer et lit ; gère startup paresseux et déconnexions (renvoie des `None`). `is_session_active()` teste `SessionUniqueID`.
+2. **`TelemetryReader`** ([telemetry_reader.py](iracing_tracker/telemetry_reader.py)) — lit les variables iRSDK par catégorie avec throttling : `read_core` (10 Hz, état tour/incidents), `read_context` (0.5 Hz, track/car), `read_debug` (≈3 Hz).
+3. **`SessionManager`** ([session_manager.py](iracing_tracker/session_manager.py)) — détecte session active (grâce anti-rebond `SESSION_INACTIVE_GRACE_SECONDS`), maintient le `SessionContext` (track_id/car_id), détecte les changements de contexte et gère les flags de messages.
+4. **`LapValidator`** ([lap_validator.py](iracing_tracker/lap_validator.py)) — cœur métier. `LapDetector` détecte la fin d'un tour (gère le délai de MAJ de `LapLastLapTime` via un état *pending*) ; `LapValidator` compare `PlayerCarMyIncidentCount` entre début et fin de tour. Retourne `(status, lap_time, reason)` avec `status ∈ {"valid","invalid","none"}`. Un tour n'est `valid` que si delta incidents = 0, que ce n'est pas un out lap, et que le premier tour (tour de lancement) est ignoré.
+5. **`RecordManager`** ([record_manager.py](iracing_tracker/record_manager.py)) — compare au record perso/absolu, sauvegarde via `DataStore`, fournit `get_ranking()`. `format_lap_time()` **tronque** aux millièmes (jamais d'arrondi vers le haut).
+6. **`DataStore`** ([data_store.py](iracing_tracker/data_store.py)) — persistance JSON **atomique** (`tempfile` + `os.replace` + `fsync`). Sauvegarde un `.corrupt-<timestamp>` si un JSON est illisible plutôt que de planter.
+
+### Modèle de données
+
+* Clé d'un combo : `"<track_id>|<car_id>"`. `best_laps.json` : `{"<track_id>|<car_id>": {"<player>": {"time": float_secondes, "date": iso8601}}}`.
+* `players.json` : liste de noms (dédupliqués, insensible à la casse).
+* C'est cette clé `track_id|car_id` qui garantit la règle métier « un record ne doit jamais écraser celui d'un autre circuit ou d'une autre voiture ».
+
+### UI (package `ui/`)
+
+`TrackerUI` ([ui/app.py](iracing_tracker/ui/app.py)) est la façade. L'écran est découpé en panneaux (`session_panel`, `player_panel`, `session_times_panel`, `debug_panel`, `logs_panel`), avec barre de titre custom (`titlebar.py`), thème clair/sombre/système (`theme.py`), bannière de messages (`banner_manager.py`) et constantes de mise en page (`constants.py`). `_pump_event_queue()` est le seul point d'entrée des messages worker→UI.
 
 ## Contexte du projet
 

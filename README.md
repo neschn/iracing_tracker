@@ -42,7 +42,7 @@ Le logiciel tourne en **parallèle d’iRacing** sur un écran secondaire.
   - du **tour actuel**
   - du **record personnel**
   - du **record absolu**
-- ✅ Interface claire et fluide via **Tkinter**
+- ✅ Interface claire et fluide via **PySide6 (Qt)**, avec thème clair / sombre / système
 - ✅ Logs détaillés des événements (session, validation, erreurs, etc.)
 - ✅ Zone debug avec les variables IRSDK en temps réel
 - ✅ Système de bannière (messages dynamiques : records, attente, etc.)
@@ -56,24 +56,29 @@ Le logiciel tourne en **parallèle d’iRacing** sur un écran secondaire.
 iracing_tracker/
 │
 ├── iracing_tracker/
-│   ├── main.py                # Boucle principale (lecture IRSDK, UI, logique)
-│   ├── ui.py                  # Interface graphique (Tkinter)
-│   ├── lap_validator.py       # Validation des tours (logique 0x, incidents, etc.)
-│   ├── irsdk_client.py        # Gestion du client IRSDK
+│   ├── main.py                # Orchestration : boucle worker (lecture → validation → UI)
+│   ├── irsdk_client.py        # Encapsulation du client IRSDK (lecture sécurisée)
+│   ├── telemetry_reader.py    # Lecture des variables IRSDK avec throttling
+│   ├── session_manager.py     # État de session iRacing + contexte circuit/voiture
+│   ├── lap_validator.py       # Détection et validation des tours (0x incident, out lap)
+│   ├── record_manager.py      # Comparaison et gestion des records (perso/absolu)
 │   ├── data_store.py          # Lecture/écriture atomique des fichiers JSON
+│   ├── ui_bridge.py           # Pont thread-safe worker → UI (queue + coalescing)
+│   ├── ui/                    # Interface graphique PySide6 (panneaux, thème, bannière)
 │   └── __init__.py
-│
-├── data/
-│   ├── players.json           # Liste des joueurs enregistrés
-│   └── best_laps.json         # Records enregistrés (clé = track_id|car_id)
 │
 ├── doc/
 │   ├── dev-cheatsheet.md      # Commandes Git/Bash utiles
 │   ├── to-do-and-bugs.md      # Liste de tâches et bugs connus
-│   └── chatgpt-instructions.md# Contexte complet pour relancer ChatGPT
+│   ├── irsdk-vars.md          # Référence des variables IRSDK
+│   └── design/               # Maquettes
 │
+├── CLAUDE.md                  # Instructions projet + architecture (pour Claude Code)
 └── README.md
 ```
+
+> 💡 Les fichiers de données (`players.json`, `best_laps.json`) ne sont **pas** dans le dépôt :
+> ils sont stockés dans `%LOCALAPPDATA%\iRacingTracker` (voir [Fichiers de données](#-fichiers-de-données)).
 
 ---
 
@@ -127,13 +132,13 @@ Les joueurs peuvent être sélectionnés depuis le menu déroulant à gauche.
 
 ## 🧩 Aspects techniques
 
-- **Langage :** Python  
-- **Interface :** Tkinter  
-- **Télémétrie :** iRSDK  
-- **Thread principal :** Interface graphique  
-- **Thread secondaire :** Lecture télémétrie et logique métier  
-- **Communication inter-threads :** `queue.Queue()` et `.after()` Tkinter  
-- **Persistance :** JSON (atomique : écriture temporaire `.tmp` puis `os.replace`)  
+- **Langage :** Python (3.10)  
+- **Interface :** PySide6 (Qt)  
+- **Télémétrie :** iRSDK (`pyirsdk`)  
+- **Thread principal :** Interface graphique (boucle Qt)  
+- **Thread secondaire :** Lecture télémétrie et logique métier (worker daemon)  
+- **Communication inter-threads :** `queue.Queue()` côté worker (via `UIBridge`), vidée par un `QTimer` côté UI  
+- **Persistance :** JSON (atomique : fichier temporaire puis `os.replace` + `fsync`)  
 - **Gestion de sessions iRacing :**
   - Détection automatique de session active
   - Appel obligatoire à `ir_client.ir.shutdown()` lors d’un changement de session
@@ -142,6 +147,8 @@ Les joueurs peuvent être sélectionnés depuis le menu déroulant à gauche.
 ---
 
 ## 📂 Fichiers de données
+
+Stockés dans `%LOCALAPPDATA%\iRacingTracker` (surchargeable via la variable d'environnement `IRTRACKER_DATA_DIR`).
 
 | Fichier | Rôle |
 |----------|------|
@@ -154,9 +161,10 @@ Les joueurs peuvent être sélectionnés depuis le menu déroulant à gauche.
 
 | Fichier | Description |
 |----------|-------------|
+| `CLAUDE.md` | Instructions projet, règles métier et architecture du code |
 | `doc/dev-cheatsheet.md` | Aide Git/Bash et bonnes pratiques |
 | `doc/to-do-and-bugs.md` | Tâches et bugs connus |
-| `doc/chatgpt-instructions.md` | Fiche de contexte complète pour ChatGPT |
+| `doc/irsdk-vars.md` | Référence des variables IRSDK |
 
 ---
 
