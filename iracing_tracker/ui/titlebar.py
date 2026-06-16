@@ -1,9 +1,9 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/titlebar.py                                                                     #
-# Date de modification : 20.10.2025                                                                            #
+# Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Implémente une barre de titre personnalisée inspirée de VS Code.                               #
+# Description : Barre de titre personnalisée (style VS Code) avec menu intégré et boutons fenêtre.             #
 ################################################################################################################
 
 from PySide6.QtCore import Qt, QPoint, QSize
@@ -17,20 +17,26 @@ from .constants import (
     FONT_FAMILY,
 )
 
+
+#--------------------------------------------------------------------------------------------------------------#
+# Barre de titre personnalisée : icône, menu intégré et boutons réduire/agrandir/fermer.                       #
+#--------------------------------------------------------------------------------------------------------------#
 class CustomTitleBar(QWidget):
-    """Barre de titre personnalisée avec menu intégré (style VS Code)."""
 
     HEIGHT = 36
     _WINDOWS_CAPTION_GLYPHS = {
-        QStyle.SP_TitleBarMinButton: "\uE921",    # ChromeMinimize
-        QStyle.SP_TitleBarMaxButton: "\uE922",    # ChromeMaximize
-        QStyle.SP_TitleBarNormalButton: "\uE923", # ChromeRestore
-        QStyle.SP_TitleBarCloseButton: "\uE8BB",  # ChromeClose
+        QStyle.SP_TitleBarMinButton: "",    # ChromeMinimize
+        QStyle.SP_TitleBarMaxButton: "",    # ChromeMaximize
+        QStyle.SP_TitleBarNormalButton: "", # ChromeRestore
+        QStyle.SP_TitleBarCloseButton: "",  # ChromeClose
     }
     _CAPTION_GLYPH_PIXEL_SIZE = 12
     _CAPTION_ICON_MIN_SIZE = 10
     _CAPTION_ICON_DELTA = -6
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit la barre : icône, menu, et les trois boutons de fenêtre.                                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, window):
         super().__init__(window)
         self._win = window
@@ -78,15 +84,25 @@ class CustomTitleBar(QWidget):
         layout.addWidget(self._buttons_container)
 
     # ---- API ----
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne la barre de menu intégrée.                                                                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def menu_bar(self) -> QMenuBar:
         return self._menu_bar
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Affiche l'icône de la fenêtre (ou la masque si absente).                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_icon(self, icon: QIcon):
         if icon and not icon.isNull():
             self._icon_label.setPixmap(icon.pixmap(18, 18))
         else:
             self._icon_label.clear()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique les couleurs du thème à la barre, au menu et aux boutons.                                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def apply_colors(self, colors: dict):
         bg = colors["title_bg"]
         fg = colors["title_fg"]
@@ -119,6 +135,9 @@ class CustomTitleBar(QWidget):
         )
         self.setStyleSheet(style)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour l'icône et l'infobulle du bouton agrandir/restaurer selon l'état de la fenêtre.                   #
+    #--------------------------------------------------------------------------------------------------------------#
     def on_window_state_changed(self, state):
         self._update_max_button_icon()
         if state & Qt.WindowMaximized:
@@ -126,8 +145,10 @@ class CustomTitleBar(QWidget):
         else:
             self._btn_max.setToolTip("Agrandir")
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Renvoie un code HT* (zone draggable) selon la position de la souris.                                         #
+    #--------------------------------------------------------------------------------------------------------------#
     def hit_test(self, pos: QPoint):
-        """Renvoie un code HT* si la souris est dans la zone draggable."""
         if not self.rect().contains(pos):
             return None
         if self._buttons_container.geometry().contains(pos):
@@ -137,6 +158,10 @@ class CustomTitleBar(QWidget):
         return HTCAPTION
 
     # ---- Interne ----
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Crée un bouton de fenêtre (glyphe Segoe MDL2 si dispo, sinon icône standard du style).                       #
+    #--------------------------------------------------------------------------------------------------------------#
     def _make_button(self, standard_icon, tooltip: str) -> QToolButton:
         btn = QToolButton(self)
         btn.setToolTip(tooltip)
@@ -163,12 +188,18 @@ class CustomTitleBar(QWidget):
         btn.setFixedSize(46, self.HEIGHT)
         return btn
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Bascule entre fenêtre agrandie et taille normale.                                                            #
+    #--------------------------------------------------------------------------------------------------------------#
     def _toggle_max_restore(self):
         if self._win.isMaximized():
             self._win.restore_normal_geometry()
         else:
             self._win.showMaximized()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour l'icône du bouton agrandir/restaurer.                                                             #
+    #--------------------------------------------------------------------------------------------------------------#
     def _update_max_button_icon(self):
         icon_role = QStyle.SP_TitleBarNormalButton if self._win.isMaximized() else QStyle.SP_TitleBarMaxButton
         if self._use_windows_glyphs and icon_role in self._WINDOWS_CAPTION_GLYPHS:
@@ -179,6 +210,9 @@ class CustomTitleBar(QWidget):
             self._btn_max.setIcon(style_for_icons.standardIcon(icon_role, None, self._btn_max))
             self._btn_max.setText("")
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne un style Qt natif Windows pour les icônes de boutons (ou None).                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def _create_windows_caption_style(self):
         if not IS_WINDOWS:
             return None
@@ -191,6 +225,9 @@ class CustomTitleBar(QWidget):
             pass
         return None
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Prépare la police de glyphes Segoe MDL2 Assets si elle est disponible.                                       #
+    #--------------------------------------------------------------------------------------------------------------#
     def _init_windows_caption_glyphs(self) -> bool:
         if not IS_WINDOWS:
             return False

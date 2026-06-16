@@ -1,9 +1,9 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/window.py                                                                       #
-# Date de modification : 20.10.2025                                                                            #
+# Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Fournit la QMainWindow sans cadre avec gestion Windows avancée.                                #
+# Description : QMainWindow sans cadre avec gestion Windows avancée (resize, coins arrondis, drag).            #
 ################################################################################################################
 
 import ctypes
@@ -28,22 +28,20 @@ from .platform import (
     IDC_ARROW, IDC_SIZENWSE, IDC_SIZENESW, IDC_SIZEWE, IDC_SIZENS,
     # Structures Win32
     MINMAXINFO, MONITORINFO,
-    
+
 )
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Fenêtre frameless (Windows) : resize par bords/coins, coins arrondis, double-clic et drag depuis maximisé.   #
+#--------------------------------------------------------------------------------------------------------------#
 class TrackerMainWindow(QMainWindow):
-    """
-    QMainWindow frameless (Windows) avec :
-      - Redimensionnement via bords/cornes (WM_NCHITTEST + WM_SYSCOMMAND/SC_SIZE),
-      - Coins arrondis (Rgn),
-      - Double-clic dans la barre de titre -> Max/Restore,
-      - Drag depuis l'état maximisé (détache en Normal puis relaye un drag natif),
-      - Gestion correcte Minimize/Restore (taskbar) et rappel de la géométrie "normale".
-    """
 
     window_state_changed = Signal(Qt.WindowStates)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Configure la fenêtre sans cadre, les seuils de drag et le suivi d'état.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self):
         super().__init__()
 
@@ -74,12 +72,17 @@ class TrackerMainWindow(QMainWindow):
         self._last_hit_code = None
 
     # ---------------- API ----------------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Enregistre le widget « barre de titre » custom (fournit hit_test(localPos) -> HT*).                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_title_bar_widget(self, widget):
-        """Widget 'title bar' custom qui fournit hit_test(localPos)->HT*."""
         self._title_bar_widget = widget
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Restaure la fenêtre à la dernière géométrie « normale » connue.                                              #
+    #--------------------------------------------------------------------------------------------------------------#
     def restore_normal_geometry(self):
-        """Restaure la fenêtre à la dernière géométrie 'normale' connue."""
         self.showNormal()
         try:
             if self._saved_normal_geom and self._saved_normal_geom.isValid():
@@ -88,6 +91,10 @@ class TrackerMainWindow(QMainWindow):
             pass
 
     # -------------- Événements Qt --------------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Réapplique la région à coins arrondis lors d'un redimensionnement.                                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def resizeEvent(self, event):
         try:
             self._update_corner_region()
@@ -95,6 +102,9 @@ class TrackerMainWindow(QMainWindow):
             pass
         super().resizeEvent(event)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Suit les changements d'état (max/min/restore) et mémorise la géométrie normale.                              #
+    #--------------------------------------------------------------------------------------------------------------#
     def changeEvent(self, event):
         if event.type() == QEvent.WindowStateChange:
             prev = getattr(self, "_last_window_state", Qt.WindowNoState)
@@ -115,11 +125,11 @@ class TrackerMainWindow(QMainWindow):
                     except Exception:
                         pass
 
-            # On passe en minimisé -> mémoriser si on était maximisé
+            # Passage en minimisé -> mémoriser si on était maximisé
             if new_state & Qt.WindowMinimized:
                 self._was_maximized_before_minimize = bool(prev & Qt.WindowMaximized)
 
-            # Restore depuis minimisé -> re-maximiser si nécessaire, sans écraser la geom "normale"
+            # Restore depuis minimisé -> re-maximiser au besoin, sans écraser la géométrie "normale"
             if (prev & Qt.WindowMinimized) and not (new_state & Qt.WindowMinimized):
                 if self._was_maximized_before_minimize and not (new_state & Qt.WindowMaximized):
                     self._suppress_next_save_normal = True
@@ -135,9 +145,12 @@ class TrackerMainWindow(QMainWindow):
 
         super().changeEvent(event)
 
-        # -------------- Helpers --------------
+    # -------------- Helpers --------------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne True si « g » a (quasi) la taille de la zone de travail (donc maximisé).                            #
+    #--------------------------------------------------------------------------------------------------------------#
     def _is_geometry_maximized_like(self, g) -> bool:
-        """Retourne True si 'g' a (quasi) la taille de la zone de travail (maximisé)."""
         handle = self.windowHandle() if hasattr(self, "windowHandle") else None
         screen = None
         if handle:
@@ -158,8 +171,10 @@ class TrackerMainWindow(QMainWindow):
         except Exception:
             return False
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique une région à coins arrondis (WINDOW_BORDER_RADIUS, ou 0 si maximisé).                               #
+    #--------------------------------------------------------------------------------------------------------------#
     def _update_corner_region(self):
-        """Applique un RGN arrondi selon WINDOW_BORDER_RADIUS (0 si maximisé)."""
         r = 0 if self.isMaximized() else max(0, int(WINDOW_BORDER_RADIUS))
         hwnd = int(self.winId())
         if r == 0:
@@ -170,14 +185,20 @@ class TrackerMainWindow(QMainWindow):
         ctypes.windll.user32.SetWindowRgn(hwnd, rgn, True)
         ctypes.windll.gdi32.DeleteObject(rgn)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Fabrique un LPARAM(x, y) (low: x, high: y) pour SendMessage.                                                 #
+    #--------------------------------------------------------------------------------------------------------------#
     @staticmethod
     def _make_lparam_from_point(pt: QPoint) -> int:
-        """Fabrique un LPARAM(x,y) (low: x, high: y) pour SendMessage."""
         return ctypes.c_uint32(((pt.y() & 0xFFFF) << 16) | (pt.x() & 0xFFFF)).value
 
     # -------------- Natif Windows --------------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Intercepte les messages Windows (hit-test, min/max, curseur, double-clic, drag, resize).                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def nativeEvent(self, eventType, message):
-        # Nous ne gérons que les messages Windows génériques
+        # On ne gère que les messages Windows génériques
         if eventType not in ("windows_generic_MSG", b"windows_generic_MSG"):
             return super().nativeEvent(eventType, message)
 
@@ -225,7 +246,7 @@ class TrackerMainWindow(QMainWindow):
                 self._drag_anchor_ratio = 0.5
             return False, 0
 
-        # Démarre un redimensionnement manuel depuis la zone client si clic proche d'un bord
+        # Démarre un resize manuel depuis la zone client si clic proche d'un bord
         if msg.message == WM_LBUTTONDOWN and not self.isMaximized():
             try:
                 gp = QCursor.pos()
@@ -241,7 +262,7 @@ class TrackerMainWindow(QMainWindow):
                 except Exception:
                     pass
 
-        # Si on a bougé de plus que le seuil -> restaurer et relayer le drag natif
+        # Mouvement au-delà du seuil -> restaurer puis relayer un drag natif
         if self._drag_from_max and self.isMaximized() and (msg.message in (WM_MOUSEMOVE, WM_NCMOUSEMOVE)):
             if msg.message == WM_MOUSEMOVE:
                 client_pos = self._unpack_lparam(msg.lParam)
@@ -264,12 +285,12 @@ class TrackerMainWindow(QMainWindow):
                 self._drag_from_max = False
                 return True, 0
 
-        # Bouton relâché -> on abandonne le "peut‑être drag"
+        # Bouton relâché -> on abandonne le « peut-être drag »
         if msg.message == WM_LBUTTONUP and self._drag_from_max:
             self._drag_from_max = False
             return False, 0
 
-        # Redimensionnement via non‑client down (au cas où Windows ne l'initie pas seul)
+        # Resize via non-client down (au cas où Windows ne l'initie pas seul)
         if msg.message == WM_NCLBUTTONDOWN and not self.isMaximized():
             try:
                 hit = int(msg.wParam)
@@ -287,9 +308,12 @@ class TrackerMainWindow(QMainWindow):
         return super().nativeEvent(eventType, message)
 
     # -------------- Handlers --------------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Calcule le code HT* (resize aux bords/coins, sinon zone titre).                                              #
+    #--------------------------------------------------------------------------------------------------------------#
     def _handle_nc_hit_test(self, lparam):
-        """Calcule le HT* pour le redimensionnement aux bords/cornes et la zone titre."""
-        # En maximisé, seules les zones 'titre' (drag) s'appliquent
+        # En maximisé, seules les zones « titre » (drag) s'appliquent
         if self.isMaximized():
             if self._title_bar_widget:
                 global_pos = self._unpack_lparam(lparam)
@@ -342,8 +366,10 @@ class TrackerMainWindow(QMainWindow):
 
         return None
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Contraint la taille minimale et renseigne la zone de travail (pour le maximisé).                             #
+    #--------------------------------------------------------------------------------------------------------------#
     def _handle_get_min_max_info(self, lparam):
-        """Contraint la taille min et renseigne la zone de travail (maximized)."""
         info = ctypes.cast(lparam, ctypes.POINTER(MINMAXINFO)).contents
         info.ptMinTrackSize.x = self.minimumWidth()
         info.ptMinTrackSize.y = self.minimumHeight()
@@ -361,24 +387,30 @@ class TrackerMainWindow(QMainWindow):
                 info.ptMaxTrackSize.x = info.ptMaxSize.x
                 info.ptMaxTrackSize.y = info.ptMaxSize.y
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Décode (x, y) d'un LPARAM vers un QPoint.                                                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     @staticmethod
     def _unpack_lparam(lparam) -> QPoint:
-        """Décode (x,y) d'un LPARAM vers un QPoint."""
         value = int(lparam) & 0xFFFFFFFF
         x = ctypes.c_short(value & 0xFFFF).value
         y = ctypes.c_short((value >> 16) & 0xFFFF).value
         return QPoint(x, y)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Mappe un code HT* en direction WMSZ_* (pour WM_SYSCOMMAND / SC_SIZE).                                        #
+    #--------------------------------------------------------------------------------------------------------------#
     def _wmsz_from_hit(self, hit: int) -> int:
-        """Mappe un code HT* en direction WMSZ_* pour WM_SYSCOMMAND/SC_SIZE."""
         mapping = {
             HTLEFT: WMSZ_LEFT, HTRIGHT: WMSZ_RIGHT, HTTOP: WMSZ_TOP, HTTOPLEFT: WMSZ_TOPLEFT,
             HTTOPRIGHT: WMSZ_TOPRIGHT, HTBOTTOM: WMSZ_BOTTOM, HTBOTTOMLEFT: WMSZ_BOTTOMLEFT, HTBOTTOMRIGHT: WMSZ_BOTTOMRIGHT,
         }
         return mapping.get(hit, 0)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Hit-test depuis une position globale (utile sur WM_LBUTTONDOWN en zone client).                              #
+    #--------------------------------------------------------------------------------------------------------------#
     def _hit_from_global_point(self, gp: QPoint) -> int:
-        """Hit-test depuis une position *globale* (utile sur WM_LBUTTONDOWN en zone client)."""
         if self.isMaximized():
             return HTCLIENT
         local = self.mapFromGlobal(gp)
@@ -409,8 +441,10 @@ class TrackerMainWindow(QMainWindow):
             return HTRIGHT
         return HTCLIENT
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Affiche le curseur de redimensionnement approprié selon la position de la souris.                            #
+    #--------------------------------------------------------------------------------------------------------------#
     def _handle_set_cursor(self):
-        """Affiche le curseur de redimensionnement approprié selon la position."""
         if self.isMaximized():
             ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(None, IDC_ARROW))
             return

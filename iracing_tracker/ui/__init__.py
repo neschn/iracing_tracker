@@ -1,7 +1,7 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/__init__.py                                                                     #
-# Date de modification : 20.10.2025                                                                            #
+# Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
 # Description : Expose la classe TrackerUI pour l'interface PySide.                                            #
 ################################################################################################################

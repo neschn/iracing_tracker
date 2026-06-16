@@ -1,7 +1,9 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/constants.py                                                                    #
-# Description : Centralise les constantes visuelles et ressources pour l'interface.                            #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Centralise les constantes visuelles et ressources de l'interface.                              #
 ################################################################################################################
 
 import os

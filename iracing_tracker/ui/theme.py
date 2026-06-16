@@ -36,15 +36,17 @@ from .constants import (
 )
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Gère le thème clair / sombre / système et persiste le choix via QSettings.                                   #
+#--------------------------------------------------------------------------------------------------------------#
 class ThemeManager:
-    """
-    Gestion du thème clair/sombre/système.
-    Stocke le choix via QSettings.
-    """
     SETTINGS_ORG = "iRacingTracker"
     SETTINGS_APP = "iRacingTracker"
     SETTINGS_KEY = "theme.mode"   # "system" | "light" | "dark"
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Charge le mode sauvegardé et écoute (si possible) les changements de thème système.                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, app):
         self.app = app
         self.settings = QSettings(self.SETTINGS_ORG, self.SETTINGS_APP)
@@ -57,23 +59,34 @@ class ThemeManager:
             pass
 
     # ---------- API publique ----------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne le mode choisi (« system » | « light » | « dark »).                                                 #
+    #--------------------------------------------------------------------------------------------------------------#
     def get_mode(self) -> str:
         return self.mode
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Change et persiste le mode (ignore une valeur invalide).                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_mode(self, mode: str):
         if mode not in ("system", "light", "dark"):
             return
         self.mode = mode
         self.settings.setValue(self.SETTINGS_KEY, mode)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne « light » ou « dark » selon le mode courant (résout « system »).                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     def effective_scheme(self) -> str:
-        """Retourne 'light' ou 'dark' selon le mode courant."""
         if self.mode == "system":
             return self._system_scheme()
         return self.mode
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne le dictionnaire de couleurs du schéma effectif (clair ou sombre).                                   #
+    #--------------------------------------------------------------------------------------------------------------#
     def colors(self) -> dict:
-        """Dictionnaire de couleurs pour le schéma effectif."""
         scheme = self.effective_scheme()
         if scheme == "dark":
             return dict(
@@ -139,6 +152,10 @@ class ThemeManager:
             )
 
     # ---------- Interne ----------
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Détecte le schéma système (« dark » / « light ») via les styleHints Qt.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
     def _system_scheme(self) -> str:
         try:
             scheme = QGuiApplication.styleHints().colorScheme()
@@ -147,6 +164,8 @@ class ThemeManager:
         except Exception:
             return "light"
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Hook du changement de thème système (le TrackerUI réapplique si le mode est « system »).                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def _on_system_scheme_changed(self, *_):
-        # Le TrackerUI réapplique le thème si mode == "system"
         pass

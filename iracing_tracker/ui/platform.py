@@ -1,9 +1,9 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/platform.py                                                                     #
-# Date de modification : 20.10.2025                                                                            #
+# Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Déclare les constantes Win32 utilisées par la fenêtre personnalisée.                           #
+# Description : Déclare les constantes et structures Win32 utilisées par la fenêtre personnalisée.             #
 ################################################################################################################
 
 import ctypes
@@ -58,7 +58,9 @@ IDC_SIZENESW = 32643
 IDC_SIZEWE   = 32644
 IDC_SIZENS   = 32645
 
-# Structures Win32 utilisées par window.py
+#--------------------------------------------------------------------------------------------------------------#
+# Structure Win32 MINMAXINFO : contraintes de taille de la fenêtre (utilisée par window.py).                   #
+#--------------------------------------------------------------------------------------------------------------#
 class MINMAXINFO(ctypes.Structure):
     _fields_ = [
         ("ptReserved", wintypes.POINT),
@@ -68,6 +70,10 @@ class MINMAXINFO(ctypes.Structure):
         ("ptMaxTrackSize", wintypes.POINT),
     ]
 
+
+#--------------------------------------------------------------------------------------------------------------#
+# Structure Win32 MONITORINFO : informations sur l'écran (utilisée par window.py).                             #
+#--------------------------------------------------------------------------------------------------------------#
 class MONITORINFO(ctypes.Structure):
     _fields_ = [
         ("cbSize", wintypes.DWORD),

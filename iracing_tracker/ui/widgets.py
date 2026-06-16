@@ -3,7 +3,7 @@
 # Fichier : iracing_tracker/ui/widgets.py                                                                      #
 # Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Définit les widgets PySide sur mesure pour listes et séparateurs.                              #
+# Description : Widgets PySide sur mesure : séparateurs, liste des derniers tours et son délégué.              #
 ################################################################################################################
 
 from PySide6.QtCore import QSize, Qt, QRect
@@ -31,11 +31,10 @@ from .constants import (
 )
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Remplace tk.BooleanVar : conserve l'API .get() / .set() attendue par main.py.                                #
+#--------------------------------------------------------------------------------------------------------------#
 class BoolVarCompat:
-    """
-    Remplace tk.BooleanVar pour conserver l'API (.get() / .set()) attendue
-    par la logique existante (main.py).
-    """
 
     def __init__(self, value=False):
         self._v = bool(value)
@@ -47,28 +46,34 @@ class BoolVarCompat:
         self._v = bool(v)
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Crée un séparateur vertical (couleur appliquée ensuite par le thème).                                        #
+#--------------------------------------------------------------------------------------------------------------#
 def vsep(parent: QWidget) -> QFrame:
-    """Séparateur vertical (la couleur est appliquée par _apply_theme())."""
     f = QFrame(parent)
     f.setFrameShape(QFrame.NoFrame)
     f.setFixedWidth(SEPARATOR_THICKNESS)
     return f
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Crée un séparateur horizontal (couleur appliquée ensuite par le thème).                                      #
+#--------------------------------------------------------------------------------------------------------------#
 def hsep(parent: QWidget) -> QFrame:
-    """Séparateur horizontal (la couleur est appliquée par _apply_theme())."""
     f = QFrame(parent)
     f.setFrameShape(QFrame.NoFrame)
     f.setFixedHeight(SEPARATOR_THICKNESS)
     return f
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Liste des derniers tours : n° + temps à gauche, pilote aligné à droite (via un délégué).                     #
+#--------------------------------------------------------------------------------------------------------------#
 class SessionTimesList(QListWidget):
-    """
-    Liste spécialisée pour afficher les derniers tours avec le temps à gauche
-    et le pilote aligné à droite.
-    """
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Configure la liste (sans cadre ni sélection) et son délégué de rendu.                                        #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFrameShape(QFrame.NoFrame)
@@ -103,14 +108,10 @@ class SessionTimesList(QListWidget):
             "QListWidget::item{margin:0px; padding:0px;}"
         )
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Remplit la liste à partir d'entrées variées (str, liste de str « lap\ttemps\tjoueur », tuples ou dicts).     #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_items(self, entries):
-        """
-        entries peut être :
-          - une chaîne (séparée par '\\n')
-          - une liste de chaînes (avec tabulation '\\t' entre temps et joueur)
-          - une liste de tuples/listes [time, player]
-          - une liste de dicts {"time": ..., "player": ...}
-        """
         if isinstance(entries, str):
             entries = entries.splitlines()
 
@@ -155,6 +156,9 @@ class SessionTimesList(QListWidget):
             item.setData(Qt.UserRole, (lap, time_str, player))
             self.addItem(item)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique les couleurs du thème (texte, fond, survol) et un éventuel CSS de scrollbar.                        #
+    #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, text_color, background, hover_color, extra_css=""):
         if text_color:
             self._text_color = text_color
@@ -174,6 +178,9 @@ class SessionTimesList(QListWidget):
         self.setStyleSheet(base)
         self.viewport().update()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Suit la ligne survolée par la souris pour le surlignage.                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def mouseMoveEvent(self, event):
         idx = self.indexAt(event.pos())
         row = idx.row() if idx.isValid() else -1
@@ -183,6 +190,9 @@ class SessionTimesList(QListWidget):
             self.viewport().update()
         super().mouseMoveEvent(event)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Efface le surlignage quand la souris quitte la liste.                                                        #
+    #--------------------------------------------------------------------------------------------------------------#
     def leaveEvent(self, event):
         if self._hover_row != -1:
             self._hover_row = -1
@@ -191,12 +201,14 @@ class SessionTimesList(QListWidget):
         super().leaveEvent(event)
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Délégué de rendu d'une ligne : temps en colonne fixe et pilote aligné à droite (avec ellipsis).              #
+#--------------------------------------------------------------------------------------------------------------#
 class _SessionTimesDelegate(QStyledItemDelegate):
-    """
-    Délégué pour dessiner proprement un temps (colonne fixe) et un pilote
-    aligné à droite avec ellipsis automatique.
-    """
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Initialise les largeurs de colonnes, les couleurs et la ligne survolée.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, lap_width: int, time_width: int, spacing: int = 12, parent=None):
         super().__init__(parent)
         self._lap_width = int(lap_width or 0)
@@ -206,12 +218,21 @@ class _SessionTimesDelegate(QStyledItemDelegate):
         self._hover_bg = QColor(0, 0, 0, 0)
         self._hover_row = -1
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Définit la largeur de la colonne « n° de tour ».                                                             #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_lap_width(self, width: int):
         self._lap_width = int(width or 0)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Définit la largeur de la colonne « temps ».                                                                  #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_time_width(self, width: int):
         self._time_width = int(width or 0)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Définit la couleur du texte (repli sur noir si invalide).                                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_text_color(self, color: str):
         if color:
             col = QColor(color)
@@ -220,6 +241,9 @@ class _SessionTimesDelegate(QStyledItemDelegate):
                 return
         self._text_color = QColor("#000000")
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Définit la couleur de survol (transparente si invalide).                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_hover_color(self, color):
         if color:
             col = QColor(color)
@@ -228,9 +252,15 @@ class _SessionTimesDelegate(QStyledItemDelegate):
                 return
         self._hover_bg = QColor(0, 0, 0, 0)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Mémorise l'index de la ligne survolée.                                                                       #
+    #--------------------------------------------------------------------------------------------------------------#
     def set_hovered_row(self, row: int):
         self._hover_row = int(row)
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Dessine une ligne : n° de tour, temps et pilote (avec surlignage et ellipsis).                               #
+    #--------------------------------------------------------------------------------------------------------------#
     def paint(self, painter, option, index):
         data = index.data(Qt.UserRole)
         if not data or not isinstance(data, (tuple, list)) or len(data) < 2:
@@ -258,11 +288,11 @@ class _SessionTimesDelegate(QStyledItemDelegate):
 
         rect = QRect(opt.rect)
 
-        # Lap column
+        # Colonne n° de tour
         lap_rect = QRect(rect)
         lap_rect.setWidth(max(0, self._lap_width))
 
-        # Time column
+        # Colonne temps
         time_rect = QRect(rect)
         time_rect.setLeft(lap_rect.right() + self._spacing)
         time_rect.setWidth(max(0, self._time_width))
@@ -278,12 +308,15 @@ class _SessionTimesDelegate(QStyledItemDelegate):
         player_text = fm.elidedText(str(player), Qt.ElideRight, player_width)
         painter.drawText(player_rect, Qt.AlignRight | Qt.AlignVCenter, player_text)
 
-        # Lap number text
+        # Texte du n° de tour
         lap_text = fm.elidedText(str(lap), Qt.ElideRight, lap_rect.width())
         painter.drawText(lap_rect, Qt.AlignLeft | Qt.AlignVCenter, lap_text)
 
         painter.restore()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Calcule la taille d'une ligne (hauteur de police + largeurs de colonnes).                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     def sizeHint(self, option, index):
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -299,5 +332,6 @@ class _SessionTimesDelegate(QStyledItemDelegate):
         width = self._lap_width + self._spacing + self._time_width + self._spacing + fm.horizontalAdvance(player)
         return QSize(width, height)
 
-# Backward compatibility alias
+
+# Alias de compatibilité
 LastLapsList = SessionTimesList
