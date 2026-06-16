@@ -3,7 +3,7 @@
 # Fichier : iracing_tracker/ui/player_panel.py                                                                 #
 # Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Panneau "JOUEUR" (sélection joueur, record perso, dernier tour).                              #
+# Description : Panneau "JOUEUR" (sélection joueur, record perso, dernier tour).                               #
 ################################################################################################################
 
 from PySide6.QtCore import Qt, QSize
@@ -34,9 +34,14 @@ from .widgets import hsep as _hsep
 from .qt_helpers import align_top, scrollbar_css, icon_button_css, load_svg_icon
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Panneau « JOUEUR » : sélecteur de joueur, record personnel et dernier tour.                                  #
+#--------------------------------------------------------------------------------------------------------------#
 class PlayerPanel(QWidget):
-    """Colonne JOUEUR avec combo et métriques."""
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit l'en-tête (titre + bouton éditer), le combo joueur et les métriques.                               #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, players: list[str] | None, on_player_changed, on_edit_players=None,
                  action_icon_px: int = 18, parent=None):
         super().__init__(parent)
@@ -117,19 +122,19 @@ class PlayerPanel(QWidget):
         lay.addStretch(1)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour le record personnel affiché.                                                                     #
+    # Met à jour le record personnel affiché.                                                                      #
     #--------------------------------------------------------------------------------------------------------------#
     def set_personal_record(self, text: str):
         self.best_time_label.setText(text or "---")
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour le temps du dernier tour affiché.                                                                #
+    # Met à jour le temps du dernier tour affiché.                                                                 #
     #--------------------------------------------------------------------------------------------------------------#
     def set_current_lap(self, text: str):
         self.current_lap_label.setText(text or "---")
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Active/désactive le sélecteur de joueur (et le restyle selon l'état).                                       #
+    # Active/désactive le sélecteur de joueur (et le restyle selon l'état).                                        #
     #--------------------------------------------------------------------------------------------------------------#
     def set_menu_state(self, enabled: bool):
         self._menu_enabled = bool(enabled)
@@ -137,7 +142,7 @@ class PlayerPanel(QWidget):
         self._restyle_combo()
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Recharge la liste des joueurs dans le combo en conservant la sélection si possible.                         #
+    # Recharge la liste des joueurs dans le combo en conservant la sélection si possible.                          #
     #--------------------------------------------------------------------------------------------------------------#
     def set_players(self, players: list[str] | None):
         current = self.player_combo.currentText()
@@ -162,7 +167,7 @@ class PlayerPanel(QWidget):
             self._on_player_changed(new_cur)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant (bouton-icône éditer + restylage du combo + séparateurs).                         #
+    # Applique le thème courant (bouton-icône éditer + restylage du combo + séparateurs).                          #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         self._colors = c

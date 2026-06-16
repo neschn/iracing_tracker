@@ -39,9 +39,14 @@ from .qt_helpers import align_top, load_svg_pixmap, resolve_font_weight, load_sv
 from iracing_tracker.record_manager import format_lap_time
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Panneau « SESSION » : informations de session et classement Top 3.                                           #
+#--------------------------------------------------------------------------------------------------------------#
 class SessionPanel(QWidget):
-    """Colonne gauche: SESSION + Top3."""
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit les infos de session, le classement Top 3 et leurs séparateurs.                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, action_icon_px: int = 18, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -189,7 +194,7 @@ class SessionPanel(QWidget):
         lay.addStretch(1)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour le temps de session affiché (format H:MM:SS).                                                    #
+    # Met à jour le temps de session affiché (format H:MM:SS).                                                     #
     #--------------------------------------------------------------------------------------------------------------#
     def set_session_time(self, seconds):
         if seconds is None:
@@ -206,7 +211,7 @@ class SessionPanel(QWidget):
         self.session_time_value.setText(f"{h}:{m:02d}:{sec:02d}")
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour le contexte affiché (circuit / voiture), avec le numéro d'ID si disponible.                      #
+    # Met à jour le contexte affiché (circuit / voiture), avec le numéro d'ID si disponible.                       #
     #--------------------------------------------------------------------------------------------------------------#
     def set_context(self, track: str, car: str, track_id=None, car_id=None):
         track_text = track or "---"
@@ -229,7 +234,7 @@ class SessionPanel(QWidget):
         self.car_value.setToolTip(display_car)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour les 3 lignes du classement (complète à 3 entrées, formate les temps).                            #
+    # Met à jour les 3 lignes du classement (complète à 3 entrées, formate les temps).                             #
     #--------------------------------------------------------------------------------------------------------------#
     def set_ranking(self, ranking: list):
         ranking = list(ranking)
@@ -247,7 +252,7 @@ class SessionPanel(QWidget):
             row_data["player"].setText(player_name)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant (bouton-icône classements, séparateurs).                                          #
+    # Applique le thème courant (bouton-icône classements, séparateurs).                                           #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         # Bouton-icône "classements"

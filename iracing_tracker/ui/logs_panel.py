@@ -21,7 +21,14 @@ from .constants import (
 from .qt_helpers import align_top, scrollbar_css
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Panneau « MESSAGES / LOGS » affiché en bas de fenêtre.                                                       #
+#--------------------------------------------------------------------------------------------------------------#
 class LogsPanel(QWidget):
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit le titre et la zone de logs en lecture seule.                                                      #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, parent=None):
         super().__init__(parent)
         self.separators = []
@@ -43,14 +50,14 @@ class LogsPanel(QWidget):
         lay.addWidget(self.log_text)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Ajoute un message horodaté dans la zone de logs.                                                            #
+    # Ajoute un message horodaté dans la zone de logs.                                                             #
     #--------------------------------------------------------------------------------------------------------------#
     def append_log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{ts}] {message}")
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant à la zone de logs (couleurs + scrollbar).                                         #
+    # Applique le thème courant à la zone de logs (couleurs + scrollbar).                                          #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))

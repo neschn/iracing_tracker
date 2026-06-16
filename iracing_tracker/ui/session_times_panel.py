@@ -19,7 +19,14 @@ from .widgets import LastLapsList as _LastLapsList
 from .qt_helpers import align_top, scrollbar_css
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Panneau « TEMPS DE LA SESSION » : liste des derniers tours.                                                  #
+#--------------------------------------------------------------------------------------------------------------#
 class SessionTimesPanel(QWidget):
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit le titre et la liste des derniers tours.                                                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -38,13 +45,13 @@ class SessionTimesPanel(QWidget):
         lay.addWidget(self.laps_list, 1)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour la liste des derniers tours affichés.                                                            #
+    # Met à jour la liste des derniers tours affichés.                                                             #
     #--------------------------------------------------------------------------------------------------------------#
     def set_items(self, entries):
         self.laps_list.set_items(entries)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant à la liste (couleurs + scrollbar).                                                #
+    # Applique le thème courant à la liste (couleurs + scrollbar).                                                 #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))

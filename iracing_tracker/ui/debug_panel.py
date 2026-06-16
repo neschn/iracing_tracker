@@ -31,7 +31,14 @@ from .constants import (
 from .qt_helpers import align_top, scrollbar_css, icon_button_css, load_svg_icon
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Panneau « DEBUG » masquable : affiche les variables iRSDK.                                                   #
+#--------------------------------------------------------------------------------------------------------------#
 class DebugPanel(QWidget):
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit l'en-tête (titre + bouton masquer) et la zone de texte debug.                                      #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, on_toggle_click, action_icon_px: int = 18, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -73,7 +80,7 @@ class DebugPanel(QWidget):
         lay.addWidget(self.debug_text, 1)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Affiche les données de debug (préserve le scroll si l'utilisateur n'est pas en bas).                        #
+    # Affiche les données de debug (préserve le scroll si l'utilisateur n'est pas en bas).                         #
     #--------------------------------------------------------------------------------------------------------------#
     def set_debug_data(self, data: dict):
         sb = self.debug_text.verticalScrollBar()
@@ -84,13 +91,13 @@ class DebugPanel(QWidget):
             sb.setValue(sb.maximum())
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Met à jour l'infobulle du bouton selon l'état visible/masqué de la zone debug.                              #
+    # Met à jour l'infobulle du bouton selon l'état visible/masqué de la zone debug.                               #
     #--------------------------------------------------------------------------------------------------------------#
     def update_toggle_tooltip(self, visible: bool):
         self.debug_toggle_btn.setToolTip("Masquer la zone debug" if visible else "Afficher la zone debug")
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant (zone de texte, bouton-icône, séparateurs).                                       #
+    # Applique le thème courant (zone de texte, bouton-icône, séparateurs).                                        #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))

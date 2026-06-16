@@ -1,7 +1,9 @@
 ################################################################################################################
-# Projet : iRacing Tracker
-# Fichier : iracing_tracker/ui/players_dialog.py
-# Description : Boîtes de dialogue pour gérer les joueurs (liste, ajout, suppression).
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/players_dialog.py                                                               #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Boîtes de dialogue pour gérer les joueurs (liste, ajout, suppression).                         #
 ################################################################################################################
 
 from __future__ import annotations
@@ -42,9 +44,14 @@ from iracing_tracker.data_store import DataStore
 from .qt_helpers import load_svg_icon, scrollbar_css
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Boîte de saisie d'un nouveau nom de joueur, avec validation en direct.                                       #
+#--------------------------------------------------------------------------------------------------------------#
 class AddPlayerDialog(QDialog):
-    """Boîte simple pour saisir un nouveau nom de joueur avec validation."""
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit le champ de saisie et les boutons OK / Annuler.                                                    #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, existing: Iterable[str] | None = None, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Nouveau joueur")
@@ -67,7 +74,7 @@ class AddPlayerDialog(QDialog):
         self.name_edit.textChanged.connect(self._validate)
         lay.addWidget(self.name_edit)
 
-        # Alerte visuelle supprimée: le bouton OK est simplement désactivé
+        # Pas d'alerte visuelle : le bouton OK est simplement désactivé si invalide
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
         for b in btns.buttons():
             b.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
@@ -77,6 +84,9 @@ class AddPlayerDialog(QDialog):
 
         self._validate()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Valide le nom saisi (non vide, longueur, unicité) et active/désactive le bouton OK.                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def _validate(self):
         text = (self.name_edit.text() or "").strip()
         error = None
@@ -87,13 +97,15 @@ class AddPlayerDialog(QDialog):
         elif text.lower() in self._existing_lower:
             error = "Ce joueur existe déjà."
 
-        # Désactive/active le bouton OK
         for b in self.findChildren(QDialogButtonBox):
             try:
                 b.button(QDialogButtonBox.Ok).setEnabled(error is None)
             except Exception:
                 pass
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Mémorise le nom saisi et ferme la boîte à l'acceptation (si valide).                                         #
+    #--------------------------------------------------------------------------------------------------------------#
     def _on_accept(self):
         text = (self.name_edit.text() or "").strip()
         if not text or text.lower() in self._existing_lower:
@@ -101,10 +113,13 @@ class AddPlayerDialog(QDialog):
         self.result_name = text
         self.accept()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique le thème (fond, boutons, champ de saisie).                                                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, colors: dict | None):
         c = colors or {}
         bg = c.get("bg_main"); fg = c.get("text")
-        # Style boutons comme "Fermer"
+        # Style des boutons (comme le bouton « Fermer »)
         btn_bg = c.get('button_bg', '#e5e5e5')
         btn_fg = c.get('control_fg', fg or '#000000')
         btn_border = c.get('button_border_color', '#d0d0d0')
@@ -127,7 +142,7 @@ class AddPlayerDialog(QDialog):
             + btn_style
         )
         self.setStyleSheet(base_style)
-        # Police champ
+        # Polices
         self.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         self.name_edit.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         try:
@@ -148,9 +163,14 @@ class AddPlayerDialog(QDialog):
             pass
 
 
+#--------------------------------------------------------------------------------------------------------------#
+# Fenêtre modale pour lister, ajouter et supprimer des joueurs.                                                #
+#--------------------------------------------------------------------------------------------------------------#
 class PlayersDialog(QDialog):
-    """Fenêtre modale simple pour lister, ajouter et supprimer des joueurs."""
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Construit la liste, les boutons (ajouter / supprimer / fermer) et leurs connexions.                          #
+    #--------------------------------------------------------------------------------------------------------------#
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Joueurs")
@@ -168,7 +188,7 @@ class PlayersDialog(QDialog):
         lay.addWidget(title)
 
         self.list_widget = QListWidget(self)
-        # Désactiver la sélection initiale, on la réactive après affichage
+        # Sélection désactivée au départ, réactivée après le premier affichage
         self.list_widget.setSelectionMode(QAbstractItemView.NoSelection)
         lay.addWidget(self.list_widget)
 
@@ -211,9 +231,12 @@ class PlayersDialog(QDialog):
         self.del_btn.clicked.connect(self._on_delete)
         self.list_widget.currentRowChanged.connect(self._update_buttons_state)
         self.list_widget.itemSelectionChanged.connect(self._update_buttons_state)
-        # Rétablir la sélection simple après le premier affichage (sans sélectionner d'item)
+        # Rétablir la sélection simple après le premier affichage (sans présélectionner)
         QTimer.singleShot(0, lambda: self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection))
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Réinitialise la sélection à l'ouverture de la fenêtre.                                                       #
+    #--------------------------------------------------------------------------------------------------------------#
     def showEvent(self, event):
         try:
             self.list_widget.clearSelection()
@@ -228,6 +251,10 @@ class PlayersDialog(QDialog):
             pass
 
     # --- Helpers ---
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Recharge la liste des joueurs depuis le disque.                                                              #
+    #--------------------------------------------------------------------------------------------------------------#
     def _reload_players(self):
         self.list_widget.clear()
         for name in DataStore.load_players():
@@ -236,10 +263,16 @@ class PlayersDialog(QDialog):
         self.list_widget.setCurrentRow(-1)
         self._update_buttons_state()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Retourne le joueur sélectionné, ou None.                                                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def _current_player(self) -> str | None:
         item = self.list_widget.currentItem()
         return item.text() if item else None
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Affiche le bouton supprimer uniquement si un joueur est sélectionné.                                         #
+    #--------------------------------------------------------------------------------------------------------------#
     def _update_buttons_state(self, *_):
         selected = self.list_widget.currentRow() >= 0
         try:
@@ -248,12 +281,16 @@ class PlayersDialog(QDialog):
             self.del_btn.setEnabled(selected)
 
     # --- Actions ---
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Ouvre la boîte d'ajout et enregistre le nouveau joueur (si non doublon).                                     #
+    #--------------------------------------------------------------------------------------------------------------#
     def _on_add(self):
         existing = [self.list_widget.item(i).text() for i in range(self.list_widget.count())]
         dlg = AddPlayerDialog(existing, self)
         if self._colors:
             dlg.apply_palette(self._colors)
-        # Police champ texte cohérente
+        # Police cohérente pour le champ texte
         try:
             dlg.name_edit.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         except Exception:
@@ -267,6 +304,9 @@ class PlayersDialog(QDialog):
                 self.modified = True
                 self._reload_players()
 
+    #--------------------------------------------------------------------------------------------------------------#
+    # Demande confirmation puis supprime le joueur sélectionné (et ses meilleurs tours).                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def _on_delete(self):
         name = self._current_player()
         if not name:
@@ -281,7 +321,7 @@ class PlayersDialog(QDialog):
         msg.setInformativeText("Cette action supprimera aussi tous ses meilleurs tours.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
-        # Boutons français + police cohérente
+        # Boutons en français + police cohérente
         try:
             yes_b = msg.button(QMessageBox.Yes)
             cancel_b = msg.button(QMessageBox.Cancel)
@@ -299,7 +339,7 @@ class PlayersDialog(QDialog):
         if lay is not None:
             lay.setContentsMargins(m, m, m, m)
             lay.setSpacing(m)
-        # Thème boutons
+        # Thème des boutons
         try:
             c = self._colors or {}
             bg = c.get("bg_main"); fg = c.get("text")
@@ -329,6 +369,10 @@ class PlayersDialog(QDialog):
             self._reload_players()
 
     # --- Thème ---
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique le thème (dialogue, liste, boutons, scrollbar, icônes ajouter/supprimer).                           #
+    #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, colors: dict | None):
         self._colors = colors or {}
         c = self._colors
@@ -371,7 +415,7 @@ class PlayersDialog(QDialog):
             "QPushButton:disabled{" f"background:{c.get('button_bg', '#e5e5e5')}; color:#888888;" "}"
         )
         icon_override = ("QPushButton[variant=\"icon\"]{" f"padding:{ICON_BUTTON_PADDING};" "min-width:28px;" "min-height:28px;" "}")
-        # Danger (supprimer) — rouge adouci
+        # Bouton « supprimer » (danger) — rouge adouci
         danger_style = (
             "QPushButton[variant=\"icon\"][danger=\"true\"]{"
             "background:#cc4b48; color:#ffffff;"
