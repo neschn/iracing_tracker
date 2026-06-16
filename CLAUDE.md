@@ -227,6 +227,18 @@ Utiliser ce format :
 #--------------------------------------------------------------------------------------------------------------#
 ```
 
+## Règles impératives de propreté et de cohérence
+
+Ces règles sont **impératives** et s'appliquent à **chaque** modification de code, sans exception.
+
+* **Date d'en-tête** : dès qu'un fichier Python est modifié, mettre à jour la ligne `# Date de modification : JJ.MM.AAAA` de son en-tête avec la date du jour. Ne jamais laisser une date obsolète, et ne jamais oublier cette mise à jour.
+* **Commentaires toujours en français** : tous les commentaires, descriptifs et docstrings doivent être rédigés en français, partout dans le projet.
+* **Commenter systématiquement** : placer une description **concise** avant chaque bloc important, fonction, méthode ou classe (format `#---...` ci-dessus). Le commentaire doit expliquer l'intention ou la logique métier, pas paraphraser le code.
+* **Espacement cohérent** : garder une mise en forme identique dans tout le projet — indentation, lignes vides entre méthodes, espaces autour des opérateurs et après les virgules, **une instruction par ligne** (éviter les `;` qui enchaînent plusieurs instructions et les lignes trop denses).
+* **Cohérence globale** : tout nouveau code doit s'aligner sur le style déjà présent dans le projet. En cas de doute, reproduire le style des fichiers voisins plutôt que d'introduire une variante.
+
+Objectif : un code propre, lisible, homogène et compréhensible d'un fichier à l'autre.
+
 ## Workflow Git
 
 Ne jamais supposer que les changements sont validés tant qu’ils ne sont pas commités.
