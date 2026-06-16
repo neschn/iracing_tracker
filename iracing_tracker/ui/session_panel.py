@@ -3,7 +3,7 @@
 # Fichier : iracing_tracker/ui/session_panel.py                                                                #
 # Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Panneau "SESSION" (infos session, top 3, pneus).                                               #
+# Description : Panneau "SESSION" (infos session, top 3).                                                      #
 ################################################################################################################
 
 from PySide6.QtCore import Qt, QSize
@@ -32,27 +32,21 @@ from .constants import (
     MEDAL_SILVER_ICON_PATH,
     MEDAL_BRONZE_ICON_PATH,
     MEDAL_ICON_SIZE,
-    TIRE_SECTION_HEADER_SPACING,
-    TIRE_TEMP_PLACEHOLDER,
-    TIRE_WEAR_PLACEHOLDER,
-    TIRE_ICON_PATH,
     LIST_ICON_PATH,
 )
-from .widgets import hsep as _hsep, vsep as _vsep, TireInfoWidget as _TireInfoWidget
+from .widgets import hsep as _hsep
 from .qt_helpers import align_top, load_svg_pixmap, resolve_font_weight, load_svg_icon, icon_button_css
 from iracing_tracker.record_manager import format_lap_time
 
 
 class SessionPanel(QWidget):
-    """Colonne gauche: SESSION + Top3 + Pneus."""
+    """Colonne gauche: SESSION + Top3."""
 
     def __init__(self, action_icon_px: int = 18, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.separators = []
-        self.tire_widgets = []
-        self.tires_map = {"temperature": {}, "wear": {}}
         self.absolute_rank_rows = []
         self._medal_icon_px = MEDAL_ICON_SIZE
         self._action_icon_px = int(action_icon_px or 18)
@@ -192,102 +186,7 @@ class SessionPanel(QWidget):
             )
 
         lay.addWidget(ranking_rows)
-
-        s = _hsep(self); self.separators.append(s)
-        lay.addSpacing(SECTION_SEPARATOR_SPACING); lay.addWidget(s); lay.addSpacing(SECTION_SEPARATOR_SPACING)
-
-        # Pneus
-        tires_section = QWidget()
-        tires_section.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        tires_layout = QVBoxLayout(tires_section)
-        tires_layout.setContentsMargins(0, 0, 0, 0)
-        tires_layout.setSpacing(12)
-
-        tires_title = QLabel("Pneus")
-        tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
-        tires_title.setAlignment(Qt.AlignCenter)
-        tires_layout.addWidget(tires_title)
-        align_top(tires_layout, tires_title)
-
-        tires_content = QWidget()
-        tc_lay = QHBoxLayout(tires_content)
-        tc_lay.setContentsMargins(0, 0, 0, 0)
-        tc_lay.setSpacing(24)
-        tires_content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        tires_layout.addWidget(tires_content, 1)
-
-        # Températures
-        temp_column = QWidget()
-        temp_column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        temp_col_lay = QVBoxLayout(temp_column)
-        temp_col_lay.setContentsMargins(0, 0, 0, 0)
-        temp_col_lay.setSpacing(12)
-
-        temp_label = QLabel("Températures :")
-        temp_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        temp_label.setAlignment(Qt.AlignCenter)
-        temp_col_lay.addWidget(temp_label)
-        align_top(temp_col_lay, temp_label)
-        temp_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
-
-        temp_grid = QGridLayout()
-        temp_grid.setContentsMargins(0, 0, 0, 0)
-        temp_grid.setHorizontalSpacing(24)
-        temp_grid.setVerticalSpacing(12)
-        temp_col_lay.addLayout(temp_grid, 1)
-
-        temp_grid.setColumnStretch(0, 1)
-        temp_grid.setColumnStretch(1, 1)
-        temp_grid.setRowStretch(0, 1)
-        temp_grid.setRowStretch(1, 1)
-
-        for code, row, col in [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]:
-            widget = _TireInfoWidget(code, TIRE_TEMP_PLACEHOLDER, TIRE_ICON_PATH)
-            temp_grid.addWidget(widget, row, col)
-            self.tire_widgets.append(widget)
-            self.tires_map["temperature"][code] = widget
-
-        tc_lay.addWidget(temp_column, 1, Qt.AlignTop)
-
-        sep_tires = _vsep(tires_content)
-        self.separators.append(sep_tires)
-        sep_tires.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        tc_lay.addWidget(sep_tires)
-
-        # Usure/Profil
-        wear_column = QWidget()
-        wear_column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        wear_col_lay = QVBoxLayout(wear_column)
-        wear_col_lay.setContentsMargins(0, 0, 0, 0)
-        wear_col_lay.setSpacing(12)
-
-        wear_label = QLabel("Profil :")
-        wear_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
-        wear_label.setAlignment(Qt.AlignCenter)
-        wear_col_lay.addWidget(wear_label)
-        align_top(wear_col_lay, wear_label)
-        wear_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
-
-        wear_grid = QGridLayout()
-        wear_grid.setContentsMargins(0, 0, 0, 0)
-        wear_grid.setHorizontalSpacing(24)
-        wear_grid.setVerticalSpacing(12)
-        wear_col_lay.addLayout(wear_grid, 1)
-
-        wear_grid.setColumnStretch(0, 1)
-        wear_grid.setColumnStretch(1, 1)
-        wear_grid.setRowStretch(0, 1)
-        wear_grid.setRowStretch(1, 1)
-
-        for code, row, col in [("AVG", 0, 0), ("AVD", 0, 1), ("ARG", 1, 0), ("ARD", 1, 1)]:
-            widget = _TireInfoWidget(code, TIRE_WEAR_PLACEHOLDER, TIRE_ICON_PATH)
-            wear_grid.addWidget(widget, row, col)
-            self.tire_widgets.append(widget)
-            self.tires_map["wear"][code] = widget
-
-        tc_lay.addWidget(wear_column, 1, Qt.AlignTop)
-
-        lay.addWidget(tires_section, 1)
+        lay.addStretch(1)
 
     #--------------------------------------------------------------------------------------------------------------#
     # Met à jour le temps de session affiché (format H:MM:SS).                                                    #
@@ -348,7 +247,7 @@ class SessionPanel(QWidget):
             row_data["player"].setText(player_name)
 
     #--------------------------------------------------------------------------------------------------------------#
-    # Applique le thème courant (bouton-icône classements, pneus, séparateurs).                                   #
+    # Applique le thème courant (bouton-icône classements, séparateurs).                                          #
     #--------------------------------------------------------------------------------------------------------------#
     def apply_palette(self, c: dict):
         # Bouton-icône "classements"
@@ -365,13 +264,6 @@ class SessionPanel(QWidget):
             try:
                 self.rankings_btn.setIcon(list_icon)
                 self.rankings_btn.setIconSize(QSize(size, size))
-            except Exception:
-                pass
-
-        # Pneus
-        for tire_widget in self.tire_widgets:
-            try:
-                tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
             except Exception:
                 pass
 

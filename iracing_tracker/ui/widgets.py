@@ -1,18 +1,16 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/widgets.py                                                                      #
-# Date de modification : 20.10.2025                                                                            #
+# Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Définit les widgets PySide sur mesure pour pneus, listes et séparateurs.                       #
+# Description : Définit les widgets PySide sur mesure pour listes et séparateurs.                              #
 ################################################################################################################
 
-from PySide6.QtCore import QSize, Qt, QRect, QRectF
-from PySide6.QtGui import QFont, QColor, QPalette, QPixmap, QPainter
+from PySide6.QtCore import QSize, Qt, QRect
+from PySide6.QtGui import QFont, QColor, QPalette
 from PySide6.QtWidgets import (
     QWidget,
     QFrame,
-    QLabel,
-    QVBoxLayout,
     QListWidget,
     QListWidgetItem,
     QSizePolicy,
@@ -23,14 +21,10 @@ from PySide6.QtWidgets import (
     QStyle,
     QApplication,
 )
-from PySide6.QtSvg import QSvgRenderer
 
 from .constants import (
     SEPARATOR_THICKNESS,
     FONT_FAMILY,
-    FONT_SIZE_LABELS,
-    TIRE_ICON_BASE_PX,
-    TIRE_ICON_MAX_SCALE,
     FONT_SIZE_LAST_LAPTIMES,
     TIME_COL_PX,
     LAP_NUM_COL_PX,
@@ -67,142 +61,6 @@ def hsep(parent: QWidget) -> QFrame:
     f.setFrameShape(QFrame.NoFrame)
     f.setFixedHeight(SEPARATOR_THICKNESS)
     return f
-
-
-class TireInfoWidget(QWidget):
-    """
-    Petit widget pour représenter un pneu avec son libellé et sa valeur.
-    """
-
-    def __init__(self, position_text: str, value_text: str, icon_path: str, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.setObjectName("TireInfoWidget")
-        self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        self._icon_path = icon_path
-        self._renderer = QSvgRenderer(self._icon_path, self)
-        view_box = self._renderer.viewBoxF()
-        if view_box.width() > 0 and view_box.height() > 0:
-            self._aspect_ratio = view_box.width() / view_box.height()
-        else:
-            self._aspect_ratio = 1.0
-
-        base_width = float(TIRE_ICON_BASE_PX or 96)
-        if base_width <= 0:
-            base_width = 96.0
-        base_height = base_width / self._aspect_ratio if self._aspect_ratio else base_width
-        if base_height <= 0:
-            base_height = base_width
-        self._base_width = base_width
-        self._base_height = base_height
-        self._icon_color = QColor("#000000")
-        self._current_icon_size = QSize()
-
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(8, 8, 8, 8)
-        lay.setSpacing(6)
-        lay.setAlignment(Qt.AlignCenter)
-
-        self.position_label = QLabel(position_text.upper())
-        self.position_label.setAlignment(Qt.AlignCenter)
-        pos_font = QFont(FONT_FAMILY, FONT_SIZE_LABELS, QFont.Bold)
-        self.position_label.setFont(pos_font)
-        lay.addWidget(self.position_label)
-
-        self.icon_label = QLabel()
-        self.icon_label.setAlignment(Qt.AlignCenter)
-        self.icon_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.icon_label.setStyleSheet("QLabel{background:transparent; border:none;}")
-        lay.addWidget(self.icon_label, 1)
-
-        self.value_label = QLabel(value_text)
-        self.value_label.setAlignment(Qt.AlignCenter)
-        val_font = QFont(FONT_FAMILY, FONT_SIZE_LABELS)
-        self.value_label.setFont(val_font)
-        lay.addWidget(self.value_label)
-
-        self.setStyleSheet("QWidget#TireInfoWidget{background:transparent; border:none;}")
-
-        # Valeurs par défaut avant application du thème.
-        self.apply_palette("", "", "#000000")
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._update_icon_pixmap()
-
-    def set_icon_color(self, color: str | QColor):
-        qcolor = QColor(color)
-        if not qcolor.isValid():
-            qcolor = QColor("#000000")
-        self._icon_color = qcolor
-        self._update_icon_pixmap(force=True)
-
-    def apply_palette(self, _background: str, _border: str, text_color: str):
-        color = text_color if QColor(text_color).isValid() else "#000000"
-        text_css = f"QLabel{{color:{color}; background:transparent; border:none;}}"
-        self.position_label.setStyleSheet(text_css)
-        self.value_label.setStyleSheet(text_css)
-        self.set_icon_color(color)
-
-    def _update_icon_pixmap(self, force: bool = False):
-        if not self._renderer.isValid():
-            self.icon_label.clear()
-            return
-
-        layout = self.layout()
-        margins = layout.contentsMargins() if layout else None
-        available_width = (
-            max(16, self.width() - (margins.left() + margins.right()))
-            if margins
-            else max(16, self.width() - 16)
-        )
-        spacing = layout.spacing() if layout else 0
-        text_height = (
-            self.position_label.sizeHint().height()
-            + self.value_label.sizeHint().height()
-        )
-        total_margins = (margins.top() + margins.bottom()) if margins else 16
-        available_height = max(
-            16,
-            self.height() - total_margins - text_height - (spacing * 2),
-        )
-
-        base_width = self._base_width
-        base_height = self._base_height
-        width_ratio = available_width / base_width
-        height_ratio = available_height / base_height
-        max_scale = max(1.0, float(TIRE_ICON_MAX_SCALE or 1.0))
-        scale = min(width_ratio, height_ratio, max_scale)
-
-        target_width = max(16, int(round(base_width * scale)))
-        target_height = max(16, int(round(base_height * scale)))
-
-        if self._aspect_ratio > 0:
-            target_height = max(16, int(round(target_width / self._aspect_ratio)))
-            if target_height > available_height:
-                target_height = int(available_height)
-                target_width = max(16, int(round(target_height * self._aspect_ratio)))
-
-        size = QSize(target_width, target_height)
-        if not force and size == self._current_icon_size:
-            return
-
-        self._current_icon_size = size
-        pixmap = QPixmap(size)
-        pixmap.fill(Qt.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-        target = QRectF(0, 0, size.width(), size.height())
-        self._renderer.render(painter, target)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
-        painter.fillRect(pixmap.rect(), self._icon_color)
-        painter.end()
-
-        self.icon_label.setFixedSize(size)
-        self.icon_label.setPixmap(pixmap)
-
 
 
 class SessionTimesList(QListWidget):

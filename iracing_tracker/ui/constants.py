@@ -17,7 +17,6 @@ DELETE_ICON_PATH = os.path.join(ASSETS_DIR, "delete.svg")
 MEDAL_GOLD_ICON_PATH = os.path.join(ASSETS_DIR, "medal_gold.svg")
 MEDAL_SILVER_ICON_PATH = os.path.join(ASSETS_DIR, "medal_silver.svg")
 MEDAL_BRONZE_ICON_PATH = os.path.join(ASSETS_DIR, "medal_bronze.svg")
-TIRE_ICON_PATH = os.path.join(ASSETS_DIR, "tire.svg")
 
 WINDOW_TITLE = "iRacing Tracker"
 WINDOW_GEOMETRY = (1600, 1300)
@@ -59,9 +58,6 @@ LIGHT_DEBUG_BG = "#f0f0f0"
 LIGHT_LOG_BG = "#f0f0f0"
 LIGHT_SEPARATOR = "#cccccc"
 LIGHT_CONTROL_FG = "#000000"
-LIGHT_TIRE_BG = "#eaeaea"
-LIGHT_TIRE_BORDER = "#bdbdbd"
-LIGHT_TIRE_TEXT = "#000000"
 LIGHT_ACTION_ICON_COLOR = "#111111"
 
 LIGHT_TITLE_BG = "#e7e7e7"
@@ -93,9 +89,6 @@ DARK_DEBUG_BG = "#262626"
 DARK_LOG_BG = "#262626"
 DARK_SEPARATOR = "#3a3a3a"
 DARK_CONTROL_FG = "#e6e6e6"
-DARK_TIRE_BG = "#2b2b2b"
-DARK_TIRE_BORDER = "#4b4b4b"
-DARK_TIRE_TEXT = "#e6e6e6"
 DARK_ACTION_ICON_COLOR = "#e6e6e6"
 
 DARK_TITLE_BG = "#2a2a2a"
@@ -121,13 +114,6 @@ FONT_WEIGHT_RANKING_PLAYER = "Light"
 
 # Joueurs
 PLAYER_NAME_MAX_LENGTH = 30
-
-# Pneus
-TIRE_TEMP_PLACEHOLDER = "--°C"
-TIRE_WEAR_PLACEHOLDER = "--%"
-TIRE_SECTION_HEADER_SPACING = 12
-TIRE_ICON_BASE_PX = 54
-TIRE_ICON_MAX_SCALE = 1.5
 
 # Layout
 BANNER_HEIGHT = 150  # None pour hauteur auto, sinon fixer en pixels
