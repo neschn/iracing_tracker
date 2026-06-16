@@ -4,8 +4,8 @@
 # Description : Panneau "SESSION" (infos session, top 3, pneus)
 ################################################################################################################
 
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QFont, QPixmap, QPainter
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QSizePolicy,
 )
-from PySide6.QtSvg import QSvgRenderer
 
 from .constants import (
     FONT_FAMILY,
@@ -37,6 +36,7 @@ from .constants import (
     TIRE_ICON_PATH,
 )
 from .widgets import hsep as _hsep, vsep as _vsep, TireInfoWidget as _TireInfoWidget
+from .qt_helpers import align_top, load_svg_pixmap, resolve_font_weight
 
 
 class SessionPanel(QWidget):
@@ -60,7 +60,7 @@ class SessionPanel(QWidget):
         title = QLabel("SESSION")
         title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lay.addWidget(title)
-        self._align_top(lay, title)
+        align_top(lay, title)
         lay.addSpacing(SECTION_TITLE_GAP)
 
         # Infos session (time / track / car)
@@ -122,7 +122,7 @@ class SessionPanel(QWidget):
         self.absolute_ranking_label = QLabel("Classement :")
         self.absolute_ranking_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         rh_lay.addWidget(self.absolute_ranking_label)
-        self._align_top(rh_lay, self.absolute_ranking_label)
+        align_top(rh_lay, self.absolute_ranking_label)
         rh_lay.addStretch(1)
         self.rankings_btn = QPushButton("")
         self.rankings_btn.setCursor(Qt.PointingHandCursor)
@@ -130,7 +130,7 @@ class SessionPanel(QWidget):
         self.rankings_btn.setFixedSize(32, 32)
         # Icon is applied by app via theme
         rh_lay.addWidget(self.rankings_btn)
-        self._align_top(rh_lay, self.rankings_btn)
+        align_top(rh_lay, self.rankings_btn)
         lay.addWidget(ranking_header)
 
         ranking_rows = QWidget()
@@ -153,7 +153,7 @@ class SessionPanel(QWidget):
             medal_label = QLabel()
             medal_label.setFixedSize(self._medal_icon_px, self._medal_icon_px)
             medal_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            medal_pix = self._load_svg_pixmap(medal_path, self._medal_icon_px)
+            medal_pix = load_svg_pixmap(medal_path, self._medal_icon_px)
             if not medal_pix.isNull():
                 scaled = medal_pix.scaled(
                     self._medal_icon_px,
@@ -173,7 +173,7 @@ class SessionPanel(QWidget):
             player_label = QLabel(placeholder_name)
             player_font = QFont(FONT_FAMILY, FONT_SIZE_RANKING_PLAYER)
             try:
-                player_font.setWeight(self._resolve_font_weight(FONT_WEIGHT_RANKING_PLAYER))
+                player_font.setWeight(resolve_font_weight(FONT_WEIGHT_RANKING_PLAYER))
             except Exception:
                 pass
             player_label.setFont(player_font)
@@ -202,7 +202,7 @@ class SessionPanel(QWidget):
         tires_title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         tires_title.setAlignment(Qt.AlignCenter)
         tires_layout.addWidget(tires_title)
-        self._align_top(tires_layout, tires_title)
+        align_top(tires_layout, tires_title)
 
         tires_content = QWidget()
         tc_lay = QHBoxLayout(tires_content)
@@ -222,7 +222,7 @@ class SessionPanel(QWidget):
         temp_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         temp_label.setAlignment(Qt.AlignCenter)
         temp_col_lay.addWidget(temp_label)
-        self._align_top(temp_col_lay, temp_label)
+        align_top(temp_col_lay, temp_label)
         temp_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
 
         temp_grid = QGridLayout()
@@ -260,7 +260,7 @@ class SessionPanel(QWidget):
         wear_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_LABELS))
         wear_label.setAlignment(Qt.AlignCenter)
         wear_col_lay.addWidget(wear_label)
-        self._align_top(wear_col_lay, wear_label)
+        align_top(wear_col_lay, wear_label)
         wear_col_lay.addSpacing(TIRE_SECTION_HEADER_SPACING)
 
         wear_grid = QGridLayout()
@@ -283,78 +283,3 @@ class SessionPanel(QWidget):
         tc_lay.addWidget(wear_column, 1, Qt.AlignTop)
 
         lay.addWidget(tires_section, 1)
-
-    @staticmethod
-    def _align_top(layout, widget):
-        if layout is None or widget is None:
-            return
-        try:
-            layout.setAlignment(widget, Qt.AlignTop)
-        except Exception:
-            pass
-
-    @staticmethod
-    def _load_svg_pixmap(path: str, size: int) -> QPixmap:
-        if not path:
-            return QPixmap()
-        try:
-            renderer = QSvgRenderer(path)
-            if not renderer.isValid():
-                return QPixmap()
-            pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
-
-            painter = QPainter(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
-            view_box = renderer.viewBoxF()
-            if not view_box.isValid() or view_box.isEmpty():
-                view_box = QRectF(0, 0, size, size)
-            max_dim = max(view_box.width(), view_box.height(), 1.0)
-            scale = size / max_dim
-            target_w = view_box.width() * scale
-            target_h = view_box.height() * scale
-            target_x = (size - target_w) / 2.0
-            target_y = (size - target_h) / 2.0
-            target_rect = QRectF(target_x, target_y, target_w, target_h)
-            renderer.render(painter, target_rect)
-            painter.end()
-            return pixmap
-        except Exception:
-            return QPixmap()
-
-    @staticmethod
-    def _resolve_font_weight(weight) -> QFont.Weight:
-        mapping = {
-            "thin": QFont.Weight.Thin,
-            "extralight": QFont.Weight.ExtraLight,
-            "ultralight": QFont.Weight.ExtraLight,
-            "light": QFont.Weight.Light,
-            "normal": QFont.Weight.Normal,
-            "regular": QFont.Weight.Normal,
-            "medium": QFont.Weight.Medium,
-            "semibold": QFont.Weight.DemiBold,
-            "demibold": QFont.Weight.DemiBold,
-            "bold": QFont.Weight.Bold,
-            "extrabold": QFont.Weight.ExtraBold,
-            "black": QFont.Weight.Black,
-        }
-        if isinstance(weight, str):
-            key = weight.strip().lower()
-            if key in mapping:
-                return mapping[key]
-        try:
-            value = int(weight)
-            candidates = [
-                QFont.Weight.Thin,
-                QFont.Weight.ExtraLight,
-                QFont.Weight.Light,
-                QFont.Weight.Normal,
-                QFont.Weight.Medium,
-                QFont.Weight.DemiBold,
-                QFont.Weight.Bold,
-                QFont.Weight.ExtraBold,
-                QFont.Weight.Black,
-            ]
-            return min(candidates, key=lambda enum: abs(enum.value - value))
-        except Exception:
-            return QFont.Weight.Normal

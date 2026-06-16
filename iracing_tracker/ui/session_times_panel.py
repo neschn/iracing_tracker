@@ -4,7 +4,6 @@
 # Description : Panneau "DERNIERS TOURS"
 ################################################################################################################
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy
 
@@ -15,6 +14,7 @@ from .constants import (
     SECTION_TITLE_GAP,
 )
 from .widgets import LastLapsList as _LastLapsList
+from .qt_helpers import align_top
 
 
 class SessionTimesPanel(QWidget):
@@ -29,17 +29,8 @@ class SessionTimesPanel(QWidget):
         cap = QLabel("TEMPS DE LA SESSION")
         cap.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         lay.addWidget(cap)
-        self._align_top(lay, cap)
+        align_top(lay, cap)
         lay.addSpacing(SECTION_TITLE_GAP)
 
         self.laps_list = _LastLapsList()
         lay.addWidget(self.laps_list, 1)
-
-    @staticmethod
-    def _align_top(layout, widget):
-        if layout is None or widget is None:
-            return
-        try:
-            layout.setAlignment(widget, Qt.AlignTop)
-        except Exception:
-            pass

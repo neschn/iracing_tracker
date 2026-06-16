@@ -28,6 +28,7 @@ from .constants import (
     SECTION_SEPARATOR_SPACING,
 )
 from .widgets import hsep as _hsep
+from .qt_helpers import align_top
 
 
 class PlayerPanel(QWidget):
@@ -50,7 +51,7 @@ class PlayerPanel(QWidget):
         title = QLabel("JOUEUR")
         title.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         h_lay.addWidget(title)
-        self._align_top(h_lay, title)
+        align_top(h_lay, title)
         h_lay.addStretch(1)
         self.edit_players_btn = QPushButton("")
         self.edit_players_btn.setCursor(Qt.PointingHandCursor)
@@ -61,7 +62,7 @@ class PlayerPanel(QWidget):
         self.edit_players_btn.setFont(QFont(FONT_FAMILY, FONT_SIZE_BUTTON))
         self.edit_players_btn.setEnabled(False)  # inchangé
         h_lay.addWidget(self.edit_players_btn)
-        self._align_top(h_lay, self.edit_players_btn)
+        align_top(h_lay, self.edit_players_btn)
         lay.addWidget(header)
         lay.addSpacing(SECTION_TITLE_GAP)
 
@@ -101,12 +102,3 @@ class PlayerPanel(QWidget):
         self.current_lap_label.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.current_lap_label)
         lay.addStretch(1)
-
-    @staticmethod
-    def _align_top(layout, widget):
-        if layout is None or widget is None:
-            return
-        try:
-            layout.setAlignment(widget, Qt.AlignTop)
-        except Exception:
-            pass

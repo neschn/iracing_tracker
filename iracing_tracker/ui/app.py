@@ -9,12 +9,11 @@ import sys, ctypes
 from datetime import datetime
 import queue as _q
 
-from PySide6.QtCore import Qt, QTimer, QSize, QRectF
-from PySide6.QtGui import QIcon, QFont, QColor, QPainter, QPixmap
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QGridLayout, QMenu
 )
-from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtGui import QAction, QActionGroup
 
 from .constants import (
@@ -36,6 +35,7 @@ from .widgets import (
     vsep as _vsep,
 )
 
+from .qt_helpers import load_svg_icon, scrollbar_css
 from .session_panel import SessionPanel
 from .player_panel import PlayerPanel
 from .session_times_panel import SessionTimesPanel
@@ -254,33 +254,6 @@ class TrackerUI:
         ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{ts}] {message}")
 
-    @staticmethod
-    def _align_top(layout, widget):
-        if layout is None or widget is None:
-            return
-        try:
-            layout.setAlignment(widget, Qt.AlignTop)
-        except Exception:
-            pass
-
-    @staticmethod
-    def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
-                       hover_start: str, hover_end: str) -> str:
-        return (
-            f"{selector} QScrollBar:vertical{{background:{track}; width:12px; margin:4px 2px; "
-            f"border:1px solid {border}; border-radius:6px;}}"
-            f"{selector} QScrollBar::groove:vertical{{border:none; margin:2px;}}"
-            f"{selector} QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-            f"stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {border}; "
-            f"border-radius:4px; min-height:18px; margin:1px;}}"
-            f"{selector} QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-            f"stop:0 {hover_start}, stop:1 {hover_end});}}"
-            f"{selector} QScrollBar::add-line:vertical,{selector} QScrollBar::sub-line:vertical"
-            f"{{height:0; width:0; background:none; border:none;}}"
-            f"{selector} QScrollBar::add-page:vertical,{selector} QScrollBar::sub-page:vertical"
-            f"{{background:transparent;}}"
-        )
-
     def _apply_action_icons(self, color: str):
         target_color = color or "#000000"
         if target_color == self._last_action_icon_color:
@@ -288,14 +261,14 @@ class TrackerUI:
         size = max(12, int(self._action_icon_px))
         icon_size = QSize(size, size)
 
-        edit_icon = self._load_svg_icon(EDIT_ICON_PATH, target_color, size)
+        edit_icon = load_svg_icon(EDIT_ICON_PATH, target_color, size)
         if edit_icon.isNull():
             self.edit_players_btn.setIcon(QIcon())
         else:
             self.edit_players_btn.setIcon(edit_icon)
         self.edit_players_btn.setIconSize(icon_size)
 
-        list_icon = self._load_svg_icon(LIST_ICON_PATH, target_color, size)
+        list_icon = load_svg_icon(LIST_ICON_PATH, target_color, size)
         if list_icon.isNull():
             try:
                 self.rankings_btn.setIcon(QIcon())
@@ -308,7 +281,7 @@ class TrackerUI:
             except Exception:
                 pass
 
-        hide_icon = self._load_svg_icon(HIDE_ICON_PATH, target_color, size)
+        hide_icon = load_svg_icon(HIDE_ICON_PATH, target_color, size)
         if hide_icon.isNull():
             self.debug_toggle_btn.setIcon(QIcon())
         else:
@@ -316,99 +289,6 @@ class TrackerUI:
         self.debug_toggle_btn.setIconSize(icon_size)
 
         self._last_action_icon_color = target_color
-
-    @staticmethod
-    def _load_svg_icon(path: str, color: str, size: int) -> QIcon:
-        if not path or not os.path.isfile(path):
-            return QIcon()
-        try:
-            renderer = QSvgRenderer(path)
-            if not renderer.isValid():
-                return QIcon()
-            pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
-
-            painter = QPainter(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
-            renderer.render(painter, QRectF(0, 0, size, size))
-            painter.end()
-
-            fg = QColor(color)
-            if not fg.isValid():
-                fg = QColor("#000000")
-            painter = QPainter(pixmap)
-            painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
-            painter.fillRect(pixmap.rect(), fg)
-            painter.end()
-            return QIcon(pixmap)
-        except Exception:
-            return QIcon()
-
-    @staticmethod
-    def _load_svg_pixmap(path: str, size: int) -> QPixmap:
-        if not path or not os.path.isfile(path):
-            return QPixmap()
-        try:
-            renderer = QSvgRenderer(path)
-            if not renderer.isValid():
-                return QPixmap()
-            pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
-
-            painter = QPainter(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
-            view_box = renderer.viewBoxF()
-            if not view_box.isValid() or view_box.isEmpty():
-                view_box = QRectF(0, 0, size, size)
-            max_dim = max(view_box.width(), view_box.height(), 1.0)
-            scale = size / max_dim
-            target_w = view_box.width() * scale
-            target_h = view_box.height() * scale
-            target_x = (size - target_w) / 2.0
-            target_y = (size - target_h) / 2.0
-            target_rect = QRectF(target_x, target_y, target_w, target_h)
-            renderer.render(painter, target_rect)
-            painter.end()
-            return pixmap
-        except Exception:
-            return QPixmap()
-
-    @staticmethod
-    def _resolve_font_weight(weight) -> QFont.Weight:
-        mapping = {
-            "thin": QFont.Weight.Thin,
-            "extralight": QFont.Weight.ExtraLight,
-            "ultralight": QFont.Weight.ExtraLight,
-            "light": QFont.Weight.Light,
-            "normal": QFont.Weight.Normal,
-            "regular": QFont.Weight.Normal,
-            "medium": QFont.Weight.Medium,
-            "semibold": QFont.Weight.DemiBold,
-            "demibold": QFont.Weight.DemiBold,
-            "bold": QFont.Weight.Bold,
-            "extrabold": QFont.Weight.ExtraBold,
-            "black": QFont.Weight.Black,
-        }
-        if isinstance(weight, str):
-            key = weight.strip().lower()
-            if key in mapping:
-                return mapping[key]
-        try:
-            value = int(weight)
-            candidates = [
-                QFont.Weight.Thin,
-                QFont.Weight.ExtraLight,
-                QFont.Weight.Light,
-                QFont.Weight.Normal,
-                QFont.Weight.Medium,
-                QFont.Weight.DemiBold,
-                QFont.Weight.Bold,
-                QFont.Weight.ExtraBold,
-                QFont.Weight.Black,
-            ]
-            return min(candidates, key=lambda enum: abs(enum.value - value))
-        except Exception:
-            return QFont.Weight.Normal
 
     def set_player_menu_state(self, enabled: bool):
         en = bool(enabled)
@@ -428,7 +308,7 @@ class TrackerUI:
             handle_end = colors.get("scrollbar_handle_end", colors.get("text", "#555555"))
             handle_hover_start = colors.get("scrollbar_handle_hover_start", colors.get("text", "#666666"))
             handle_hover_end = colors.get("scrollbar_handle_hover_end", colors.get("text", "#222222"))
-            scroll_css = self._scrollbar_css(
+            scroll_css = scrollbar_css(
                 "QComboBox QAbstractItemView",
                 track_bg,
                 track_border,
@@ -453,7 +333,7 @@ class TrackerUI:
             self.player_combo.setStyleSheet(combo_ss)
         else:
             fg = "#000000" if en else "#888888"
-            scroll_css = self._scrollbar_css(
+            scroll_css = scrollbar_css(
                 "QComboBox QAbstractItemView",
                 "#f5f5f5",
                 "#bcbcbc",
@@ -559,9 +439,9 @@ class TrackerUI:
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0")); scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
         handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0")); handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
         handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d")); handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
-        plain_scroll_css = self._scrollbar_css("QPlainTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        list_scroll_css = self._scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        text_scroll_css = self._scrollbar_css("QTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
+        plain_scroll_css = scrollbar_css("QPlainTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
+        list_scroll_css = scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
+        text_scroll_css = scrollbar_css("QTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
         try: self.session_times_list.apply_palette(c['text'], c['bg_main'], c.get('last_laps_hover', c.get('interactive_hover')), list_scroll_css)
         except Exception: pass
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")

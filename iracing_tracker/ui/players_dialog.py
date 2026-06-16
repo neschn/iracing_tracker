@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Iterable
 from html import escape
 
-from PySide6.QtCore import Qt, QSize, QRectF, QTimer, QModelIndex
-from PySide6.QtGui import QFont, QIcon, QColor, QPainter, QPixmap
+from PySide6.QtCore import Qt, QSize, QTimer, QModelIndex
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QAbstractItemView,
 )
-from PySide6.QtSvg import QSvgRenderer
 
 from .constants import (
     FONT_FAMILY,
@@ -40,6 +39,7 @@ from .constants import (
     BASE_MARGIN,
 )
 from iracing_tracker.data_store import DataStore
+from .qt_helpers import load_svg_icon, scrollbar_css
 
 
 class AddPlayerDialog(QDialog):
@@ -349,30 +349,14 @@ class PlayersDialog(QDialog):
             f"QListWidget::item:hover{{background:{hover_bg}; border:none; outline:0;}}"
         )
         # Scrollbars
-        def _scrollbar_css(selector: str, track: str, border: str, handle_start: str, handle_end: str,
-                           hover_start: str, hover_end: str) -> str:
-            return (
-                f"{selector} QScrollBar:vertical{{background:{track}; width:12px; margin:4px 2px; "
-                f"border:1px solid {border}; border-radius:6px;}}"
-                f"{selector} QScrollBar::groove:vertical{{border:none; margin:2px;}}"
-                f"{selector} QScrollBar::handle:vertical{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                f"stop:0 {handle_start}, stop:1 {handle_end}); border:1px solid {border}; "
-                f"border-radius:4px; min-height:18px; margin:1px;}}"
-                f"{selector} QScrollBar::handle:vertical:hover{{background:qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                f"stop:0 {hover_start}, stop:1 {hover_end});}}"
-                f"{selector} QScrollBar::add-line:vertical,{selector} QScrollBar::sub-line:vertical"
-                f"{{height:0; width:0; background:none; border:none;}}"
-                f"{selector} QScrollBar::add-page:vertical,{selector} QScrollBar::sub-page:vertical"
-                f"{{background:transparent;}}"
-            )
         scroll_track = c.get("scrollbar_track", c.get("bg_secondary", list_bg))
         scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
         handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
         handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
         handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
         handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
-        list_scroll_css = _scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end,
-                                         handle_hover_start, handle_hover_end)
+        list_scroll_css = scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end,
+                                        handle_hover_start, handle_hover_end)
         # Boutons standards + icônes
         btn_style = (
             "QPushButton{"
@@ -407,8 +391,8 @@ class PlayersDialog(QDialog):
         try:
             size = 18
             color = c.get('action_icon_color', c.get('control_fg', '#000000'))
-            add_icon = self._load_svg_icon(ADD_ICON_PATH, color, size)
-            del_icon = self._load_svg_icon(DELETE_ICON_PATH, color, size)
+            add_icon = load_svg_icon(ADD_ICON_PATH, color, size)
+            del_icon = load_svg_icon(DELETE_ICON_PATH, color, size)
             if not add_icon.isNull():
                 self.add_btn.setIcon(add_icon)
                 self.add_btn.setIconSize(QSize(size, size))
@@ -417,29 +401,3 @@ class PlayersDialog(QDialog):
                 self.del_btn.setIconSize(QSize(size, size))
         except Exception:
             pass
-
-    @staticmethod
-    def _load_svg_icon(path: str, color: str, size: int) -> QIcon:
-        if not path:
-            return QIcon()
-        try:
-            renderer = QSvgRenderer(path)
-            if not renderer.isValid():
-                return QIcon()
-            pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
-            painter = QPainter(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
-            renderer.render(painter, QRectF(0, 0, size, size))
-            painter.end()
-
-            fg = QColor(color)
-            if not fg.isValid():
-                fg = QColor("#000000")
-            painter = QPainter(pixmap)
-            painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
-            painter.fillRect(pixmap.rect(), fg)
-            painter.end()
-            return QIcon(pixmap)
-        except Exception:
-            return QIcon()

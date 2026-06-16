@@ -25,6 +25,7 @@ from .constants import (
     BASE_MARGIN,
     SECTION_TITLE_GAP,
 )
+from .qt_helpers import align_top
 
 
 class DebugPanel(QWidget):
@@ -44,7 +45,7 @@ class DebugPanel(QWidget):
         lbl = QLabel("DEBUG")
         lbl.setFont(QFont(FONT_FAMILY, FONT_SIZE_SECTION_TITLE, QFont.Bold))
         h_lay.addWidget(lbl)
-        self._align_top(h_lay, lbl)
+        align_top(h_lay, lbl)
         h_lay.addStretch(1)
 
         self.debug_toggle_btn = QPushButton("")
@@ -57,7 +58,7 @@ class DebugPanel(QWidget):
         if callable(on_toggle_click):
             self.debug_toggle_btn.clicked.connect(lambda: on_toggle_click(False))
         h_lay.addWidget(self.debug_toggle_btn)
-        self._align_top(h_lay, self.debug_toggle_btn)
+        align_top(h_lay, self.debug_toggle_btn)
         lay.addWidget(header)
         lay.addSpacing(SECTION_TITLE_GAP)
 
@@ -67,12 +68,3 @@ class DebugPanel(QWidget):
         self.debug_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_DEBUG))
         self.debug_text.setWordWrapMode(QTextOption.WrapAnywhere)
         lay.addWidget(self.debug_text, 1)
-
-    @staticmethod
-    def _align_top(layout, widget):
-        if layout is None or widget is None:
-            return
-        try:
-            layout.setAlignment(widget, Qt.AlignTop)
-        except Exception:
-            pass
