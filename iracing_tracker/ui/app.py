@@ -3,16 +3,15 @@
 # Fichier : iracing_tracker/ui/app.py                                                                          #
 # Date de modification : 16.06.2026                                                                            #
 # Auteur : Nicolas Schneeberger                                                                                #
-# Description : Construit l'interface PySide6 complète du tracker, refactorisée en panneaux.                   #
+# Description : Façade de l'interface PySide6 : assemble les panneaux et orchestre thème et événements.        #
 ################################################################################################################
 
 import os
 import sys
 import ctypes
-from datetime import datetime
 import queue as _q
 
-from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QGridLayout, QMenu
@@ -20,13 +19,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QAction, QActionGroup
 
 from .constants import (
-    WINDOWS_ICON_PATH, EDIT_ICON_PATH, HIDE_ICON_PATH, LIST_ICON_PATH,
+    WINDOWS_ICON_PATH,
     WINDOW_TITLE, WINDOW_GEOMETRY, MIN_WIDTH, MIN_HEIGHT,
     WINDOW_BORDER_RADIUS, WINDOW_BORDER_WIDTH,
-    FONT_FAMILY, FONT_SIZE_BANNER, FONT_SIZE_PLAYER,
+    FONT_FAMILY, FONT_SIZE_BANNER,
     BANNER_HEIGHT,
     BASE_MARGIN,
-    BUTTON_BORDER_WIDTH, BUTTON_BORDER_RADIUS, BUTTON_PADDING, ICON_BUTTON_PADDING,
 )
 from .window import TrackerMainWindow
 from .titlebar import CustomTitleBar
@@ -38,7 +36,6 @@ from .widgets import (
     vsep as _vsep,
 )
 
-from .qt_helpers import load_svg_icon, scrollbar_css
 from .session_panel import SessionPanel
 from .player_panel import PlayerPanel
 from .session_times_panel import SessionTimesPanel
@@ -68,10 +65,7 @@ class TrackerUI:
         self._theme = ThemeManager(self._app)
         self._colors = None
         self._seps = []
-        self._tire_widgets = []
-        self._tires_map = {"temperature": {}, "wear": {}}
         self._action_icon_px = 18
-        self._last_action_icon_color = None
         self.debug_visible = _BoolVarCompat(True)
 
         self.on_player_change = on_player_change
@@ -125,8 +119,12 @@ class TrackerUI:
         self.center_lay.setHorizontalSpacing(0)
         self.center_lay.setVerticalSpacing(8)
 
-        self.session_panel = SessionPanel(center)
-        self.player_panel = PlayerPanel(players, self._on_player_changed, action_icon_px=self._action_icon_px, parent=center)
+        self.session_panel = SessionPanel(action_icon_px=self._action_icon_px, parent=center)
+        self.player_panel = PlayerPanel(
+            players, self._on_player_changed,
+            on_edit_players=self._on_edit_players_clicked,
+            action_icon_px=self._action_icon_px, parent=center,
+        )
         self.session_times_panel = SessionTimesPanel(center)
         self.debug_panel = DebugPanel(self._set_debug_visible, action_icon_px=self._action_icon_px, parent=center)
 
@@ -147,35 +145,6 @@ class TrackerUI:
             self.center_lay.setColumnStretch(col, 1)
         for col in (1, 3, 5):
             self.center_lay.setColumnStretch(col, 0)
-
-        # Back-compat: références directes
-        self.session_time_value = self.session_panel.session_time_value
-        self.track_value = self.session_panel.track_value
-        self.car_value = self.session_panel.car_value
-        self.absolute_rank_rows = self.session_panel.absolute_rank_rows
-        self.rankings_btn = self.session_panel.rankings_btn
-        self._tire_widgets = list(self.session_panel.tire_widgets)
-        self._tires_map = self.session_panel.tires_map
-        self.edit_players_btn = self.player_panel.edit_players_btn
-        try:
-            self.edit_players_btn.setEnabled(True)
-            self.edit_players_btn.clicked.connect(self._on_edit_players_clicked)
-        except Exception:
-            pass
-        self.player_combo = self.player_panel.player_combo
-        self.best_time_label = self.player_panel.best_time_label
-        self.current_lap_label = self.player_panel.current_lap_label
-        self.session_times_list = self.session_times_panel.laps_list
-        self.laps_list = self.session_times_list
-        self.debug_toggle_btn = self.debug_panel.debug_toggle_btn
-        self.debug_text = self.debug_panel.debug_text
-        self.debug_col = self.debug_panel
-        for s in getattr(self.session_panel, 'separators', []):
-            self._seps.append(s)
-        for s in getattr(self.player_panel, 'separators', []):
-            self._seps.append(s)
-        for s in getattr(self.debug_panel, 'separators', []):
-            self._seps.append(s)
         root.addWidget(center, 1)
 
         # Logs
@@ -183,7 +152,6 @@ class TrackerUI:
         self._seps.append(self._sep_logs)
         root.addWidget(self._sep_logs)
         self.logs_panel = LogsPanel(central)
-        self.log_text = self.logs_panel.log_text
         root.addWidget(self.logs_panel, 0)
 
         # Menu + thème + timers
@@ -215,44 +183,15 @@ class TrackerUI:
         self._event_queue = q
         self._queue_timer.start()
 
-    # --- Méthodes d'update ---
+    # --- Méthodes d'update (délèguent aux panneaux) ---
     def update_context(self, track: str, car: str, track_id=None, car_id=None):
-        track_text = track or "---"
-        car_text = car or "---"
-        display_track = track_text
-        try:
-            if track_text != "---" and track_id is not None:
-                display_track = f"{track_text} - N° {int(track_id)}"
-        except Exception:
-            display_track = track_text
-        display_car = car_text
-        try:
-            if car_text != "---" and car_id is not None:
-                display_car = f"{car_text} - N° {int(car_id)}"
-        except Exception:
-            display_car = car_text
-        self.track_value.setText(display_track)
-        self.track_value.setToolTip(display_track)
-        self.car_value.setText(display_car)
-        self.car_value.setToolTip(display_car)
+        self.session_panel.set_context(track, car, track_id, car_id)
 
     def update_player_personal_record(self, best_time_str: str):
-        self.best_time_label.setText(best_time_str or "---")
+        self.player_panel.set_personal_record(best_time_str)
 
     def _update_ranking_display(self, ranking: list):
-        while len(ranking) < 3:
-            ranking.append({"player": "", "time": 0.0})
-        for i, row_data in enumerate(self.absolute_rank_rows[:3]):
-            entry = ranking[i]
-            player_name = entry.get("player", "")
-            lap_time = entry.get("time", 0.0)
-            if lap_time > 0:
-                from iracing_tracker.record_manager import format_lap_time
-                time_text = format_lap_time(lap_time)
-            else:
-                time_text = "-:--.---"
-            row_data["time"].setText(time_text)
-            row_data["player"].setText(player_name)
+        self.session_panel.set_ranking(ranking)
 
     def _handle_banner_message(self, message_type: str):
         if not hasattr(self, "_banner_manager") or not self._banner_manager:
@@ -267,136 +206,25 @@ class TrackerUI:
         self._banner_manager.show_message(banner_type)
 
     def update_current_lap_time(self, text: str):
-        self.current_lap_label.setText(text or "---")
+        self.player_panel.set_current_lap(text)
 
     def update_session_time(self, seconds: int | float | None):
-        if seconds is None:
-            self.session_time_value.setText("-:--:--")
-            return
-        try:
-            s = int(max(0, float(seconds)))
-        except Exception:
-            self.session_time_value.setText("-:--:--")
-            return
-        h = s // 3600
-        m = (s % 3600) // 60
-        sec = s % 60
-        self.session_time_value.setText(f"{h}:{m:02d}:{sec:02d}")
+        self.session_panel.set_session_time(seconds)
 
     def update_session_times(self, entries):
-        self.session_times_list.set_items(entries)
+        self.session_times_panel.set_items(entries)
 
     def update_last_laps(self, entries):
         self.update_session_times(entries)
 
     def update_debug(self, data: dict):
-        sb = self.debug_text.verticalScrollBar()
-        at_bottom = sb.value() >= (sb.maximum() - 4)
-        lines = [f"{k}: {v}" for k, v in (data or {}).items()]
-        self.debug_text.setPlainText("\n".join(lines))
-        if at_bottom:
-            sb.setValue(sb.maximum())
+        self.debug_panel.set_debug_data(data)
 
     def add_log(self, message: str):
-        ts = datetime.now().strftime("%H:%M:%S")
-        self.log_text.append(f"[{ts}] {message}")
-
-    def _apply_action_icons(self, color: str):
-        target_color = color or "#000000"
-        if target_color == self._last_action_icon_color:
-            return
-        size = max(12, int(self._action_icon_px))
-        icon_size = QSize(size, size)
-
-        edit_icon = load_svg_icon(EDIT_ICON_PATH, target_color, size)
-        if edit_icon.isNull():
-            self.edit_players_btn.setIcon(QIcon())
-        else:
-            self.edit_players_btn.setIcon(edit_icon)
-        self.edit_players_btn.setIconSize(icon_size)
-
-        list_icon = load_svg_icon(LIST_ICON_PATH, target_color, size)
-        if list_icon.isNull():
-            try:
-                self.rankings_btn.setIcon(QIcon())
-            except Exception:
-                pass
-        else:
-            try:
-                self.rankings_btn.setIcon(list_icon)
-                self.rankings_btn.setIconSize(icon_size)
-            except Exception:
-                pass
-
-        hide_icon = load_svg_icon(HIDE_ICON_PATH, target_color, size)
-        if hide_icon.isNull():
-            self.debug_toggle_btn.setIcon(QIcon())
-        else:
-            self.debug_toggle_btn.setIcon(hide_icon)
-        self.debug_toggle_btn.setIconSize(icon_size)
-
-        self._last_action_icon_color = target_color
+        self.logs_panel.append_log(message)
 
     def set_player_menu_state(self, enabled: bool):
-        en = bool(enabled)
-        self.player_combo.setEnabled(en)
-        colors = getattr(self, "_colors", None)
-        if colors:
-            fg_enabled = colors.get("control_fg", colors.get("text", "#000000"))
-            fg_disabled = "#888888"
-            text_color = fg_enabled if en else fg_disabled
-            base_bg = colors.get("bg_secondary", "#f0f0f0")
-            hover_bg = colors.get("interactive_hover", "#dcdcdc")
-            menu_bg = colors.get("menu_item_bg", base_bg)
-            list_text = colors.get("text", "#000000")
-            track_border = colors.get("scrollbar_border", colors.get("separator", "#b0b0b0"))
-            track_bg = colors.get("scrollbar_track", menu_bg)
-            handle_start = colors.get("scrollbar_handle_start", colors.get("separator", "#b0b0b0"))
-            handle_end = colors.get("scrollbar_handle_end", colors.get("text", "#555555"))
-            handle_hover_start = colors.get("scrollbar_handle_hover_start", colors.get("text", "#666666"))
-            handle_hover_end = colors.get("scrollbar_handle_hover_end", colors.get("text", "#222222"))
-            scroll_css = scrollbar_css(
-                "QComboBox QAbstractItemView",
-                track_bg,
-                track_border,
-                handle_start,
-                handle_end,
-                handle_hover_start,
-                handle_hover_end,
-            )
-            combo_ss = (
-                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; "
-                f"color:{text_color}; background:{base_bg}; border:1px solid transparent; padding:2px 6px;}}"
-                f"QComboBox:!enabled{{color:{fg_disabled};}}"
-                f"QComboBox:hover{{background:{hover_bg};}}"
-                f"QComboBox:pressed{{background:{hover_bg};}}"
-                f"QComboBox::drop-down{{border:0; width:16px;}}"
-                f"QComboBox QAbstractItemView{{background:{menu_bg}; color:{list_text}; "
-                f"selection-background-color:{hover_bg}; selection-color:{list_text}; border:0; outline:0;}}"
-                f"QComboBox QAbstractItemView::item:hover{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
-                f"QComboBox QAbstractItemView::item:selected{{background:{hover_bg}; color:{list_text}; border:none; outline:0;}}"
-                f"{scroll_css}"
-            )
-            self.player_combo.setStyleSheet(combo_ss)
-        else:
-            fg = "#000000" if en else "#888888"
-            scroll_css = scrollbar_css(
-                "QComboBox QAbstractItemView",
-                "#f5f5f5",
-                "#bcbcbc",
-                "#cfcfcf",
-                "#8f8f8f",
-                "#9f9f9f",
-                "#6f6f6f",
-            )
-            self.player_combo.setStyleSheet(
-                f"QComboBox{{font-family:{FONT_FAMILY}; font-size:{FONT_SIZE_PLAYER}pt; color:{fg}; padding:2px 6px;}}"
-                f"QComboBox::drop-down{{border:0; width:16px;}}"
-                "QComboBox QAbstractItemView{border:0; outline:0;}"
-                "QComboBox QAbstractItemView::item:hover{border:none; outline:0;}"
-                "QComboBox QAbstractItemView::item:selected{border:none; outline:0;}"
-                f"{scroll_css}"
-            )
+        self.player_panel.set_menu_state(enabled)
 
     def set_banner(self, text: str = ""):
         self.banner_label.setText(text or "")
@@ -418,31 +246,11 @@ class TrackerUI:
             except Exception:
                 pass
             res = dlg.exec()
-            # Rafraîchir la liste des joueurs à la fermeture (peu importe res) si modifié
+            # Recharger la liste des joueurs à la fermeture (le panneau gère la sélection)
             if res is not None:
                 from iracing_tracker.data_store import DataStore
                 players = DataStore.load_players()
-                # Conserver la sélection si encore présente, sinon 1er ou '---'
-                current = self.player_combo.currentText()
-                self.player_combo.blockSignals(True)
-                self.player_combo.clear()
-                if players:
-                    self.player_combo.addItems(players)
-                else:
-                    self.player_combo.addItem("---")
-                # Restaurer sélection
-                idx = -1
-                if players:
-                    try:
-                        idx = next((i for i, p in enumerate(players) if str(p) == current), -1)
-                    except Exception:
-                        idx = -1
-                self.player_combo.setCurrentIndex(0 if idx < 0 else idx)
-                self.player_combo.blockSignals(False)
-                # Si la sélection a changé, propager
-                new_cur = self.player_combo.currentText()
-                if new_cur != current:
-                    self._on_player_changed(new_cur)
+                self.player_panel.set_players(players)
         except Exception as e:
             try:
                 self.add_log(f"Erreur édition joueurs: {e}")
@@ -516,77 +324,18 @@ class TrackerUI:
             self._banner_manager = BannerManager(self._banner, self.banner_label, c)
         else:
             self._banner_manager.update_theme(c)
-        btn_ss = (
-            "QPushButton{"
-            f"background:{c['button_bg']};"
-            f"color:{c['control_fg']};"
-            f"border:{BUTTON_BORDER_WIDTH}px solid {c['button_border_color']};"
-            f"border-radius:{BUTTON_BORDER_RADIUS}px;"
-            f"padding:{BUTTON_PADDING};"
-            "}"
-            "QPushButton:hover{"
-            f"background:{c['interactive_hover']};"
-            "}"
-            "QPushButton:pressed{"
-            f"background:{c['interactive_hover']};"
-            "}"
-            "QPushButton:disabled{"
-            f"background:{c['button_bg']};"
-            "color:#888888;"
-            "}"
-        )
-        icon_override = (
-            "QPushButton[variant=\"icon\"]{"
-            f"padding:{ICON_BUTTON_PADDING};"
-            "min-width:28px;"
-            "min-height:28px;"
-            "}"
-        )
-        icon_btn_ss = btn_ss + icon_override
-        self.edit_players_btn.setStyleSheet(icon_btn_ss)
-        try:
-            self.rankings_btn.setStyleSheet(icon_btn_ss)
-        except Exception:
-            pass
-        self.debug_toggle_btn.setStyleSheet(icon_btn_ss)
-        self._apply_action_icons(c.get("action_icon_color", c.get("control_fg", "#000000")))
-        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
-        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
-        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
-        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
-        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
-        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
-        plain_scroll_css = scrollbar_css(
-            "QPlainTextEdit", scroll_track, scroll_border,
-            handle_start, handle_end, handle_hover_start, handle_hover_end,
-        )
-        list_scroll_css = scrollbar_css(
-            "QListWidget", scroll_track, scroll_border,
-            handle_start, handle_end, handle_hover_start, handle_hover_end,
-        )
-        text_scroll_css = scrollbar_css(
-            "QTextEdit", scroll_track, scroll_border,
-            handle_start, handle_end, handle_hover_start, handle_hover_end,
-        )
-        try:
-            self.session_times_list.apply_palette(
-                c['text'], c['bg_main'],
-                c.get('last_laps_hover', c.get('interactive_hover')),
-                list_scroll_css,
-            )
-        except Exception:
-            pass
-        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
-        self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
+
+        # Chaque panneau applique lui-même le thème à ses widgets internes
+        self.session_panel.apply_palette(c)
+        self.player_panel.apply_palette(c)
+        self.session_times_panel.apply_palette(c)
+        self.debug_panel.apply_palette(c)
+        self.logs_panel.apply_palette(c)
+
+        # Séparateurs appartenant à la fenêtre (titre, bannière, colonnes, logs)
         for sep in self._seps:
             try:
                 sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
-            except Exception:
-                pass
-        self.set_player_menu_state(self.player_combo.isEnabled())
-        for tire_widget in self._tire_widgets:
-            try:
-                tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
             except Exception:
                 pass
 
@@ -620,9 +369,9 @@ class TrackerUI:
 
     def _apply_debug_visibility(self):
         vis = self.debug_visible.get()
-        self.debug_col.setVisible(vis)
+        self.debug_panel.setVisible(vis)
         self._sep_debug.setVisible(vis)
-        self.debug_toggle_btn.setToolTip("Masquer la zone debug" if vis else "Afficher la zone debug")
+        self.debug_panel.update_toggle_tooltip(vis)
         if vis:
             for col in (0, 2, 4, 6):
                 self.center_lay.setColumnStretch(col, 1)

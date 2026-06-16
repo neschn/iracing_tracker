@@ -1,11 +1,13 @@
 ################################################################################################################
-# Projet : iRacing Tracker
-# Fichier : iracing_tracker/ui/debug_panel.py
-# Description : Panneau "DEBUG" (masquable)
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/debug_panel.py                                                                  #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Panneau "DEBUG" (masquable, affiche les variables iRSDK).                                      #
 ################################################################################################################
 
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QFont, QTextOption
+from PySide6.QtGui import QFont, QTextOption, QIcon
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -24,8 +26,9 @@ from .constants import (
     FONT_SIZE_BUTTON,
     BASE_MARGIN,
     SECTION_TITLE_GAP,
+    HIDE_ICON_PATH,
 )
-from .qt_helpers import align_top
+from .qt_helpers import align_top, scrollbar_css, icon_button_css, load_svg_icon
 
 
 class DebugPanel(QWidget):
@@ -68,3 +71,53 @@ class DebugPanel(QWidget):
         self.debug_text.setFont(QFont(FONT_FAMILY, FONT_SIZE_DEBUG))
         self.debug_text.setWordWrapMode(QTextOption.WrapAnywhere)
         lay.addWidget(self.debug_text, 1)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Affiche les données de debug (préserve le scroll si l'utilisateur n'est pas en bas).                        #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_debug_data(self, data: dict):
+        sb = self.debug_text.verticalScrollBar()
+        at_bottom = sb.value() >= (sb.maximum() - 4)
+        lines = [f"{k}: {v}" for k, v in (data or {}).items()]
+        self.debug_text.setPlainText("\n".join(lines))
+        if at_bottom:
+            sb.setValue(sb.maximum())
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour l'infobulle du bouton selon l'état visible/masqué de la zone debug.                              #
+    #--------------------------------------------------------------------------------------------------------------#
+    def update_toggle_tooltip(self, visible: bool):
+        self.debug_toggle_btn.setToolTip("Masquer la zone debug" if visible else "Afficher la zone debug")
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique le thème courant (zone de texte, bouton-icône, séparateurs).                                       #
+    #--------------------------------------------------------------------------------------------------------------#
+    def apply_palette(self, c: dict):
+        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
+        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
+        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
+        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
+        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
+        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
+        plain_scroll_css = scrollbar_css(
+            "QPlainTextEdit", scroll_track, scroll_border,
+            handle_start, handle_end, handle_hover_start, handle_hover_end,
+        )
+        self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
+
+        # Bouton-icône (masquer la zone debug)
+        self.debug_toggle_btn.setStyleSheet(icon_button_css(c))
+        color = c.get("action_icon_color", c.get("control_fg", "#000000"))
+        size = max(12, int(self._action_icon_px))
+        hide_icon = load_svg_icon(HIDE_ICON_PATH, color, size)
+        if hide_icon.isNull():
+            self.debug_toggle_btn.setIcon(QIcon())
+        else:
+            self.debug_toggle_btn.setIcon(hide_icon)
+        self.debug_toggle_btn.setIconSize(QSize(size, size))
+
+        for sep in self.separators:
+            try:
+                sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
+            except Exception:
+                pass

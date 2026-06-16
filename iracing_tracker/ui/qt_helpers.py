@@ -12,6 +12,13 @@ from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QFont, QIcon, QColor, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
+from .constants import (
+    BUTTON_BORDER_WIDTH,
+    BUTTON_BORDER_RADIUS,
+    BUTTON_PADDING,
+    ICON_BUTTON_PADDING,
+)
+
 
 #--------------------------------------------------------------------------------------------------------------#
 # Aligne un widget en haut de son layout, sans planter si l'un des deux est absent.                            #
@@ -125,6 +132,40 @@ def resolve_font_weight(weight) -> QFont.Weight:
         return min(candidates, key=lambda enum: abs(enum.value - value))
     except Exception:
         return QFont.Weight.Normal
+
+
+#--------------------------------------------------------------------------------------------------------------#
+# Construit la feuille de style d'un bouton-icône (état normal/hover/pressed/disabled) selon le thème.         #
+#--------------------------------------------------------------------------------------------------------------#
+def icon_button_css(colors: dict) -> str:
+    c = colors
+    btn_ss = (
+        "QPushButton{"
+        f"background:{c['button_bg']};"
+        f"color:{c['control_fg']};"
+        f"border:{BUTTON_BORDER_WIDTH}px solid {c['button_border_color']};"
+        f"border-radius:{BUTTON_BORDER_RADIUS}px;"
+        f"padding:{BUTTON_PADDING};"
+        "}"
+        "QPushButton:hover{"
+        f"background:{c['interactive_hover']};"
+        "}"
+        "QPushButton:pressed{"
+        f"background:{c['interactive_hover']};"
+        "}"
+        "QPushButton:disabled{"
+        f"background:{c['button_bg']};"
+        "color:#888888;"
+        "}"
+    )
+    icon_override = (
+        "QPushButton[variant=\"icon\"]{"
+        f"padding:{ICON_BUTTON_PADDING};"
+        "min-width:28px;"
+        "min-height:28px;"
+        "}"
+    )
+    return btn_ss + icon_override
 
 
 #--------------------------------------------------------------------------------------------------------------#

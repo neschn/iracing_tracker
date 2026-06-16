@@ -1,11 +1,13 @@
 ################################################################################################################
-# Projet : iRacing Tracker
-# Fichier : iracing_tracker/ui/session_panel.py
-# Description : Panneau "SESSION" (infos session, top 3, pneus)
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/session_panel.py                                                                #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Panneau "SESSION" (infos session, top 3, pneus).                                               #
 ################################################################################################################
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -34,15 +36,17 @@ from .constants import (
     TIRE_TEMP_PLACEHOLDER,
     TIRE_WEAR_PLACEHOLDER,
     TIRE_ICON_PATH,
+    LIST_ICON_PATH,
 )
 from .widgets import hsep as _hsep, vsep as _vsep, TireInfoWidget as _TireInfoWidget
-from .qt_helpers import align_top, load_svg_pixmap, resolve_font_weight
+from .qt_helpers import align_top, load_svg_pixmap, resolve_font_weight, load_svg_icon, icon_button_css
+from iracing_tracker.record_manager import format_lap_time
 
 
 class SessionPanel(QWidget):
     """Colonne gauche: SESSION + Top3 + Pneus."""
 
-    def __init__(self, parent=None):
+    def __init__(self, action_icon_px: int = 18, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -51,6 +55,7 @@ class SessionPanel(QWidget):
         self.tires_map = {"temperature": {}, "wear": {}}
         self.absolute_rank_rows = []
         self._medal_icon_px = MEDAL_ICON_SIZE
+        self._action_icon_px = int(action_icon_px or 18)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
@@ -283,3 +288,96 @@ class SessionPanel(QWidget):
         tc_lay.addWidget(wear_column, 1, Qt.AlignTop)
 
         lay.addWidget(tires_section, 1)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le temps de session affiché (format H:MM:SS).                                                    #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_session_time(self, seconds):
+        if seconds is None:
+            self.session_time_value.setText("-:--:--")
+            return
+        try:
+            s = int(max(0, float(seconds)))
+        except Exception:
+            self.session_time_value.setText("-:--:--")
+            return
+        h = s // 3600
+        m = (s % 3600) // 60
+        sec = s % 60
+        self.session_time_value.setText(f"{h}:{m:02d}:{sec:02d}")
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour le contexte affiché (circuit / voiture), avec le numéro d'ID si disponible.                      #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_context(self, track: str, car: str, track_id=None, car_id=None):
+        track_text = track or "---"
+        car_text = car or "---"
+        display_track = track_text
+        try:
+            if track_text != "---" and track_id is not None:
+                display_track = f"{track_text} - N° {int(track_id)}"
+        except Exception:
+            display_track = track_text
+        display_car = car_text
+        try:
+            if car_text != "---" and car_id is not None:
+                display_car = f"{car_text} - N° {int(car_id)}"
+        except Exception:
+            display_car = car_text
+        self.track_value.setText(display_track)
+        self.track_value.setToolTip(display_track)
+        self.car_value.setText(display_car)
+        self.car_value.setToolTip(display_car)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour les 3 lignes du classement (complète à 3 entrées, formate les temps).                            #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_ranking(self, ranking: list):
+        ranking = list(ranking)
+        while len(ranking) < 3:
+            ranking.append({"player": "", "time": 0.0})
+        for i, row_data in enumerate(self.absolute_rank_rows[:3]):
+            entry = ranking[i]
+            player_name = entry.get("player", "")
+            lap_time = entry.get("time", 0.0)
+            if lap_time > 0:
+                time_text = format_lap_time(lap_time)
+            else:
+                time_text = "-:--.---"
+            row_data["time"].setText(time_text)
+            row_data["player"].setText(player_name)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique le thème courant (bouton-icône classements, pneus, séparateurs).                                   #
+    #--------------------------------------------------------------------------------------------------------------#
+    def apply_palette(self, c: dict):
+        # Bouton-icône "classements"
+        self.rankings_btn.setStyleSheet(icon_button_css(c))
+        color = c.get("action_icon_color", c.get("control_fg", "#000000"))
+        size = max(12, int(self._action_icon_px))
+        list_icon = load_svg_icon(LIST_ICON_PATH, color, size)
+        if list_icon.isNull():
+            try:
+                self.rankings_btn.setIcon(QIcon())
+            except Exception:
+                pass
+        else:
+            try:
+                self.rankings_btn.setIcon(list_icon)
+                self.rankings_btn.setIconSize(QSize(size, size))
+            except Exception:
+                pass
+
+        # Pneus
+        for tire_widget in self.tire_widgets:
+            try:
+                tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
+            except Exception:
+                pass
+
+        # Séparateurs internes
+        for sep in self.separators:
+            try:
+                sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
+            except Exception:
+                pass

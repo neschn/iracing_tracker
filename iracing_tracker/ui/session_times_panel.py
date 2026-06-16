@@ -1,7 +1,9 @@
 ################################################################################################################
-# Projet : iRacing Tracker
-# Fichier : iracing_tracker/ui/last_laps_panel.py
-# Description : Panneau "DERNIERS TOURS"
+# Projet : iRacing Tracker                                                                                     #
+# Fichier : iracing_tracker/ui/session_times_panel.py                                                          #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
+# Description : Panneau "TEMPS DE LA SESSION" (liste des derniers tours).                                      #
 ################################################################################################################
 
 from PySide6.QtGui import QFont
@@ -14,7 +16,7 @@ from .constants import (
     SECTION_TITLE_GAP,
 )
 from .widgets import LastLapsList as _LastLapsList
-from .qt_helpers import align_top
+from .qt_helpers import align_top, scrollbar_css
 
 
 class SessionTimesPanel(QWidget):
@@ -34,3 +36,32 @@ class SessionTimesPanel(QWidget):
 
         self.laps_list = _LastLapsList()
         lay.addWidget(self.laps_list, 1)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Met à jour la liste des derniers tours affichés.                                                            #
+    #--------------------------------------------------------------------------------------------------------------#
+    def set_items(self, entries):
+        self.laps_list.set_items(entries)
+
+    #--------------------------------------------------------------------------------------------------------------#
+    # Applique le thème courant à la liste (couleurs + scrollbar).                                                #
+    #--------------------------------------------------------------------------------------------------------------#
+    def apply_palette(self, c: dict):
+        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
+        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
+        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
+        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
+        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
+        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
+        list_scroll_css = scrollbar_css(
+            "QListWidget", scroll_track, scroll_border,
+            handle_start, handle_end, handle_hover_start, handle_hover_end,
+        )
+        try:
+            self.laps_list.apply_palette(
+                c['text'], c['bg_main'],
+                c.get('last_laps_hover', c.get('interactive_hover')),
+                list_scroll_css,
+            )
+        except Exception:
+            pass
