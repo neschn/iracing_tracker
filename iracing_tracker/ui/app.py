@@ -1,11 +1,14 @@
 ################################################################################################################
 # Projet : iRacing Tracker                                                                                     #
 # Fichier : iracing_tracker/ui/app.py                                                                          #
+# Date de modification : 16.06.2026                                                                            #
+# Auteur : Nicolas Schneeberger                                                                                #
 # Description : Construit l'interface PySide6 complète du tracker, refactorisée en panneaux.                   #
 ################################################################################################################
 
 import os
-import sys, ctypes
+import sys
+import ctypes
 from datetime import datetime
 import queue as _q
 
@@ -75,12 +78,15 @@ class TrackerUI:
         self.on_debug_toggle = on_debug_toggle
 
         # Root
-        central = QWidget(); self._central = central
+        central = QWidget()
+        self._central = central
         self._win.setCentralWidget(central)
         central.setObjectName("Root")
         if WINDOW_BORDER_RADIUS > 0:
             self._win.setAttribute(Qt.WA_TranslucentBackground, True)
-        root = QVBoxLayout(central); root.setContentsMargins(0,0,0,0); root.setSpacing(0)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
         self._root_layout = root
 
         # Barre de titre + séparateur
@@ -90,22 +96,34 @@ class TrackerUI:
         self._win.window_state_changed.connect(self._on_window_state_for_chrome)
         root.addWidget(self._title_bar)
         self._title_bar.on_window_state_changed(self._win.windowState())
-        self._sep_title = _hsep(central); self._seps.append(self._sep_title); root.addWidget(self._sep_title)
+        self._sep_title = _hsep(central)
+        self._seps.append(self._sep_title)
+        root.addWidget(self._sep_title)
         self._apply_window_icon()
 
         # Bannière + séparateur
-        banner = QWidget(); self._banner = banner
-        if BANNER_HEIGHT is not None: banner.setFixedHeight(BANNER_HEIGHT)
-        b_lay = QVBoxLayout(banner); b_lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
-        self.banner_label = QLabel(""); self.banner_label.setAlignment(Qt.AlignCenter)
+        banner = QWidget()
+        self._banner = banner
+        if BANNER_HEIGHT is not None:
+            banner.setFixedHeight(BANNER_HEIGHT)
+        b_lay = QVBoxLayout(banner)
+        b_lay.setContentsMargins(BASE_MARGIN, BASE_MARGIN, BASE_MARGIN, BASE_MARGIN)
+        self.banner_label = QLabel("")
+        self.banner_label.setAlignment(Qt.AlignCenter)
         self.banner_label.setFont(QFont(FONT_FAMILY, FONT_SIZE_BANNER, QFont.Bold))
-        b_lay.addWidget(self.banner_label); root.addWidget(banner)
+        b_lay.addWidget(self.banner_label)
+        root.addWidget(banner)
         self._banner_manager = None
-        self._sep_banner = _hsep(central); self._seps.append(self._sep_banner); root.addWidget(self._sep_banner)
+        self._sep_banner = _hsep(central)
+        self._seps.append(self._sep_banner)
+        root.addWidget(self._sep_banner)
 
         # Zone centrale (panneaux)
-        center = QWidget(); self.center_lay = QGridLayout(center)
-        self.center_lay.setContentsMargins(0,0,0,0); self.center_lay.setHorizontalSpacing(0); self.center_lay.setVerticalSpacing(8)
+        center = QWidget()
+        self.center_lay = QGridLayout(center)
+        self.center_lay.setContentsMargins(0, 0, 0, 0)
+        self.center_lay.setHorizontalSpacing(0)
+        self.center_lay.setVerticalSpacing(8)
 
         self.session_panel = SessionPanel(center)
         self.player_panel = PlayerPanel(players, self._on_player_changed, action_icon_px=self._action_icon_px, parent=center)
@@ -113,14 +131,22 @@ class TrackerUI:
         self.debug_panel = DebugPanel(self._set_debug_visible, action_icon_px=self._action_icon_px, parent=center)
 
         self.center_lay.addWidget(self.session_panel, 0, 0)
-        self._sep_1 = _vsep(center); self._seps.append(self._sep_1); self.center_lay.addWidget(self._sep_1, 0, 1)
+        self._sep_1 = _vsep(center)
+        self._seps.append(self._sep_1)
+        self.center_lay.addWidget(self._sep_1, 0, 1)
         self.center_lay.addWidget(self.player_panel, 0, 2)
-        self._sep_2 = _vsep(center); self._seps.append(self._sep_2); self.center_lay.addWidget(self._sep_2, 0, 3)
+        self._sep_2 = _vsep(center)
+        self._seps.append(self._sep_2)
+        self.center_lay.addWidget(self._sep_2, 0, 3)
         self.center_lay.addWidget(self.session_times_panel, 0, 4)
-        self._sep_debug = _vsep(center); self._seps.append(self._sep_debug); self.center_lay.addWidget(self._sep_debug, 0, 5)
+        self._sep_debug = _vsep(center)
+        self._seps.append(self._sep_debug)
+        self.center_lay.addWidget(self._sep_debug, 0, 5)
         self.center_lay.addWidget(self.debug_panel, 0, 6)
-        for col in (0,2,4,6): self.center_lay.setColumnStretch(col, 1)
-        for col in (1,3,5): self.center_lay.setColumnStretch(col, 0)
+        for col in (0, 2, 4, 6):
+            self.center_lay.setColumnStretch(col, 1)
+        for col in (1, 3, 5):
+            self.center_lay.setColumnStretch(col, 0)
 
         # Back-compat: références directes
         self.session_time_value = self.session_panel.session_time_value
@@ -144,36 +170,55 @@ class TrackerUI:
         self.debug_toggle_btn = self.debug_panel.debug_toggle_btn
         self.debug_text = self.debug_panel.debug_text
         self.debug_col = self.debug_panel
-        for s in getattr(self.session_panel,'separators',[]): self._seps.append(s)
-        for s in getattr(self.player_panel,'separators',[]): self._seps.append(s)
-        for s in getattr(self.debug_panel,'separators',[]): self._seps.append(s)
+        for s in getattr(self.session_panel, 'separators', []):
+            self._seps.append(s)
+        for s in getattr(self.player_panel, 'separators', []):
+            self._seps.append(s)
+        for s in getattr(self.debug_panel, 'separators', []):
+            self._seps.append(s)
         root.addWidget(center, 1)
 
         # Logs
-        self._sep_logs = _hsep(central); self._seps.append(self._sep_logs); root.addWidget(self._sep_logs)
-        self.logs_panel = LogsPanel(central); self.log_text = self.logs_panel.log_text; root.addWidget(self.logs_panel, 0)
+        self._sep_logs = _hsep(central)
+        self._seps.append(self._sep_logs)
+        root.addWidget(self._sep_logs)
+        self.logs_panel = LogsPanel(central)
+        self.log_text = self.logs_panel.log_text
+        root.addWidget(self.logs_panel, 0)
 
         # Menu + thème + timers
         self._build_menubar()
         self._apply_debug_visibility()
         self._event_queue = None
-        self._queue_timer = QTimer(self._win); self._queue_timer.setInterval(16); self._queue_timer.timeout.connect(self._pump_event_queue)
+        self._queue_timer = QTimer(self._win)
+        self._queue_timer.setInterval(16)
+        self._queue_timer.timeout.connect(self._pump_event_queue)
         self._apply_theme(self._theme.colors())
-        try: self._app.styleHints().colorSchemeChanged.connect(self._on_system_color_scheme_changed)
-        except Exception: pass
+        try:
+            self._app.styleHints().colorSchemeChanged.connect(self._on_system_color_scheme_changed)
+        except Exception:
+            pass
         # Liste des derniers tours vierge au démarrage
 
     # API publique (compat)
     def mainloop(self):
-        self._win.show(); return self._app.exec()
+        self._win.show()
+        return self._app.exec()
 
-    def set_on_player_change(self, cb): self.on_player_change = cb
-    def set_on_debug_toggle(self, cb): self.on_debug_toggle = cb
-    def bind_event_queue(self, q): self._event_queue = q; self._queue_timer.start()
+    def set_on_player_change(self, cb):
+        self.on_player_change = cb
+
+    def set_on_debug_toggle(self, cb):
+        self.on_debug_toggle = cb
+
+    def bind_event_queue(self, q):
+        self._event_queue = q
+        self._queue_timer.start()
 
     # --- Méthodes d'update ---
     def update_context(self, track: str, car: str, track_id=None, car_id=None):
-        track_text = track or "---"; car_text = car or "---"
+        track_text = track or "---"
+        car_text = car or "---"
         display_track = track_text
         try:
             if track_text != "---" and track_id is not None:
@@ -186,8 +231,10 @@ class TrackerUI:
                 display_car = f"{car_text} - N° {int(car_id)}"
         except Exception:
             display_car = car_text
-        self.track_value.setText(display_track); self.track_value.setToolTip(display_track)
-        self.car_value.setText(display_car); self.car_value.setToolTip(display_car)
+        self.track_value.setText(display_track)
+        self.track_value.setToolTip(display_track)
+        self.car_value.setText(display_car)
+        self.car_value.setToolTip(display_car)
 
     def update_player_personal_record(self, best_time_str: str):
         self.best_time_label.setText(best_time_str or "---")
@@ -403,123 +450,241 @@ class TrackerUI:
                 pass
 
     def _build_menubar(self):
-        menubar = self._title_bar.menu_bar(); menubar.clear()
-        file_menu = QMenu("Fichier", menubar); file_menu.addAction(QAction("(à venir)", file_menu, enabled=False)); menubar.addMenu(file_menu)
-        edit_menu = QMenu("Édition", menubar); edit_menu.addAction(QAction("(à venir)", edit_menu, enabled=False)); menubar.addMenu(edit_menu)
+        menubar = self._title_bar.menu_bar()
+        menubar.clear()
+
+        file_menu = QMenu("Fichier", menubar)
+        file_menu.addAction(QAction("(à venir)", file_menu, enabled=False))
+        menubar.addMenu(file_menu)
+
+        edit_menu = QMenu("Édition", menubar)
+        edit_menu.addAction(QAction("(à venir)", edit_menu, enabled=False))
+        menubar.addMenu(edit_menu)
+
         view_menu = QMenu("Affichage", menubar)
-        self._act_debug = QAction("Debug", view_menu, checkable=True); self._act_debug.setChecked(self.debug_visible.get()); self._act_debug.triggered.connect(self._toggle_debug_action); view_menu.addAction(self._act_debug)
-        theme_menu = QMenu("Thème", menubar); group = QActionGroup(self._win); group.setExclusive(True)
-        self._act_theme_system = QAction("Système", group, checkable=True); self._act_theme_light = QAction("Clair", group, checkable=True); self._act_theme_dark = QAction("Sombre", group, checkable=True)
-        mode = self._theme.get_mode(); self._act_theme_system.setChecked(mode=="system"); self._act_theme_light.setChecked(mode=="light"); self._act_theme_dark.setChecked(mode=="dark")
-        self._act_theme_system.triggered.connect(lambda: self._on_theme_changed("system")); self._act_theme_light.triggered.connect(lambda: self._on_theme_changed("light")); self._act_theme_dark.triggered.connect(lambda: self._on_theme_changed("dark"))
-        theme_menu.addAction(self._act_theme_system); theme_menu.addAction(self._act_theme_light); theme_menu.addAction(self._act_theme_dark); view_menu.addMenu(theme_menu)
+        self._act_debug = QAction("Debug", view_menu, checkable=True)
+        self._act_debug.setChecked(self.debug_visible.get())
+        self._act_debug.triggered.connect(self._toggle_debug_action)
+        view_menu.addAction(self._act_debug)
+
+        theme_menu = QMenu("Thème", menubar)
+        group = QActionGroup(self._win)
+        group.setExclusive(True)
+        self._act_theme_system = QAction("Système", group, checkable=True)
+        self._act_theme_light = QAction("Clair", group, checkable=True)
+        self._act_theme_dark = QAction("Sombre", group, checkable=True)
+        mode = self._theme.get_mode()
+        self._act_theme_system.setChecked(mode == "system")
+        self._act_theme_light.setChecked(mode == "light")
+        self._act_theme_dark.setChecked(mode == "dark")
+        self._act_theme_system.triggered.connect(lambda: self._on_theme_changed("system"))
+        self._act_theme_light.triggered.connect(lambda: self._on_theme_changed("light"))
+        self._act_theme_dark.triggered.connect(lambda: self._on_theme_changed("dark"))
+        theme_menu.addAction(self._act_theme_system)
+        theme_menu.addAction(self._act_theme_light)
+        theme_menu.addAction(self._act_theme_dark)
+        view_menu.addMenu(theme_menu)
         menubar.addMenu(view_menu)
 
     def _on_theme_changed(self, mode: str):
-        self._theme.set_mode(mode); self._apply_theme(self._theme.colors())
+        self._theme.set_mode(mode)
+        self._apply_theme(self._theme.colors())
 
     def _apply_theme(self, c: dict):
-        self._colors = c; self._title_bar.apply_colors(c)
-        r = 0 if self._win.isMaximized() else WINDOW_BORDER_RADIUS; bw = WINDOW_BORDER_WIDTH if r>0 else 0
-        self._central.setStyleSheet("QWidget{" f"background:{c['bg_main']};" f"color:{c['text']};" "}" "QWidget#Root{" f"border:{bw}px solid {c['window_border']};" f"border-radius:{r}px;" "}")
+        self._colors = c
+        self._title_bar.apply_colors(c)
+        r = 0 if self._win.isMaximized() else WINDOW_BORDER_RADIUS
+        bw = WINDOW_BORDER_WIDTH if r > 0 else 0
+        self._central.setStyleSheet(
+            "QWidget{"
+            f"background:{c['bg_main']};"
+            f"color:{c['text']};"
+            "}"
+            "QWidget#Root{"
+            f"border:{bw}px solid {c['window_border']};"
+            f"border-radius:{r}px;"
+            "}"
+        )
         try:
-            if hasattr(self, "_root_layout") and self._root_layout is not None: self._root_layout.setContentsMargins(bw,bw,bw,bw)
-        except Exception: pass
-        self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}"); self.banner_label.setStyleSheet(f"QLabel{{color:{c['banner_text']};}}")
-        if not hasattr(self, "_banner_manager") or self._banner_manager is None: self._banner_manager = BannerManager(self._banner, self.banner_label, c)
-        else: self._banner_manager.update_theme(c)
-        btn_ss = ("QPushButton{" f"background:{c['button_bg']};" f"color:{c['control_fg']};" f"border:{BUTTON_BORDER_WIDTH}px solid {c['button_border_color']};" f"border-radius:{BUTTON_BORDER_RADIUS}px;" f"padding:{BUTTON_PADDING};" "}" "QPushButton:hover{" f"background:{c['interactive_hover']};" "}" "QPushButton:pressed{" f"background:{c['interactive_hover']};" "}" "QPushButton:disabled{" f"background:{c['button_bg']};" "color:#888888;" "}")
-        icon_override = ("QPushButton[variant=\"icon\"]{" f"padding:{ICON_BUTTON_PADDING};" "min-width:28px;" "min-height:28px;" "}")
+            if hasattr(self, "_root_layout") and self._root_layout is not None:
+                self._root_layout.setContentsMargins(bw, bw, bw, bw)
+        except Exception:
+            pass
+        self._banner.setStyleSheet(f"QWidget{{background:{c['banner_bg']};}}")
+        self.banner_label.setStyleSheet(f"QLabel{{color:{c['banner_text']};}}")
+        if not hasattr(self, "_banner_manager") or self._banner_manager is None:
+            self._banner_manager = BannerManager(self._banner, self.banner_label, c)
+        else:
+            self._banner_manager.update_theme(c)
+        btn_ss = (
+            "QPushButton{"
+            f"background:{c['button_bg']};"
+            f"color:{c['control_fg']};"
+            f"border:{BUTTON_BORDER_WIDTH}px solid {c['button_border_color']};"
+            f"border-radius:{BUTTON_BORDER_RADIUS}px;"
+            f"padding:{BUTTON_PADDING};"
+            "}"
+            "QPushButton:hover{"
+            f"background:{c['interactive_hover']};"
+            "}"
+            "QPushButton:pressed{"
+            f"background:{c['interactive_hover']};"
+            "}"
+            "QPushButton:disabled{"
+            f"background:{c['button_bg']};"
+            "color:#888888;"
+            "}"
+        )
+        icon_override = (
+            "QPushButton[variant=\"icon\"]{"
+            f"padding:{ICON_BUTTON_PADDING};"
+            "min-width:28px;"
+            "min-height:28px;"
+            "}"
+        )
         icon_btn_ss = btn_ss + icon_override
         self.edit_players_btn.setStyleSheet(icon_btn_ss)
-        try: self.rankings_btn.setStyleSheet(icon_btn_ss)
-        except Exception: pass
+        try:
+            self.rankings_btn.setStyleSheet(icon_btn_ss)
+        except Exception:
+            pass
         self.debug_toggle_btn.setStyleSheet(icon_btn_ss)
         self._apply_action_icons(c.get("action_icon_color", c.get("control_fg", "#000000")))
-        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0")); scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
-        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0")); handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
-        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d")); handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
-        plain_scroll_css = scrollbar_css("QPlainTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        list_scroll_css = scrollbar_css("QListWidget", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        text_scroll_css = scrollbar_css("QTextEdit", scroll_track, scroll_border, handle_start, handle_end, handle_hover_start, handle_hover_end)
-        try: self.session_times_list.apply_palette(c['text'], c['bg_main'], c.get('last_laps_hover', c.get('interactive_hover')), list_scroll_css)
-        except Exception: pass
+        scroll_track = c.get("scrollbar_track", c.get("bg_secondary", "#f0f0f0"))
+        scroll_border = c.get("scrollbar_border", c.get("separator", "#b0b0b0"))
+        handle_start = c.get("scrollbar_handle_start", c.get("separator", "#b0b0b0"))
+        handle_end = c.get("scrollbar_handle_end", c.get("control_fg", "#7d7d7d"))
+        handle_hover_start = c.get("scrollbar_handle_hover_start", c.get("control_fg", "#7d7d7d"))
+        handle_hover_end = c.get("scrollbar_handle_hover_end", c.get("text", "#3a3a3a"))
+        plain_scroll_css = scrollbar_css(
+            "QPlainTextEdit", scroll_track, scroll_border,
+            handle_start, handle_end, handle_hover_start, handle_hover_end,
+        )
+        list_scroll_css = scrollbar_css(
+            "QListWidget", scroll_track, scroll_border,
+            handle_start, handle_end, handle_hover_start, handle_hover_end,
+        )
+        text_scroll_css = scrollbar_css(
+            "QTextEdit", scroll_track, scroll_border,
+            handle_start, handle_end, handle_hover_start, handle_hover_end,
+        )
+        try:
+            self.session_times_list.apply_palette(
+                c['text'], c['bg_main'],
+                c.get('last_laps_hover', c.get('interactive_hover')),
+                list_scroll_css,
+            )
+        except Exception:
+            pass
         self.debug_text.setStyleSheet(f"QPlainTextEdit{{background:{c['debug_bg']}; color:{c['text']};}}{plain_scroll_css}")
         self.log_text.setStyleSheet(f"QTextEdit{{background:{c['log_bg']}; color:{c['text']};}}{text_scroll_css}")
         for sep in self._seps:
-            try: sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
-            except Exception: pass
+            try:
+                sep.setStyleSheet(f"QFrame{{background:{c['separator']};}}")
+            except Exception:
+                pass
         self.set_player_menu_state(self.player_combo.isEnabled())
         for tire_widget in self._tire_widgets:
-            try: tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
-            except Exception: pass
+            try:
+                tire_widget.apply_palette(c['tire_bg'], c['tire_border'], c['tire_text'])
+            except Exception:
+                pass
 
-    def _on_window_state_for_chrome(self, *_): self._apply_theme(self._colors or self._theme.colors())
+    def _on_window_state_for_chrome(self, *_):
+        self._apply_theme(self._colors or self._theme.colors())
+
     def _on_system_color_scheme_changed(self):
-        if self._theme.get_mode()=="system": self._apply_theme(self._theme.colors())
+        if self._theme.get_mode() == "system":
+            self._apply_theme(self._theme.colors())
 
     def _toggle_debug_action(self, checked: bool):
-        self.debug_visible.set(bool(checked)); self._apply_debug_visibility()
+        self.debug_visible.set(bool(checked))
+        self._apply_debug_visibility()
         if callable(self.on_debug_toggle):
-            try: self.on_debug_toggle(bool(checked))
-            except Exception: pass
+            try:
+                self.on_debug_toggle(bool(checked))
+            except Exception:
+                pass
 
     def _set_debug_visible(self, flag: bool):
         self.debug_visible.set(bool(flag))
-        self._act_debug.blockSignals(True); self._act_debug.setChecked(self.debug_visible.get()); self._act_debug.blockSignals(False)
+        self._act_debug.blockSignals(True)
+        self._act_debug.setChecked(self.debug_visible.get())
+        self._act_debug.blockSignals(False)
         self._apply_debug_visibility()
         if callable(self.on_debug_toggle):
-            try: self.on_debug_toggle(self.debug_visible.get())
-            except Exception: pass
+            try:
+                self.on_debug_toggle(self.debug_visible.get())
+            except Exception:
+                pass
 
     def _apply_debug_visibility(self):
-        vis = self.debug_visible.get(); self.debug_col.setVisible(vis); self._sep_debug.setVisible(vis)
+        vis = self.debug_visible.get()
+        self.debug_col.setVisible(vis)
+        self._sep_debug.setVisible(vis)
         self.debug_toggle_btn.setToolTip("Masquer la zone debug" if vis else "Afficher la zone debug")
         if vis:
-            for col in (0,2,4,6): self.center_lay.setColumnStretch(col, 1)
+            for col in (0, 2, 4, 6):
+                self.center_lay.setColumnStretch(col, 1)
         else:
-            for col in (0,2,4): self.center_lay.setColumnStretch(col, 1)
+            for col in (0, 2, 4):
+                self.center_lay.setColumnStretch(col, 1)
             self.center_lay.setColumnStretch(6, 0)
 
     def _pump_event_queue(self):
-        if self._event_queue is None: return
+        if self._event_queue is None:
+            return
         try:
             while True:
-                name, payload = self._event_queue.get_nowait(); payload = payload or {}
-                if name == "debug": self.update_debug(payload)
-                elif name == "session_time": self.update_session_time(payload.get("seconds"))
-                elif name == "context": self.update_context(
-                    payload.get("track","---"),
-                    payload.get("car","---"),
-                    payload.get("track_id"),
-                    payload.get("car_id"),
-                )
-                elif name == "player_menu_state": self.set_player_menu_state(payload.get("enabled", False))
-                elif name == "log": self.add_log(payload.get("message",""))
-                elif name == "player_best": self.update_player_personal_record(payload.get("text","---"))
-                elif name == "ranking": self._update_ranking_display(payload.get("ranking", []))
+                name, payload = self._event_queue.get_nowait()
+                payload = payload or {}
+                if name == "debug":
+                    self.update_debug(payload)
+                elif name == "session_time":
+                    self.update_session_time(payload.get("seconds"))
+                elif name == "context":
+                    self.update_context(
+                        payload.get("track", "---"),
+                        payload.get("car", "---"),
+                        payload.get("track_id"),
+                        payload.get("car_id"),
+                    )
+                elif name == "player_menu_state":
+                    self.set_player_menu_state(payload.get("enabled", False))
+                elif name == "log":
+                    self.add_log(payload.get("message", ""))
+                elif name == "player_best":
+                    self.update_player_personal_record(payload.get("text", "---"))
+                elif name == "ranking":
+                    self._update_ranking_display(payload.get("ranking", []))
                 elif name == "banner":
                     if "type" in payload:
                         self._handle_banner_message(payload.get("type", ""))
                     else:
                         self.set_banner(payload.get("text", ""))
-                elif name == "current_lap": self.update_current_lap_time(payload.get("text","---"))
+                elif name == "current_lap":
+                    self.update_current_lap_time(payload.get("text", "---"))
                 elif name == "session_times":
                     entries = payload.get("entries") or payload.get("lines") or payload.get("text")
                     self.update_session_times(entries or [])
                 elif name == "last_laps":
                     entries = payload.get("entries") or payload.get("lines") or payload.get("text")
                     self.update_session_times(entries or [])
-        except _q.Empty: pass
+        except _q.Empty:
+            pass
         except Exception as e:
-            try: self.add_log(f"UI error: {e}")
-            except Exception: pass
-
-    # plus de placeholder
+            try:
+                self.add_log(f"UI error: {e}")
+            except Exception:
+                pass
 
     def _apply_window_icon(self):
         try:
             if os.path.isfile(WINDOWS_ICON_PATH):
-                icon = QIcon(WINDOWS_ICON_PATH); self._app.setWindowIcon(icon); self._win.setWindowIcon(icon)
-                if hasattr(self, "_title_bar"): self._title_bar.set_icon(icon)
-        except Exception: pass
+                icon = QIcon(WINDOWS_ICON_PATH)
+                self._app.setWindowIcon(icon)
+                self._win.setWindowIcon(icon)
+                if hasattr(self, "_title_bar"):
+                    self._title_bar.set_icon(icon)
+        except Exception:
+            pass
